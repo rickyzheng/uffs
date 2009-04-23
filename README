@@ -1,0 +1,151 @@
+UFFS: Ultra-low-cost Flash File System
+
+Project: http://uffs.sf.net/
+Blog:    http://all-about-uffs.blogspot.com/
+Q/A:     http://groups.google.com/group/uffs/
+
+Author: Ricky Zheng <ricky_gz_zheng@yahoo.co.nz>
+
+INTRODUCTION
+------------
+
+UFFS is a nand flash file system designed for embedded system.
+
+UFFS have some unique and advanced features:
+  * Low cost: e.g. it needs only 164K bytes RAM for 128 MBytes NAND 
+    flash (512 bytes per page, 32 pages per block, total 8192 blocks).
+  * Fast booting: typically it only needs 1~3 seconds to mount full
+   loaded 128 Mbytes NAND flash (on ARM7 CPU).
+  * Superb Reliability: 
+    - The file system is designed for the embedded system which may 
+        frequently lost powre/reset without care.
+    - Journal file system, the file system will automatically rollback
+        to last state if the 'write' operation is interrupted by 
+        accident (power lost/reset etc.).
+    - When 'write' return without error, the data is guarenteed be
+        saved to flash.
+
+  * Fast file create/read/write/seek.
+  * Bad-block tolerant, ECC enable and good ware-leveling.
+  * There is no garbage collection needed for UFFS.
+  * Support multiple NAND flash class in one system
+  * Support bare flash hardware, no operating system needed.
+  * Support static memory allocation. (from 1.2.0)
+  * Support "In-RAM" file system.
+  * Fully simulated on PC (Windows/Linux).
+
+Disadvantage:
+  * space inefficency for small files: UFFS use at least one
+   'block'(the minial erase unit for NAND flash, e.g. 16K ) for a file.
+  * maximum supported blocks: 2^16 = 65535
+
+Memory consuming example:
+	[VARY]Tree nodes: 16 * total_blocks 
+	[CONST]Page Bufs: MAX_CACHED_BUFFERS(40) * (40 + pageSize(512)) = 22K 
+	[CONST]Block Info caches: (24 + 14 * pages_per_block (32)) * MAX_CACHED_BLOCK_INFO (30) = 14K
+
+	Example 1: 128M bytes NAND, 8192 blocks, the total memory will be:
+		(16 * 8192)128K + 22K + 14K = 164K bytes.
+		
+	Example 2: 32M Bytes NAND, 2048 blocks, the total memory will be:
+		(16 * 2048)32K + 22K + 14K = 68K bytes.
+		
+	Example 3: 16M bytes NAND, 1024 blocks, with smaller cache/buffer config, the memory will be:
+		Tree nodes: 16 * 1024 = 16K
+		Page Bufs: 10 * (40 + 512) = 5.4K
+		Block info caches: (24 + 14 * 32) * 10 = 4.6K
+		TOTAL: 16 + 5.4 + 4.6 = 26K
+
+
+BUILD SIMULATOR REQUIREMENT
+---------------------------
+From V1.2.0, build uffs simulator requires 'cmake'.
+'cmake' can be downloaded from: http://www.cmake.org/
+
+or, under Debian/Ubuntu:
+  sudo apt-get install cmake
+
+BUILD SIMULATOR ON LINUX
+------------------------
+1) create a 'build' dir along with uffs source dir, for example:
+/+
+ +--build/
+ +--uffs-1.2.0/
+ |
+
+2) create Makefiles and build:
+  cd build
+  cmake ../uffs-1.2.0
+  make
+
+5) run simulator (interactive mode):
+  src/utils/mkuffs
+ 
+ 
+BUILD SIMULATOR ON WINDOWS
+--------------------------
+
+1) create a 'build' dir along with uffs source dir,
+/+
+ +--build/
+ +--uffs-1.2.0/
+ |
+
+2) Create VC project files:
+  cd build
+  cmake ../uffs-1.2.0
+
+3) Open uffs.dsw (or uffs.sln for VC > 6 ), compile & run.
+
+ 
+LATEST SOURCE CODE
+------------------
+You can get the latest source code from SVN repository:
+  https://uffs.svn.sourceforge.net/svnroot/uffs/trunk
+
+
+CURRENT STATUS
+--------------
+UFFS 0.1.x is a working version on PC simulator, also has been ported to 
+uBase embedded OS as a 'real world' product for thousands of copies,
+it works fine so far.
+
+UFFS 0.2.0 implementes full directory.
+
+UFFS 1.0.0 is the first stable release at sf.net.
+
+UFFS 1.1.0: support NAND flash with large page size (up to 2K).
+
+UFFS 1.1.1: bug fixes. a tool for making uffs disk image.
+
+UFFS 1.1.2: bug fixes. add more Flash Class. change Licence from GNU GPLv2 to GNU LGPLv2
+
+UFFS 1.2.0: 
+  - eliminate 'current path' and relatives. Now you should use absolute path in all uffs APIs. For dir, the fullname should end with '/'.
+  - allow using static memory allocation, 'malloc' is no longer needed.
+  - using cmake for building simulator.
+  - bug fixes & minor changes.
+  
+LICENCE
+-------
+For personal study, non-commercial purpose: GNU LGPLv2
+For commercial purpose: GNU LGPLv2, and please send a notice mail to:
+
+   Ricky Zheng <ricky_gz_zheng@yahoo.co.nz>
+
+
+Have fun !
+
+
+ACKNOWLEDGMENT
+---------------
+Special thanks for your contributions to:
+(list in no particular order)
+
+* Chen Jun <chj@nlscan.com>
+* Michail <digiolog@mail.ru>
+* Sjpu <sjpu@163.com>
+* RobertGray <xennex@hotmail.com>
+* Dongbo <dongbo@ftsafe.com>
+* Cag <seucag@hotmail.com>
+
