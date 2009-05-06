@@ -31,7 +31,7 @@
 #include "uffs/uffs_core.h"
 #include "cmdline.h"
 
-#define PFX "cmd: "
+#define PFX "cmd:  "
 
 BOOL cmdFormat(const char *tail)
 {

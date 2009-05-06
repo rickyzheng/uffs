@@ -31,7 +31,7 @@
 #include "uffs/uffs_device.h"
 #include "uffs_fileem.h"
 
-#define PFX "femu:"
+#define PFX "femu: "
 
 
 #define MAXWRITETIME_PAGE 2

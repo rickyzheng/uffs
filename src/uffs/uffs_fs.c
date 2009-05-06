@@ -1583,7 +1583,7 @@ URET uffs_RenameObject(const char *old_name, const char *new_name)
 	uffs_BufPut(dev, buf);
 
 	uffs_BufFlushEx(dev, U_TRUE);	// !! force a block recover so that all old tag will be expired !!
-									// so that we only need to check the first spare when mount UFFS :)
+									// This is important so we only need to check the first spare when mount UFFS :)
 
 	uffs_ObjectDevUnLock(obj);
 	uffs_CloseObject(obj);

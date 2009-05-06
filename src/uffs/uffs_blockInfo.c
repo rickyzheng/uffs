@@ -28,7 +28,7 @@
 
 #include <string.h>
 
-#define PFX "bc:"
+#define PFX "bc  : "
 
 #define UFFS_CLONE_BLOCK_INFO_NEXT ((uffs_blockInfo *)(-2))
 
@@ -67,6 +67,9 @@ URET uffs_InitBlockInfoCache(uffs_Device *dev, int maxCachedBlocks)
 		uffs_Perror(UFFS_ERR_DEAD, PFX"Block cache buffer require %d but only %d available.\n", size, dev->mem.blockinfo_buffer_size);
 		return U_FAIL;
 	}
+
+	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc info cache %d bytes.\n", size);
+
 	buf = dev->mem.blockinfo_buffer;
 
 	memset(buf, 0, size);

@@ -26,7 +26,7 @@
 #include "uffs/uffs_config.h"
 #include <string.h>
 
-#define PFX "fd:"
+#define PFX "fd: "
 
 
 //TODO: implement POSIX like file operation APIs ....

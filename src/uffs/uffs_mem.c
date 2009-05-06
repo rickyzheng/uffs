@@ -31,7 +31,7 @@
 
 #if defined(USE_NATIVE_MEMORY_ALLOCATOR)
 
-#define PFX "mem:"
+#define PFX "mem: "
 
 
 #define HEAP_MAGIC_SIZE	8		/* heap magic size, this block is for memory protection */

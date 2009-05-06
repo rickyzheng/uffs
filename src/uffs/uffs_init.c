@@ -30,7 +30,7 @@
 #include "uffs/uffs_badblock.h"
 #include <string.h>
 
-#define PFX "init:"
+#define PFX "init: "
 
 URET uffs_InitDevice(uffs_Device *dev)
 {

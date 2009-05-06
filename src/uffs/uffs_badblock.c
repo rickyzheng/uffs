@@ -27,7 +27,7 @@
 #include "uffs/uffs_ecc.h"
 #include <string.h>
 
-#define PFX "badblock:"
+#define PFX "bbl:  "
 
 void uffs_InitBadBlock(uffs_Device *dev)
 {

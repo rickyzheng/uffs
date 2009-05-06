@@ -26,7 +26,7 @@
 #include "uffs/uffs_public.h"
 #include <string.h>
 
-#define PFX "dev:"
+#define PFX "dev: "
 
 static struct uffs_mountTableSt *g_mtabHead = NULL;
 

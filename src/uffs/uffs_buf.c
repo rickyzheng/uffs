@@ -33,7 +33,7 @@
 #include "uffs/uffs_badblock.h"
 #include <string.h>
 
-#define PFX "pg buf:"
+#define PFX "pbuf: "
 
 /**
  * \brief inspect (print) uffs page buffers.
@@ -96,7 +96,7 @@ URET uffs_BufInit(uffs_Device *dev, int maxBuf, int maxDirtyBuf)
 	}
 	pool = dev->mem.page_buffer;
 
-	uffs_Perror(UFFS_ERR_NOISY, PFX"allcate %d bytes.\n", size);
+	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc %d bytes.\n", size);
 	dev->buf.pool = pool;
 
 	data = (u8 *)pool + (sizeof(uffs_Buf) * maxBuf);
@@ -948,7 +948,7 @@ uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 father, u16 serial
  * \param[in] type dir, file or data ?
  * \param[in] node node on the tree
  * \param[in] pageID pageID
- * \return return the bufer if found in buffer list, if not found in 
+ * \return return the buffer if found in buffer list, if not found in 
  *			buffer list, it will get a free buffer, and load data from flash.
  *			return NULL if not free buffer.
  */

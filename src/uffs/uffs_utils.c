@@ -30,7 +30,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define PFX "utils:"
+#define PFX "util: "
 
 static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 {

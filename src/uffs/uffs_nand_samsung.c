@@ -27,7 +27,7 @@
 #include "uffs/uffs_device.h"
 #include <string.h>
 
-#define PFX "samsung NAND:"
+#define PFX "samsung NAND: "
 
 
 #define SAMSUNG_PAGE_SIZE_MAX	2048

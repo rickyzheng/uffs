@@ -30,7 +30,7 @@
 
 #include <string.h>
 
-#define PFX "public:"
+#define PFX "pub: "
 
 
 int uffs_GetFirstBlockTimeStamp(void)

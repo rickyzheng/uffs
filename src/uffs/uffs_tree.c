@@ -64,6 +64,7 @@ URET uffs_InitTreeBuf(uffs_Device *dev)
 		memset(dis, 0, sizeof(struct ubufm));
 		return U_FAIL;
 	}
+	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc tree nodes %d bytes.\n", size * nums);
 	dis->node_pool = dev->mem.tree_buffer;
 	
 	uBufInit(dis);

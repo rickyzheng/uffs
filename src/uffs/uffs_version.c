@@ -25,7 +25,7 @@
 #include "uffs/uffs_version.h"
 
 #include <stdio.h>
-#define PFX "ver:"
+#define PFX "ver: "
 
 
 static char version_buf[8];
