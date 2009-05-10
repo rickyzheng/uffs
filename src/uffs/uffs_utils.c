@@ -94,7 +94,7 @@ bad_out:
 
 URET uffs_FormatDevice(uffs_Device *dev)
 {
-	u16 i;
+	u16 i, slot;
 	
 	if(dev == NULL) return U_FAIL;
 	if(dev->ops == NULL || dev->flash == NULL) return U_FAIL;
@@ -105,9 +105,11 @@ URET uffs_FormatDevice(uffs_Device *dev)
 		return U_FAIL;
 	}
 
-	if(dev->buf.dirtyCount > 0) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"there still have dirty pages!\n");
-		return U_FAIL;
+	for (slot = 0; slot < MAX_DIRTY_BUF_GROUPS; slot++) {
+		if(dev->buf.dirtyGroup[slot].dirtyCount > 0) {
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"there still have dirty pages!\n");
+			return U_FAIL;
+		}
 	}
 
 	uffs_BufSetAllEmpty(dev);

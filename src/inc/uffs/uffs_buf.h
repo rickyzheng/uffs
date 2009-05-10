@@ -73,8 +73,16 @@ void uffs_BufDecRef(uffs_Buf *buf);
 URET uffs_BufWrite(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs, u32 len);
 URET uffs_BufRead(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs, u32 len);
 void uffs_BufSetMark(uffs_Buf *buf, int mark);
+
 URET uffs_BufFlush(struct uffs_DeviceSt *dev);
 URET uffs_BufFlushEx(struct uffs_DeviceSt *dev, UBOOL force_block_recover);
+
+URET uffs_BufFlushGroup(struct uffs_DeviceSt *dev, int serial);
+URET uffs_BufFlushGroupEx(struct uffs_DeviceSt *dev, int serial, UBOOL force_block_recover);
+int uffs_BufFindFreeGroupSlot(struct uffs_DeviceSt *dev);
+int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, int serial);
+
+URET uffs_BufFlushAll(struct uffs_DeviceSt *dev);
 
 UBOOL uffs_BufIsAllFree(struct uffs_DeviceSt *dev);
 UBOOL uffs_BufIsAllEmpty(struct uffs_DeviceSt *dev);

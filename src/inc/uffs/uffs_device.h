@@ -147,16 +147,20 @@ struct uffs_lockSt {
 	int counter;
 };
 
+struct uffs_dirtyGroupSt {
+	int dirtyCount;
+	uffs_Buf *dirty;
+};
+
 /** 
  * \struct uffs_pageBufsSt
  */
 struct uffs_pageBufsSt {
 	uffs_Buf *bufHead;
 	uffs_Buf *bufTail;
-	uffs_Buf *dirty;
+	struct uffs_dirtyGroupSt dirtyGroup[MAX_DIRTY_BUF_GROUPS];
 	int maxBuf;
 	int maxDirtyBuf;
-	int dirtyCount;
 	void *pool;
 };
 
@@ -178,7 +182,7 @@ struct uffs_newBadBlockSt {
 };
 
 /** statistic of flash read/write/erase activities */
-typedef struct {
+typedef struct uffs_StatisticSt {
 	int blockEraseCount;
 	int pageWriteCount;
 	int pageReadCount;
@@ -207,7 +211,7 @@ struct uffs_DeviceSt {
 	struct uffs_commInfoSt com;					//!< common information
 	struct uffs_treeSt tree;					//!< tree list of block
 	struct uffs_newBadBlockSt bad;				//!< new bad block
-	uffs_stat st;								//!< statistic counter
+	struct uffs_StatisticSt st;					//!< statistic (counters)
 	struct uffs_memAllocatorSt mem;				//!< uffs native memory allocator
 	u32 refCount;								//!< device reference count
 };

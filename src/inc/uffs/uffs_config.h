@@ -47,6 +47,11 @@
  */
 #define MAX_DIRTY_PAGES_IN_A_BLOCK 32
 
+/**
+ * \def MAX_DIRTY_BUF_GROUPS
+ */
+#define MAX_DIRTY_BUF_GROUPS	3
+
 
 /** \def MAX_PATH_LENGTH */
 #define MAX_PATH_LENGTH 128

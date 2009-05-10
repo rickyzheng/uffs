@@ -318,7 +318,7 @@ static URET _CreateObjectUnder(uffs_Object *obj)
 	uffs_BufPut(obj->dev, buf);
 
 	//flush buffer immediately, so that the new node will be inserted into the tree
-	uffs_BufFlush(obj->dev);
+	uffs_BufFlushGroup(obj->dev, obj->serial);
 
 	//update obj->node: after buf flushed, the NEW node can be found in the tree
 	if (obj->type == UFFS_TYPE_DIR)
@@ -683,7 +683,7 @@ URET uffs_CloseObject(uffs_Object *obj)
 
 			if(buf == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get file header\n");
-				uffs_BufFlush(dev);
+				uffs_BufFlushGroup(dev, buf->serial);
 				uffs_ObjectDevUnLock(obj);
 				goto out;
 			}
@@ -693,7 +693,7 @@ URET uffs_CloseObject(uffs_Object *obj)
 			uffs_BufPut(dev, buf);
 		}
 #endif
-		uffs_BufFlush(dev);
+		uffs_BufFlushAll(dev);
 	}
 	uffs_ObjectDevUnLock(obj);
 
@@ -925,7 +925,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 			size = _WriteNewBlock(obj, (u8 *)data + len - remain, remain, fnode->u.file.serial, fdn);
 
 			//Flush immediately, so that the new data node will be created and put in the tree.
-			uffs_BufFlush(dev);
+			uffs_BufFlushGroup(dev, fnode->u.file.serial);
 
 			if(size == 0) break;
 			remain -= size;
@@ -945,7 +945,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 									(u8 *)data + len - remain, remain,
 									write_start - _GetStartOfDataBlock(obj, fdn));
 #ifdef FLUSH_BUF_AFTER_WRITE
-			uffs_BufFlush(dev);
+			uffs_BufFlushAll(dev);
 #endif
 			if(size == 0) break;
 			remain -= size;
@@ -1346,7 +1346,7 @@ static URET _TruncateObject(uffs_Object *obj, u32 remain)
 
 	if(remain > fnode->u.file.len) return U_FAIL;
 
-	uffs_BufFlush(dev); //flush dirty buffers first
+	uffs_BufFlushAll(dev); //flush dirty buffers first
 
 	while(fnode->u.file.len > remain) {
 		flen = fnode->u.file.len;
@@ -1432,7 +1432,7 @@ URET uffs_DeleteObject(const char * name)
 	node = obj->node;
 
 	// before erase the block, we need to take care of the buffer ...
-	uffs_BufFlush(dev);
+	uffs_BufFlushAll(dev);
 	if (HAVE_BADBLOCK(dev)) uffs_RecoverBadBlock(dev);
 
 	buf = uffs_BufFind(dev, obj->father, obj->serial, 0);
@@ -1541,7 +1541,7 @@ URET uffs_RenameObject(const char *old_name, const char *new_name)
 
 	uffs_ObjectDevLock(obj);
 
-	uffs_BufFlush(dev);
+	uffs_BufFlushAll(dev);
 
 	buf = uffs_BufGetEx(dev, obj->type, node, 0);
 	if(buf == NULL) {
