@@ -14,7 +14,7 @@ UFFS is a nand flash file system designed for embedded system.
 UFFS have some unique and advanced features:
   * Low cost: e.g. it needs only 164K bytes RAM for 128 MBytes NAND 
     flash (512 bytes per page, 32 pages per block, total 8192 blocks).
-  * Fast booting: typically it only needs 1~3 seconds to mount full
+  * Fast booting: typically it only needs 0.5~2 seconds to mount full
    loaded 128 Mbytes NAND flash (on ARM7 CPU).
   * Superb Reliability: 
     - The file system is designed for the embedded system which may 
@@ -121,21 +121,47 @@ UFFS 1.1.1: bug fixes. a tool for making uffs disk image.
 UFFS 1.1.2: bug fixes. add more Flash Class. change Licence from GNU GPLv2 to GNU LGPLv2
 
 UFFS 1.2.0: 
-  - eliminate 'current path' and relatives. Now you should use absolute path in all uffs APIs. For dir, the fullname should end with '/'.
+  - eliminate 'current path' and relatives. Now you should use absolute path in all
+    uffs APIs. For dir, the fullname should end with '/'.
   - allow using static memory allocation, 'malloc' is no longer needed.
   - using cmake for building simulator.
   - bug fixes & minor changes.
+
+UFFS 1.2.1:
+  - improve bad block management
+  - bug fixes
+  - change Licence to modified GNU GPLv2.
   
 LICENCE
 -------
-For personal study, non-commercial purpose: GNU LGPLv2
-For commercial purpose: GNU LGPLv2, and please send a notice mail to:
+  From v1.2.1, UFFS is released under a midified GNU GPLv2. (the same as eCos Licence)
+  The full licence text can be found in the header of source files:
+  
+	  UFFS is free software; you can redistribute it and/or modify it under
+	  the GNU Library General Public License as published by the Free Software 
+	  Foundation; either version 2 of the License, or (at your option) any
+	  later version.
 
-   Ricky Zheng <ricky_gz_zheng@yahoo.co.nz>
+	  UFFS is distributed in the hope that it will be useful, but WITHOUT
+	  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+	  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+	  or GNU Library General Public License, as applicable, for more details.
+	 
+	  You should have received a copy of the GNU General Public License
+	  and GNU Library General Public License along with UFFS; if not, write
+	  to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+	  Boston, MA  02110-1301, USA.
 
-
-Have fun !
-
+	  As a special exception, if other files instantiate templates or use
+	  macros or inline functions from this file, or you compile this file
+	  and link it with other works to produce a work based on this file,
+	  this file does not by itself cause the resulting work to be covered
+	  by the GNU General Public License. However the source code for this
+	  file must still be made available in accordance with section (3) of
+	  the GNU General Public License v2.
+	 
+	  This exception does not invalidate any other reasons why a work based
+	  on this file might be covered by the GNU General Public License.
 
 ACKNOWLEDGMENT
 ---------------

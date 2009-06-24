@@ -1,24 +1,39 @@
 /*
-    Copyright (C) 2005-2008  Ricky Zheng <ricky_gz_zheng@yahoo.co.nz>
+  This file is part of UFFS, the Ultra-low-cost Flash File System.
+  
+  Copyright (C) 2005-2009 Ricky Zheng <ricky_gz_zheng@yahoo.co.nz>
 
-    This library is free software; you can redistribute it and/or
-    modify it under the terms of the GNU Library General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+  UFFS is free software; you can redistribute it and/or modify it under
+  the GNU Library General Public License as published by the Free Software 
+  Foundation; either version 2 of the License, or (at your option) any
+  later version.
 
-    This library is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    Library General Public License for more details.
+  UFFS is distributed in the hope that it will be useful, but WITHOUT
+  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+  or GNU Library General Public License, as applicable, for more details.
+ 
+  You should have received a copy of the GNU General Public License
+  and GNU Library General Public License along with UFFS; if not, write
+  to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+  Boston, MA  02110-1301, USA.
 
-    You should have received a copy of the GNU Library General Public
-    License along with this library; if not, write to the Free
-    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
-
+  As a special exception, if other files instantiate templates or use
+  macros or inline functions from this file, or you compile this file
+  and link it with other works to produce a work based on this file,
+  this file does not by itself cause the resulting work to be covered
+  by the GNU General Public License. However the source code for this
+  file must still be made available in accordance with section (3) of
+  the GNU General Public License v2.
+ 
+  This exception does not invalidate any other reasons why a work based
+  on this file might be covered by the GNU General Public License.
 */
+
 /**
  * \file static-mem-allocate.c
- * \brief demostrate how to use static memory allocation. This example use file emulated NAND flash.
+ * \brief demostrate how to use static memory allocation. This example use 
+ *        file emulated NAND flash.
  * \author Ricky Zheng
  */
 
@@ -68,7 +83,7 @@ static struct uffs_storageAttrSt emu_storage = {0};
 static struct uffs_FileEmuSt emu_private = {0};
 
 /* static alloc the memory */
-static int static_buffer[(UFFS_BLOCK_INFO_BUFFER_SIZE(PAGES_PER_BLOCK) + UFFS_PAGE_BUFFER_SIZE(PAGE_SIZE) + UFFS_TREE_BUFFER_SIZE(TOTAL_BLOCKS) + PAGE_SIZE) / sizeof(int)];
+static int static_buffer[UFFS_STATIC_BUFF_SIZE(PAGES_PER_BLOCK, PAGE_SIZE, TOTAL_BLOCKS) / sizeof(int)];
 static struct uffs_memAllocatorSt static_allocator = {0};
 
 /* init memory allocator, setup buffer sizes */
@@ -107,13 +122,13 @@ static void setup_emu_storage(struct uffs_storageAttrSt *attr)
 {
 	attr->dev_type =	UFFS_DEV_EMU;			/* dev_type */
 	attr->maker = MAN_ID;			        	/* simulate manufacture ID */
-	attr->id = 0xe3;							      /* chip id, can be ignored. */
-	attr->total_blocks = TOTAL_BLOCKS;			  /* total blocks */
+	attr->id = 0xe3;						    /* chip id, can be ignored. */
+	attr->total_blocks = TOTAL_BLOCKS;			/* total blocks */
 	attr->block_data_size = BLOCK_DATA_SIZE;	/* block data size */
 	attr->page_data_size = PAGE_DATA_SIZE;		/* page data size */
 	attr->spare_size = PAGE_SPARE_SIZE;		  	/* page spare size */
 	attr->pages_per_block = PAGES_PER_BLOCK;	/* pages per block */
-	attr->block_status_offs = 5;              /* block status offset is 5th byte in spare */
+	attr->block_status_offs = 5;				/* block status offset is 5th byte in spare */
 }
 
 static void setup_emu_private(uffs_FileEmu *emu)
@@ -125,25 +140,25 @@ static void setup_emu_private(uffs_FileEmu *emu)
 static int init_uffs_fs(void)
 {
 	struct uffs_mountTableSt *mtbl = &demo_mount;
-  struct uffs_memAllocatorSt *mem;
+	struct uffs_memAllocatorSt *mem;
 
-  /* setup emu storage */
+	/* setup emu storage */
 	setup_emu_storage(&emu_storage);
 	setup_emu_private(&emu_private);
 	emu_storage.private = &emu_private;
-  mtbl->dev->attr = &emu_storage;
+	mtbl->dev->attr = &emu_storage;
 
-  /* setup memory allocator */
-  mem = &mtbl->dev->mem;
-  memset(mem, 0, sizeof(struct uffs_memAllocatorSt));
-  mem->init = static_mem_alloc_init;
-  mem->malloc = static_mem_alloc_malloc;
+	/* setup memory allocator */
+	mem = &mtbl->dev->mem;
+	memset(mem, 0, sizeof(struct uffs_memAllocatorSt));
+	mem->init = static_mem_alloc_init;
+	mem->malloc = static_mem_alloc_malloc;
 
-  /* setup device */
-  uffs_fileem_setup_device(mtbl->dev);
+	/* setup device */
+	uffs_fileem_setup_device(mtbl->dev);
 
-  /* register mount table */
-  uffs_RegisterMountTable(mtbl);
+	/* register mount table */
+	uffs_RegisterMountTable(mtbl);
 
 	return uffs_initMountTable() == U_SUCC ? 0 : -1;
 }
