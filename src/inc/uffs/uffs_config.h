@@ -124,7 +124,7 @@
  * update the file's modify time as well. Disable this feature will save a
  * lot of writing activities if you frequently open files for write and close it.
  */
-#define CHANGE_MODIFY_TIME
+//#define CHANGE_MODIFY_TIME
 
 /**
  * \def ENABLE_TAG_CHECKSUM 
