@@ -122,6 +122,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len);
 long uffs_SeekObject(uffs_Object *obj, long offset, int origin);
 int uffs_GetCurOffset(uffs_Object *obj);
 int uffs_EndOfFile(uffs_Object *obj);
+URET uffs_FlushObject(uffs_Object *obj);
 
 URET uffs_RenameObject(const char *old_name, const char *new_name);
 URET uffs_DeleteObject(const char * name);

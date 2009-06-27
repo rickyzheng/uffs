@@ -332,7 +332,7 @@ static URET _CreateObjectUnder(uffs_Object *obj)
 	uffs_BufPut(obj->dev, buf);
 
 	//flush buffer immediately, so that the new node will be inserted into the tree
-	uffs_BufFlushGroup(obj->dev, obj->serial);
+	uffs_BufFlushGroup(obj->dev, obj->father, obj->serial);
 
 	//update obj->node: after buf flushed, the NEW node can be found in the tree
 	if (obj->type == UFFS_TYPE_DIR)
@@ -673,6 +673,39 @@ static void _ReleaseObjectResource(uffs_Object *obj)
 	}
 }
 
+
+static URET _FlushObject(uffs_Object *obj)
+{
+	uffs_Device *dev;
+
+	dev = obj->dev;
+	if (obj->node) {
+		if (obj->type == UFFS_TYPE_DIR)
+			return uffs_BufFlushGroup(dev, obj->node->u.dir.father, obj->node->u.dir.serial);
+		else {
+			return (uffs_BufFlushGroupMatchFather(dev, obj->node->u.file.serial) == U_SUCC &&
+				uffs_BufFlushGroup(dev, obj->node->u.file.father, obj->node->u.file.serial) == U_SUCC) ? U_SUCC : U_FAIL;
+		}
+	}
+	return U_SUCC;
+}
+
+URET uffs_FlushObject(uffs_Object *obj)
+{
+	uffs_Device *dev;
+	URET ret;
+
+	if(obj == NULL || obj->dev == NULL) return U_FAIL;
+	if (obj->openSucc != U_TRUE) return U_FAIL;
+
+	dev = obj->dev;
+	uffs_ObjectDevLock(obj);
+	ret = _FlushObject(obj);
+	uffs_ObjectDevUnLock(obj);
+
+	return ret;
+}
+
 URET uffs_CloseObject(uffs_Object *obj)
 {
 	uffs_Device *dev;
@@ -697,7 +730,7 @@ URET uffs_CloseObject(uffs_Object *obj)
 
 			if(buf == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get file header\n");
-				uffs_BufFlushGroup(dev, buf->serial);
+				_FlushObject(obj);
 				uffs_ObjectDevUnLock(obj);
 				goto out;
 			}
@@ -707,8 +740,9 @@ URET uffs_CloseObject(uffs_Object *obj)
 			uffs_BufPut(dev, buf);
 		}
 #endif
-		uffs_BufFlushAll(dev);
+		_FlushObject(obj);
 	}
+
 	uffs_ObjectDevUnLock(obj);
 
 out:
@@ -939,7 +973,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 			size = _WriteNewBlock(obj, (u8 *)data + len - remain, remain, fnode->u.file.serial, fdn);
 
 			//Flush immediately, so that the new data node will be created and put in the tree.
-			uffs_BufFlushGroup(dev, fnode->u.file.serial);
+			uffs_BufFlushGroup(dev, fnode->u.file.serial, fdn);
 
 			if(size == 0) break;
 			remain -= size;
@@ -1596,6 +1630,7 @@ URET uffs_RenameObject(const char *old_name, const char *new_name)
 	uffs_BufWrite(dev, buf, &fi, 0, sizeof(uffs_fileInfo));
 	uffs_BufPut(dev, buf);
 
+	// FIXME: take care of dirty group !
 	uffs_BufFlushEx(dev, U_TRUE);	// !! force a block recover so that all old tag will be expired !!
 									// This is important so we only need to check the first spare when mount UFFS :)
 

@@ -48,6 +48,10 @@
 
 #define PFX "pbuf: "
 
+
+URET _BufFlush(struct uffs_DeviceSt *dev, UBOOL force_block_recover, int slot);
+
+
 /**
  * \brief inspect (print) uffs page buffers.
  * \param[in] dev uffs device to be inspected.
@@ -248,8 +252,21 @@ static void _MoveNodeToHead(uffs_Device *dev, uffs_Buf *p)
 	_LinkToBufListHead(dev, p);
 }
 
+// check if the buf is already in dirty list
+static UBOOL _IsBufInInDirtyList(uffs_Device *dev, int slot, uffs_Buf *buf)
+{
+	uffs_Buf *work;
+	work = dev->buf.dirtyGroup[slot].dirty;
+	while (work) {
+		if (work == buf) return U_TRUE;
+		work = work->nextDirty;
+	}
+	return U_FALSE;
+}
+
 static void _LinkToDirtyList(uffs_Device *dev, int slot, uffs_Buf *buf)
 {
+
 	if (buf == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Try to insert a NULL node into dirty list ?\n");
 		return;
@@ -387,7 +404,7 @@ static URET _BreakFromDirty(uffs_Device *dev, uffs_Buf *dirtyBuf)
 		return U_FAIL;
 	}
 
-	slot = uffs_BufFindGroupSlot(dev, dirtyBuf->serial);
+	slot = uffs_BufFindGroupSlot(dev, dirtyBuf->father, dirtyBuf->serial);
 	if(slot < 0) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"no dirty list exit ?\n");
 		return U_FAIL;
@@ -908,20 +925,33 @@ static int _FindMostDirtyGroup(struct uffs_DeviceSt *dev)
 
 /** 
  * flush buffers to flash.
- * this will pick up a most dirty group, and flush it if there is no free dirty group slot.
+ * this will flush all dirty groups.
  * \param[in] dev uffs device
  */
 URET uffs_BufFlush(struct uffs_DeviceSt *dev)
 {
 	int slot;
+
 	slot = uffs_BufFindFreeGroupSlot(dev);
+	if (slot >= 0)
+		return U_SUCC;	// do nothing if there is free slot
+	else
+		return uffs_BufFlushMostDirtyGroup(dev);
+}
+
+/** 
+ * flush most dirty group
+ * \param[in] dev uffs device
+ */
+URET uffs_BufFlushMostDirtyGroup(struct uffs_DeviceSt *dev)
+{
+	int slot;
+
+	slot = _FindMostDirtyGroup(dev);
 	if (slot >= 0) {
-		return U_SUCC;  //there is free slot, do nothing.
+		return _BufFlush(dev, U_FALSE, slot);
 	}
-	else {
-		slot = _FindMostDirtyGroup(dev);
-		return _BufFlush(dev, FALSE, slot);
-	}
+	return U_SUCC;
 }
 
 /** 
@@ -933,6 +963,7 @@ URET uffs_BufFlush(struct uffs_DeviceSt *dev)
 URET uffs_BufFlushEx(struct uffs_DeviceSt *dev, UBOOL force_block_recover)
 {
 	int slot;
+
 	slot = uffs_BufFindFreeGroupSlot(dev);
 	if (slot >= 0) {
 		return U_SUCC;  //there is free slot, do nothing.
@@ -944,31 +975,69 @@ URET uffs_BufFlushEx(struct uffs_DeviceSt *dev, UBOOL force_block_recover)
 }
 
 /**
- * flush buffer group with given serial num.
- * this will find the dirty group with given serial num, flush it to flash.
+ * flush buffer group with given father/serial num.
  *
  * \param[in] dev uffs device
+ * \param[in] father father num of the group
  * \param[in] serial serial num of the group
  */
-URET uffs_BufFlushGroup(struct uffs_DeviceSt *dev, int serial)
+URET uffs_BufFlushGroup(struct uffs_DeviceSt *dev, u16 father, u16 serial)
 {
-	/* TODO: buffer group */
+	int slot;
+
+	slot = uffs_BufFindGroupSlot(dev, father, serial);
+	if (slot >= 0) {
+		return _BufFlush(dev, U_FALSE, slot);
+	}
+
 	return U_SUCC;
 }
 
 /**
- * flush buffer group with given serial num and force_block_recover indicator.
- * this will find the dirty group with given serial num, flush it to flash.
+ * flush buffer group with given father/serial num and force_block_recover indicator.
  *
  * \param[in] dev uffs device
+ * \param[in] father father num of the group
  * \param[in] serial serial num of group
  * \param[in] force_block_recover indicator
  */
-URET uffs_BufFlushGroupEx(struct uffs_DeviceSt *dev, int serial, UBOOL force_block_recover)
+URET uffs_BufFlushGroupEx(struct uffs_DeviceSt *dev, u16 father, u16 serial, UBOOL force_block_recover)
 {
-	/* TODO: buffer group */
+	int slot;
+
+	slot = uffs_BufFindGroupSlot(dev, father, serial);
+	if (slot >= 0) {
+		return _BufFlush(dev, force_block_recover, slot);
+	}
 
 	return U_SUCC;
+}
+
+
+/**
+ * flush buffer group/groups which match given father num.
+ *
+ * \param[in] dev uffs device
+ * \param[in] father father num of the group
+ * \param[in] serial serial num of group
+ * \param[in] force_block_recover indicator
+ */
+URET uffs_BufFlushGroupMatchFather(struct uffs_DeviceSt *dev, u16 father)
+{
+	int slot;
+	uffs_Buf *buf;
+	URET ret = U_SUCC;
+
+	for (slot = 0; slot < MAX_DIRTY_BUF_GROUPS && ret == U_SUCC; slot++) {
+		if (dev->buf.dirtyGroup[slot].dirty) {
+			buf = dev->buf.dirtyGroup[slot].dirty;
+			if (buf->father == father) {
+				ret = _BufFlush(dev, U_FALSE, slot);
+			}
+		}
+	}
+
+	return ret;
 }
 
 /**
@@ -990,19 +1059,21 @@ int uffs_BufFindFreeGroupSlot(struct uffs_DeviceSt *dev)
 }
 
 /**
- * find a dirty group slot with given serial num.
+ * find a dirty group slot with given father/serial num.
  *
  * \param[in] dev uffs device
+ * \param[in] father father num of the group
+ * \param[in] serial serial num of group
  * \return slot index (0 to MAX_DIRTY_BUF_GROUPS - 1) if found one, otherwise return -1.
  */
-int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, int serial)
+int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, u16 father, u16 serial)
 {
 	uffs_Buf *buf;
 	int i, slot = -1;
 	for (i = 0; i < MAX_DIRTY_BUF_GROUPS; i++) {
 		if (dev->buf.dirtyGroup[i].dirty) {
 			buf = dev->buf.dirtyGroup[i].dirty;
-			if (buf->serial == serial) {
+			if (buf->father == father && buf->serial == serial) {
 				slot = i;
 				break;
 			}
@@ -1055,7 +1126,7 @@ uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 father, u16 serial
 
 	buf = _FindFreeBuf(dev);
 	if(buf == NULL) {
-		uffs_BufFlush(dev);
+		uffs_BufFlushMostDirtyGroup(dev);
 		buf = _FindFreeBuf(dev);
 		if (buf == NULL) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free page buf!\n");
@@ -1124,7 +1195,7 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 
 
 	buf = _FindFreeBuf(dev);
 	if(buf == NULL) {
-		uffs_BufFlush(dev);
+		uffs_BufFlushMostDirtyGroup(dev);
 		buf = _FindFreeBuf(dev);
 		if (buf == NULL) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free page buf!\n");
@@ -1312,8 +1383,6 @@ static UBOOL _IsBufInDirtyList(struct uffs_DeviceSt *dev, uffs_Buf *buf)
 
 URET uffs_BufWrite(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs, u32 len)
 {
-	uffs_Buf *dirty;
-	UBOOL inDirtyList = U_FALSE;
 	int slot;
 
 	if(ofs + len > dev->com.pgDataSize) {
@@ -1321,14 +1390,15 @@ URET uffs_BufWrite(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs
 		return U_FAIL;
 	}
 
-	slot = uffs_BufFindGroupSlot(dev, buf->serial);
+	slot = uffs_BufFindGroupSlot(dev, buf->father, buf->serial);
 
 	if (slot < 0) {
 		// need to take a free slot
 		slot = uffs_BufFindFreeGroupSlot(dev);
 		if (slot < 0) {
 			// no free slot ? flush buffer
-			uffs_BufFlush(dev);
+			if (uffs_BufFlushMostDirtyGroup(dev) != U_SUCC) return U_FAIL;
+
 			slot = uffs_BufFindFreeGroupSlot(dev);
 			if (slot < 0) {
 				// still no free slot ??
@@ -1341,12 +1411,12 @@ URET uffs_BufWrite(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs
 	memcpy(buf->data + ofs, data, len);
 	if(ofs + len > buf->dataLen) buf->dataLen = ofs + len;
 	
-	if(inDirtyList == U_FALSE) {
+	if(_IsBufInInDirtyList(dev, slot, buf) == U_FALSE) {
 		_LinkToDirtyList(dev, slot, buf);
 	}
 
 	if(dev->buf.dirtyGroup[slot].dirtyCount >= dev->buf.maxDirtyBuf) {
-		if(uffs_BufFlushGroup(dev, buf->serial) != U_SUCC) {
+		if(uffs_BufFlushGroup(dev, buf->father, buf->serial) != U_SUCC) {
 			return U_FAIL;
 		}
 	}

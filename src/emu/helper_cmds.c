@@ -403,11 +403,12 @@ BOOL cmdCat(const char *tail)
 {
 	uffs_Object *obj;
 	const char *name;
+	const char *next;
 	char buf[100];
-	int len;
+	int start = 0, size = 0, printed = 0, n, len;
 
 	if (!tail) return FALSE;
-	name = cli_getparam(tail, NULL);
+	name = cli_getparam(tail, &next);
 
 	obj = uffs_GetObject();
 	if (!obj) return FALSE;
@@ -417,12 +418,29 @@ BOOL cmdCat(const char *tail)
 		goto fail;
 	}
 
+	if (next) {
+		start = strtol(next, &next, 10);
+		if (next) size = strtol(next, NULL, 10);
+	}
+
+	if (start >= 0)
+		uffs_SeekObject(obj, start, USEEK_SET);
+	else
+		uffs_SeekObject(obj, -start, USEEK_END);
+
 	while (uffs_EndOfFile(obj) == 0) {
 		len = uffs_ReadObject(obj, buf, sizeof(buf) - 1);
 		if (len == 0) break;
 		if (len > 0) {
-			buf[len] = 0;
-			uffs_Perror(UFFS_ERR_NORMAL, "%s", buf);
+			if (size == 0 || printed < size) {
+				n = (size == 0 ? len : (size - printed > len ? len : size - printed));
+				buf[n] = 0;
+				uffs_Perror(UFFS_ERR_NORMAL, "%s", buf);
+				printed += n;
+			}
+			else {
+				break;
+			}
 		}
 	}
 	uffs_Perror(UFFS_ERR_NORMAL, "\n");
@@ -636,6 +654,7 @@ exit_test:
 	return ret;
 }
 
+/* test create file, write file and read back */
 BOOL cmdTest1(const char *tail)
 {
 	uffs_Object *f;
@@ -687,6 +706,7 @@ BOOL cmdTest2(const char *tail)
 	return TRUE;
 }
 
+/* Test file append and 'random' write */
 BOOL cmdTest3(const char *tail)
 {
 	const char *name;
@@ -704,9 +724,6 @@ BOOL cmdTest3(const char *tail)
 			uffs_Perror(UFFS_ERR_NORMAL, "Append file %s test failed at %d !\n", name, i);
 			return TRUE;
 		}
-		//if (test_verify_file(name) != U_SUCC) {
-		//	uffs_Perror(UFFS_ERR_NORMAL, "Verify file %s failed at test no: %d.\n", name, i);
-		//}
 	}
 
 	uffs_Perror(UFFS_ERR_NORMAL, "Check file %s ... \n", name);
@@ -734,6 +751,47 @@ BOOL cmdTest3(const char *tail)
 	return TRUE;
 }
 
+/* open two files and test write */
+BOOL cmdTest4(const char *tail)
+{
+	uffs_Object *f1 = NULL, *f2 = NULL;
+
+	f1 = uffs_GetObject();
+	f2 = uffs_GetObject();
+
+	if (f1 == NULL || f2 == NULL) goto fail_exit;
+
+	uffs_Perror(UFFS_ERR_NORMAL, "open /a ...\n");
+	if (uffs_OpenObject(f1, "/a", UO_RDWR | UO_CREATE, US_IWRITE) != U_SUCC) {
+		goto fail_exit;
+	}
+
+	uffs_Perror(UFFS_ERR_NORMAL, "open /b ...\n");
+	if (uffs_OpenObject(f2, "/b", UO_RDWR | UO_CREATE, US_IWRITE) != U_SUCC) {
+		uffs_CloseObject(f1);
+		goto fail_exit;
+	}
+
+	uffs_Perror(UFFS_ERR_NORMAL, "write (1) to /a ...\n");
+	uffs_WriteObject(f1, "Hello,", 6);
+	uffs_Perror(UFFS_ERR_NORMAL, "write (1) to /b ...\n");
+	uffs_WriteObject(f2, "Hello,", 6);
+	uffs_Perror(UFFS_ERR_NORMAL, "write (2) to /a ...\n");
+	uffs_WriteObject(f1, "World.", 6);
+	uffs_Perror(UFFS_ERR_NORMAL, "write (2) to /b ...\n");
+	uffs_WriteObject(f2, "World.", 6);
+	uffs_Perror(UFFS_ERR_NORMAL, "close /a ...\n");
+	uffs_CloseObject(f1);
+	uffs_Perror(UFFS_ERR_NORMAL, "close /b ...\n");
+	uffs_CloseObject(f2);
+
+fail_exit:
+	if (f1) uffs_PutObject(f1);
+	if (f2) uffs_PutObject(f2);
+
+	return TRUE;
+}
+
 BOOL cmdMount(const char *tail)
 {
 	uffs_mountTable *tab = uffs_GetMountTable();
@@ -757,6 +815,7 @@ static struct cli_commandset cmdset[] =
     { cmdTest1,		"t1",			"<name>",			"test 1" },
     { cmdTest2,		"t2",			NULL,				"test 2" },
     { cmdTest3,		"t3",			"<name>",			"test 3" },
+    { cmdTest4,		"t4",			NULL,				"test 4" },
     { cmdCp,		"cp",			"<src> <des>",		"copy files. the local file name start with '::'" },
     { cmdCat,		"cat",			"<name>",			"show file content" },
     { cmdPwd,		"pwd",			NULL,				"show current dir" },

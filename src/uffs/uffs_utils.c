@@ -97,8 +97,9 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 bad_out:
 	dev->ops->EraseBlock(dev, block);
 	dev->flash->MakeBadBlockMark(dev, block);
-	if (dev->mem.free) {
+	if (dev->mem.one_page_buffer && dev->mem.free) {
 		dev->mem.free(dev, dev->mem.one_page_buffer);
+		dev->mem.one_page_buffer = NULL;
 		dev->mem.one_page_buffer_size = 0;
 	}
 

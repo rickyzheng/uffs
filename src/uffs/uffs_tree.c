@@ -115,6 +115,8 @@ URET uffs_ReleaseTreeBuf(uffs_Device *dev)
 	dis = &(dev->tree.dis);
 	if(dis->node_pool && dev->mem.free) {
 		dev->mem.free(dev, dis->node_pool);
+		dis->node_pool = NULL;
+		dev->mem.tree_buffer_size = 0;
 	}
 	uBufRelease(dis);
 	memset(dis, 0, sizeof(struct ubufm));

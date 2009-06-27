@@ -91,10 +91,12 @@ void uffs_BufSetMark(uffs_Buf *buf, int mark);
 URET uffs_BufFlush(struct uffs_DeviceSt *dev);
 URET uffs_BufFlushEx(struct uffs_DeviceSt *dev, UBOOL force_block_recover);
 
-URET uffs_BufFlushGroup(struct uffs_DeviceSt *dev, int serial);
-URET uffs_BufFlushGroupEx(struct uffs_DeviceSt *dev, int serial, UBOOL force_block_recover);
+URET uffs_BufFlushGroup(struct uffs_DeviceSt *dev, u16 father, u16 serial);
+URET uffs_BufFlushGroupEx(struct uffs_DeviceSt *dev, u16 father, u16 serial, UBOOL force_block_recover);
 int uffs_BufFindFreeGroupSlot(struct uffs_DeviceSt *dev);
-int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, int serial);
+int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, u16 father, u16 serial);
+URET uffs_BufFlushMostDirtyGroup(struct uffs_DeviceSt *dev);
+URET uffs_BufFlushGroupMatchFather(struct uffs_DeviceSt *dev, u16 father);
 
 URET uffs_BufFlushAll(struct uffs_DeviceSt *dev);
 

@@ -149,7 +149,9 @@ URET uffs_ReleaseBlockInfoCache(uffs_Device *dev)
 				return U_FAIL;
 			}
 		}
-		if (dev->mem.free) dev->mem.free(dev, dev->bc.internalBufHead);
+		if (dev->mem.free) {
+			dev->mem.free(dev, dev->bc.internalBufHead);
+		}
 	}
 
 	dev->bc.head = dev->bc.tail = NULL;
