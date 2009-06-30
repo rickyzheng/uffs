@@ -47,8 +47,24 @@
 
 #define PFX "fs:"
 
-#define GET_SERIAL_FROM_NODE(obj) ((obj)->type == UFFS_TYPE_DIR ? (obj)->node->u.dir.serial : (obj)->node->u.file.serial)
-#define GET_BLOCK_FROM_NODE(obj) ((obj)->type == UFFS_TYPE_DIR ? (obj)->node->u.dir.block : (obj)->node->u.file.block)
+#define GET_SERIAL_FROM_NODE(obj) ((obj)->type == UFFS_TYPE_DIR ? \
+									(obj)->node->u.dir.serial \
+										: \
+									(obj)->node->u.file.serial \
+								   )
+
+#define GET_FATHER_FROM_NODE(obj) ((obj)->type == UFFS_TYPE_DIR ? \
+									(obj)->node->u.dir.father \
+										: \
+									(obj)->node->u.file.father \
+								   )
+
+#define GET_SERIAL_FROM_OBJECT(obj) ((obj)->node ? GET_SERIAL_FROM_NODE(obj) : obj->serial)
+#define GET_FATHER_FROM_OBJECT(obj) ((obj)->node ? GET_FATHER_FROM_NODE(obj) : obj->father)
+
+
+#define GET_BLOCK_FROM_NODE(obj) ((obj)->type == UFFS_TYPE_DIR ? \
+									(obj)->node->u.dir.block : (obj)->node->u.file.block)
 
 static URET _PrepareOpenObj(uffs_Object *obj, const char *fullname, int oflag, int pmode);
 static URET _CreateObjectUnder(uffs_Object *obj);
@@ -585,7 +601,7 @@ static URET _PrepareOpenObj(uffs_Object *obj, const char *fullname, int oflag, i
 			// uffs_Perror(UFFS_ERR_NOISY, "Zero length name ? root dir ?\r\n");
 
 			obj->father = PARENT_OF_ROOT;
-			obj->serial = ROOT_DIR_ID;
+			obj->serial = ROOT_DIR_SERIAL;
 			obj->nameLen = 0;
 		}
 		else {
@@ -597,11 +613,11 @@ static URET _PrepareOpenObj(uffs_Object *obj, const char *fullname, int oflag, i
 			obj->nameLen = len - i - 1;
 			strcpy(obj->name, buf + i + 1);
 			if (i < 0) {
-				obj->father = ROOT_DIR_ID;
+				obj->father = ROOT_DIR_SERIAL;
 			}
 			else {
 				buf[i+1] = 0;
-				obj->father = _GetDirSerial(obj->dev, buf, ROOT_DIR_ID);
+				obj->father = _GetDirSerial(obj->dev, buf, ROOT_DIR_SERIAL);
 			}
 		}
 	}
@@ -610,11 +626,11 @@ static URET _PrepareOpenObj(uffs_Object *obj, const char *fullname, int oflag, i
 		obj->nameLen = len - i - 1;
 		strcpy(obj->name, buf + i + 1);
 		if (i < 0) {
-			obj->father = ROOT_DIR_ID;
+			obj->father = ROOT_DIR_SERIAL;
 		}
 		else {
 			buf[i+1] = 0;
-			obj->father = _GetDirSerial(obj->dev, buf, ROOT_DIR_ID);
+			obj->father = _GetDirSerial(obj->dev, buf, ROOT_DIR_SERIAL);
 		}
 	}
 
@@ -625,7 +641,6 @@ static URET _PrepareOpenObj(uffs_Object *obj, const char *fullname, int oflag, i
 	}
 
 	obj->sum = uffs_MakeSum16(obj->name, obj->nameLen);
-	obj->encode = UFFS_DEFAULT_ENCODE;
 	obj->pagesOnHead = obj->dev->attr->pages_per_block - 1;
 
 	//uffs_Perror(UFFS_ERR_NOISY, "Prepare name: %s\r\n", obj->name);

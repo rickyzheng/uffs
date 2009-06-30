@@ -49,9 +49,6 @@ extern "C"{
 #define UFFS_TYPE_RESV		3
 #define UFFS_TYPE_INVALID	0xFF
 
-
-#define SERIAL_ROOT_DIR		0
-
 struct blocklistSt {	/* 10 bytes */
 	struct uffs_treeNodeSt * next;
 	struct uffs_treeNodeSt * prev;
@@ -129,14 +126,12 @@ typedef struct uffs_treeNodeSt {
 */
 
 
-#define EMPTY_NODE 0xffff		//!< special index num of empty node.
+#define EMPTY_NODE 0xffff				//!< special index num of empty node.
 
-#define ROOT_DIR_ID	0			//!< serial num of root dir
-
-
-#define MAX_UFFS_SERIAL			0xfffe
-#define PARENT_OF_ROOT			0xfffd
-#define INVALID_UFFS_SERIAL		0xffff
+#define ROOT_DIR_SERIAL	0				//!< serial num of root dir
+#define MAX_UFFS_SERIAL			0xfffe	//!< maximum serial numbers
+#define PARENT_OF_ROOT			0xfffd	//!< parent of ROOT ? kidding me ...
+#define INVALID_UFFS_SERIAL		0xffff	//!< invalid serial num
 
 #define DIR_NODE_HASH_MASK		0x1f
 #define DIR_NODE_ENTRY_LEN		(DIR_NODE_HASH_MASK + 1)
