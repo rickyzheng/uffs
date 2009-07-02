@@ -100,7 +100,7 @@ URET uffs_InitTreeBuf(uffs_Device *dev)
 		dev->tree.dataEntry[i] = EMPTY_NODE;
 	}
 
-	dev->tree.maxSerialNo = ROOT_DIR_ID;
+	dev->tree.maxSerialNo = ROOT_DIR_SERIAL;
 	
 	return U_SUCC;
 }
@@ -885,7 +885,7 @@ u16 uffs_FindFreeFsnSerial(uffs_Device *dev)
 	//TODO!! Do we need a faster serial number generating method?
 	//		 it depends on how often creating files or directories
 
-	for(i = ROOT_DIR_ID + 1; i < MAX_UFFS_SERIAL; i++) {
+	for(i = ROOT_DIR_SERIAL + 1; i < MAX_UFFS_SERIAL; i++) {
 		node = uffs_FindDirNodeFromTree(dev, i);
 		if(node == NULL) {
 			node = uffs_FindFileNodeFromTree(dev, i);

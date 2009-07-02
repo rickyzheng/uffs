@@ -64,7 +64,6 @@ struct uffs_ObjectSt {
 	char name[MAX_FILENAME_LENGTH];		//!< name, for open or create
 	u32 nameLen;						//!< name length
 	u16 sum;							//!< sum of name
-	u32 encode;							//!< encode method of name
 	uffs_Device *dev;					//!< uffs device
 	u32 oflag;
 	u32 pmode;

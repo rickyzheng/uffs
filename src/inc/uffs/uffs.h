@@ -45,12 +45,6 @@ extern "C"{
 #endif
 
 
-#define ENCODE_MBCS		1
-#define ENCODE_UNICODE	2
-#define UFFS_DEFAULT_ENCODE		ENCODE_MBCS
-
-
-
 #define US_IWRITE		0x0000200
 #define US_IREAD		0x0000400
 
