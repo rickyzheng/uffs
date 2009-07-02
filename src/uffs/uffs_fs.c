@@ -778,36 +778,7 @@ static u16 _GetFdnByOfs(uffs_Object *obj, u32 ofs)
 	}
 }
 
-//static u16 _GetPageIdByOfs(uffs_Object *obj, u32 ofs)
-//{
-//	uffs_Device *dev = obj->dev;
-//	if(ofs < obj->pagesOnHead * dev->com.pgDataSize) {
-//		return (ofs / dev->com.pgDataSize) + 1; //in file header, pageID start from 1, not 0
-//	}
-//	else {
-//		ofs -= (obj->pagesOnHead * dev->com.pgDataSize);
-//		ofs %= (dev->com.pgDataSize * dev->attr->pages_per_block);
-//		return ofs / dev->com.pgDataSize;
-//	}
-//}
-//
-//static UBOOL _IsAtTheStartOfBlock(uffs_Object *obj, u32 ofs)
-//{
-//	uffs_Device *dev = obj->dev;
-//	int n;
-//
-//	if((ofs % dev->com.pgDataSize) != 0) return U_FALSE;
-//	if(ofs < obj->pagesOnHead * dev->com.pgDataSize) {
-//		return U_FALSE;
-//	}
-//	else {
-//		n = ofs - (obj->pagesOnHead * dev->com.pgDataSize);
-//		if(n % (dev->com.pgDataSize * dev->attr->pages_per_block) == 0) return U_TRUE;
-//	}
-//
-//	return U_FALSE;
-//}
-//
+
 static u32 _GetStartOfDataBlock(uffs_Object *obj, u16 fdn)
 {
 	if(fdn == 0) {
@@ -1008,7 +979,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 									(u8 *)data + len - remain, remain,
 									write_start - _GetStartOfDataBlock(obj, fdn));
 #ifdef FLUSH_BUF_AFTER_WRITE
-			uffs_BufFlushAll(dev);
+			uffs_BufFlushGroup(dev, fnode->u.file.serial, fdn);
 #endif
 			if(size == 0) break;
 			remain -= size;
