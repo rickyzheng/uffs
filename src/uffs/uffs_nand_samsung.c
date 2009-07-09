@@ -59,7 +59,7 @@ struct uffs_SamsungSpareSt {
 typedef struct uffs_SamsungSpareSt		uffs_SamsungSpare;		//NAND flash page spare
 
 
-/** \brief load NAND spare data to "uffs_pageSpare"
+/** \brief load NAND spare data to "uffs_PageSpare"
  *  \param[in] dev uffs device
  *  \param[in] block block number to be loaded
  *  \param[in] page page number to be loaded
@@ -89,16 +89,16 @@ static URET Samsung_LoadPageSpare(uffs_Device *dev, int block, int page, uffs_Ta
 	p_spare++;		//skip the status byte!
 
 	if (dev->attr->spare_size < 16) {
-		ofs_end = (u32)(&(((uffs_Tags_8 *)NULL)->blockStatus));
+		ofs_end = (u32)(&(((uffs_Tags_8 *)NULL)->block_status));
 		memcpy(p, p_spare, ofs_end - status_ofs);
 		uffs_TransferFromTag8(tag, &tag_8);
 	}
 	else {
-		ofs_end = (u32)(&(((uffs_Tags *)NULL)->blockStatus));
+		ofs_end = (u32)(&(((uffs_Tags *)NULL)->block_status));
 		memcpy(p, p_spare, ofs_end - status_ofs);
 	}
 
-	tag->blockStatus = phi_spare.x[status_ofs]; 
+	tag->block_status = phi_spare.x[status_ofs]; 
 
 	return U_SUCC;
 }
@@ -124,7 +124,7 @@ static URET Samsung_WritePageSpare(uffs_Device *dev, int block, int page, uffs_T
 	
 	dev->ops->ReadPage(dev, block, page, NULL, (u8 *)(&phi_spare));
 
-	if(page == 0 || page == 1) {
+	if (page == 0 || page == 1) {
 		if(phi_spare.x[status_ofs] != 0xff) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"try to write to a bad block(%d) ? \n", block);
 			return U_FAIL;
@@ -144,11 +144,11 @@ static URET Samsung_WritePageSpare(uffs_Device *dev, int block, int page, uffs_T
 	p_spare++;										//skip the status byte
 
 	if (dev->attr->spare_size < 16) {
-		ofs_end = (u32)(&(((uffs_Tags_8 *)NULL)->blockStatus));
+		ofs_end = (u32)(&(((uffs_Tags_8 *)NULL)->block_status));
 		memcpy(p_spare, p, ofs_end - status_ofs);  //the rest bytes
 	}
 	else {
-		ofs_end = (u32)(&(((uffs_Tags *)NULL)->blockStatus));
+		ofs_end = (u32)(&(((uffs_Tags *)NULL)->block_status));
 		memcpy(p_spare, p, ofs_end - status_ofs);  //the rest bytes
 	}
 
@@ -170,15 +170,15 @@ static URET Samsung_MakePageValid(uffs_Device *dev, int block, int page, uffs_Ta
 
 
 
-static UBOOL Samsung_IsBlockBad(uffs_Device *dev, uffs_blockInfo *bc)
+static UBOOL Samsung_IsBlockBad(uffs_Device *dev, uffs_BlockInfo *bc)
 {
 	uffs_LoadBlockInfo(dev, bc, 0);
 #ifdef SAFE_CHECK_BAD_BLOCK_DOUBLE
 	uffs_LoadBlockInfo(dev, bc, 1);
 #endif
-	if(bc->spares[0].tag.blockStatus != 0xff
+	if(bc->spares[0].tag.block_status != 0xff
 #ifdef SAFE_CHECK_BAD_BLOCK_DOUBLE
-		 || bc->spares[1].tag.blockStatus != 0xff
+		 || bc->spares[1].tag.block_status != 0xff
 #endif
 		 ) {
 		return U_TRUE;
@@ -253,16 +253,17 @@ static const struct uffs_FlashOpsSt Samsung_Flash_2K = {
 static URET Samsung_InitClass(uffs_Device *dev, int id)
 {
 	id = id;
+
 	if (dev->attr->page_data_size == 256) {
 		dev->flash = &Samsung_Flash_256;
 	}
 	else if (dev->attr->page_data_size == 512) {
 		dev->flash = &Samsung_Flash_512;
 	}
-	else if(dev->attr->page_data_size == 1024) {
+	else if (dev->attr->page_data_size == 1024) {
 		dev->flash = &Samsung_Flash_1K;
 	}
-	else if(dev->attr->page_data_size == 2048) {
+	else if (dev->attr->page_data_size == 2048) {
 		dev->flash = &Samsung_Flash_2K;
 	}
 	else {

@@ -72,70 +72,70 @@
 #define ALLOC_OFFSET	12
 
 /*  Heap memory node type. */
-typedef struct _HEAPNODE {
+typedef struct HeapNodeSt {
 	int	mark;					/*	alloc mark	*/
     int	size;					/*	Size of this node	*/
-	struct _HEAPNODE *prevNode;	/*	private node	*/
-    struct _HEAPNODE *prevFree;	/*  Link to prev free node */
-    struct _HEAPNODE *nextFree;	/*	Link to next free node */
-} HEAPNODE;
+	struct HeapNodeSt *prev_node;	/*	private node	*/
+    struct HeapNodeSt *prev_free;	/*  Link to prev free node */
+    struct HeapNodeSt *next_free;	/*	Link to next free node */
+} HeapNode;
 
 
 
 /*
 		p1	|-----------|
-			|prevNode	|	NULL
+			|prev_node	|	NULL
 			|mark		|	HEAP_NODE_ALLOCED
 			|size		|	p2 - p1
-			|prevFree	|	alloc to user
-			|nextFree	|	not used.
+			|prev_free	|	alloc to user
+			|next_free	|	not used.
 			|			|
 			|			|
 		p2	|-----------|
-			|prevNode	|	p1
+			|prev_node	|	p1
 			|mark		|	HEAP_NODE_FREE
 			|size		|	p3 - p2
-			|prevFree	|	NULL
-			|nextFree	|	p5
+			|prev_free	|	NULL
+			|next_free	|	p5
 			|			|
 			|			|
 		p3	|-----------|
-			|prevNode	|	p2
+			|prev_node	|	p2
 			|mark		|	HEAP_NODE_ALLOCED
 			|size		|	p4 - p3
-			|prevFree	|	alloc to user
-			|nextFree	|	not used.
+			|prev_free	|	alloc to user
+			|next_free	|	not used.
 			|			|
 			|			|
 		p4	|-----------|
-			|prevNode	|	p3
+			|prev_node	|	p3
 			|mark		|	HEAP_NODE_ALLOCED
 			|size		|	p5 - p4
-			|prevFree	|	alloc to user
-			|nextFree	|	not used.
+			|prev_free	|	alloc to user
+			|next_free	|	not used.
 			|			|
 			|			|
 		p5	|-----------|
-			|prevNode	|	p4
+			|prev_node	|	p4
 			|mark		|	HEAP_NODE_FREE
 			|size		|	p6 - p5
-			|prevFree	|	p2
-			|nextFree	|	NULL
+			|prev_free	|	p2
+			|next_free	|	NULL
 			|			|
 			|			|
 		p6	|-----------|
 
 */
 
-static HEAPNODE* volatile _k_heapFreeList = NULL;
-static HEAPNODE * _k_heapTail_ = NULL; 
+static HeapNode* volatile _k_heapFreeList = NULL;
+static HeapNode * _k_heapTail_ = NULL; 
 static u32 _k_heap_available = 0;
 static u32 _minimu_heap_avaiable = 0x0fffffff;
 static u32 _kernel_heap_total = 0;
 
-static void HeapDeleteFromFreeList(HEAPNODE *node);
-static void HeapChainToFreeList(HEAPNODE *node);
-static void *_k_allock_node(HEAPNODE *node, int size);
+static void HeapDeleteFromFreeList(HeapNode *node);
+static void HeapChainToFreeList(HeapNode *node);
+static void *_k_allock_node(HeapNode *node, int size);
 //static void * _kmalloc_clear(int size);
 static int _kfree(void *block);
 
@@ -143,30 +143,30 @@ static int _kfree(void *block);
  *	Delete one node from free list
  *
  */
-static void HeapDeleteFromFreeList(HEAPNODE *node)
+static void HeapDeleteFromFreeList(HeapNode *node)
 {
-	if(node->nextFree)
-		node->nextFree->prevFree = node->prevFree;
-	if(node->prevFree)
-		node->prevFree->nextFree = node->nextFree;
+	if(node->next_free)
+		node->next_free->prev_free = node->prev_free;
+	if(node->prev_free)
+		node->prev_free->next_free = node->next_free;
 	if(node == _k_heapFreeList)
-		_k_heapFreeList = node->nextFree;
+		_k_heapFreeList = node->next_free;
 }
 
 /*
  *	Chain the node to free list
  */
-static void HeapChainToFreeList(HEAPNODE *node)
+static void HeapChainToFreeList(HeapNode *node)
 {
-	node->nextFree = NULL;
-	node->prevFree = NULL;
+	node->next_free = NULL;
+	node->prev_free = NULL;
 	if(_k_heapFreeList == NULL){
 		_k_heapFreeList = node;
 		return;
 	}
 	else{
-		_k_heapFreeList->prevFree = node;
-		node->nextFree = _k_heapFreeList;
+		_k_heapFreeList->prev_free = node;
+		node->next_free = _k_heapFreeList;
 		_k_heapFreeList = node;
 	}
 }
@@ -182,18 +182,18 @@ static void HeapChainToFreeList(HEAPNODE *node)
  * Attention: Irq is locked when call this routin,
  * so we must unlock irq when return
  */
-static void *_k_allock_node(HEAPNODE *node, int size)
+static void *_k_allock_node(HeapNode *node, int size)
 {
-	HEAPNODE *newNode;
+	HeapNode *newNode;
 
 	if(node->size >= size + ALLOC_THRESHOLD){
 		/*
 		 * we need to split it 
 		 */
-		newNode = (HEAPNODE *)((u32)node + size);
+		newNode = (HeapNode *)((u32)node + size);
 		newNode->size = node->size - size;
 		newNode->mark = HEAP_NODE_FREE;
-		newNode->prevNode = node;
+		newNode->prev_node = node;
 		node->size = size;
 		/*
 		 *	chain the newNode to free list
@@ -203,7 +203,7 @@ static void *_k_allock_node(HEAPNODE *node, int size)
 		/*
 		 *	fix the next node
 		 */
-		 ((HEAPNODE *)((u32)newNode + newNode->size))->prevNode = newNode;
+		 ((HeapNode *)((u32)newNode + newNode->size))->prev_node = newNode;
 	}
 		
 	/*
@@ -258,9 +258,9 @@ static void *_k_allock_node(HEAPNODE *node, int size)
  */
 static void *_kmalloc(int size)
 {
-	HEAPNODE *node;
+	HeapNode *node;
 #if defined(K_HEAP_ALLOCK_BEST_FIT)
-	HEAPNODE *fit;
+	HeapNode *fit;
 #endif
 	if(size <= 0)
 		return NULL;	/* size is not fit */
@@ -306,7 +306,7 @@ static void *_kmalloc(int size)
 			else
 				fit = node;
 		}
-		node = node->nextFree;
+		node = node->next_free;
 	}
 	
 	if(fit){
@@ -317,7 +317,7 @@ static void *_kmalloc(int size)
 	while(node){
 		if(node->size >= size)
 			return _k_allock_node(node, size);
-		node = node->nextFree;
+		node = node->next_free;
 	}
 #endif
 
@@ -349,8 +349,8 @@ static void *_kcalloc(int num, int size)
  */
 static void *_krealloc(void *block, int size)
 {
-	HEAPNODE *node;
-	HEAPNODE *newNode;
+	HeapNode *node;
+	HeapNode *newNode;
 	void *p;	/* return pointer */
 	int old_data_size; /* old block data size */
 
@@ -365,7 +365,7 @@ static void *_krealloc(void *block, int size)
 
 	uffs_CriticalEnter();	/* enter critical */
 	
-	node = (HEAPNODE *)((u32)block - ALLOC_OFFSET);
+	node = (HeapNode *)((u32)block - ALLOC_OFFSET);
 	old_data_size = node->size - ALLOC_OFFSET;
 	if(node->mark != (int)HEAP_NODE_ALLOCED || old_data_size <= 0) {
 		uffs_CriticalExit(); /* exit critical */
@@ -405,16 +405,16 @@ static void *_krealloc(void *block, int size)
 		else {
 			/* the remain memory is large enough to be splited */
 			/* we generate a new 'alloced' node there */
-			newNode = (HEAPNODE *)((u32)node + size);
-			newNode->prevNode = node;
+			newNode = (HeapNode *)((u32)node + size);
+			newNode->prev_node = node;
 			newNode->mark = HEAP_NODE_ALLOCED;
 			newNode->size = node->size - size;
 
 			/* split into two node now */
-			((HEAPNODE *)((u32)node + node->size))->prevNode = newNode;
+			((HeapNode *)((u32)node + node->size))->prev_node = newNode;
 			node->size = size;
 
-			/* put the newNode into freeList */
+			/* put the newNode into free list */
 			_kfree((void *)((u32)newNode + ALLOC_OFFSET)); 
 
 			uffs_CriticalExit(); /* exit critical */
@@ -456,15 +456,15 @@ static void * _kmalloc_clear(int size)
  */
 static int _kfree(void *block)
 {
-	HEAPNODE *node;
-	HEAPNODE *prev;
-	HEAPNODE *next;
+	HeapNode *node;
+	HeapNode *prev;
+	HeapNode *next;
 	if (block == NULL) {
 		return -1;	//the pointer of the memory is invalid.
 	}
 	uffs_CriticalEnter();	/* enter critical */
 	
-	node = (HEAPNODE *)((u32)block - ALLOC_OFFSET);
+	node = (HeapNode *)((u32)block - ALLOC_OFFSET);
 	if(node->mark != (int)HEAP_NODE_ALLOCED || node->size <= ALLOC_OFFSET) {
 		uffs_CriticalExit();/* exit critical */
 		return -1;	/*!!!! at this moment, the heap 
@@ -472,15 +472,15 @@ static int _kfree(void *block)
 	}
 	_k_heap_available += node->size;
 	
-	prev = node->prevNode;
-	next = (HEAPNODE *)((u32)node + node->size);
+	prev = node->prev_node;
+	next = (HeapNode *)((u32)node + node->size);
 
 	if(prev->mark == HEAP_NODE_FREE){
         /*
          * If there' s a free node in front of us, merge it.
          */
 		prev->size += node->size;
-		next->prevNode = prev;
+		next->prev_node = prev;
 		HeapDeleteFromFreeList(prev);
 		node = prev;
 	}
@@ -490,7 +490,7 @@ static int _kfree(void *block)
          * If there' s a free node following us, merge it.
          */
 		node->size += next->size;
-		((HEAPNODE *)((u32)next + next->size))->prevNode = node;
+		((HeapNode *)((u32)next + next->size))->prev_node = node;
 		HeapDeleteFromFreeList(next);
 	}
 
@@ -519,7 +519,7 @@ static int _kfree(void *block)
  */
 void uffs_InitHeapMemory(void *addr, int size)
 {
-	HEAPNODE *np;
+	HeapNode *np;
 	
 	
 	if(!((u32)addr & 3)){
@@ -532,25 +532,25 @@ void uffs_InitHeapMemory(void *addr, int size)
 	uffs_CriticalEnter();
 	
 	/* pre alloc header node, size is ALLOC_PAGE_SIZE */
-	np = (HEAPNODE *)addr;
+	np = (HeapNode *)addr;
 	np->size = ALLOC_PAGE_SIZE;
 	np->mark = HEAP_NODE_ALLOCED;
-	np->prevNode = NULL;
+	np->prev_node = NULL;
 
 	/* pre alloc tail node, size is -1 */
-    np = (HEAPNODE *)((u32)addr + size - ALLOC_PAGE_SIZE);
+    np = (HeapNode *)((u32)addr + size - ALLOC_PAGE_SIZE);
 	np->mark = HEAP_NODE_ALLOCED;
 	np->size = -1;
-	np->prevNode = (HEAPNODE *)((u32)addr + ALLOC_PAGE_SIZE);
+	np->prev_node = (HeapNode *)((u32)addr + ALLOC_PAGE_SIZE);
 	_k_heapTail_ = np;
 
 	/* Free list head */
-    np = (HEAPNODE *)((u32)addr + ALLOC_PAGE_SIZE);
+    np = (HeapNode *)((u32)addr + ALLOC_PAGE_SIZE);
     np->mark = HEAP_NODE_FREE;
-    np->prevNode = (HEAPNODE *)addr;
+    np->prev_node = (HeapNode *)addr;
     np->size = size - 2 * ALLOC_PAGE_SIZE;
-    np->nextFree = NULL;
-    np->prevFree = NULL;
+    np->next_free = NULL;
+    np->prev_free = NULL;
 	_k_heapFreeList = np;
 	_k_heap_available = np->size;
 	_minimu_heap_avaiable = _k_heap_available;
@@ -563,54 +563,44 @@ void uffs_InitHeapMemory(void *addr, int size)
 /******************************************************************************************/
 
 
-static void *__umalloc(uffs_memAllocator *mem, unsigned int size, HASHTBL * heapHashTbl);
-static void *__ucalloc(uffs_memAllocator *mem, unsigned int num, unsigned int size, HASHTBL *heapHashTbl);
-static void *__urealloc(uffs_memAllocator *mem, void *block, unsigned int size, HASHTBL *heapHashTbl);
-static int __ufree(uffs_memAllocator *mem, void *p, HASHTBL * heapHashTbl);
+static void *__umalloc(uffs_MemAllocator *mem, unsigned int size, HeapHashTable * hash_tbl);
+static void *__ucalloc(uffs_MemAllocator *mem, unsigned int num, unsigned int size, HeapHashTable *hash_tbl);
+static void *__urealloc(uffs_MemAllocator *mem, void *block, unsigned int size, HeapHashTable *hash_tbl);
+static int __ufree(uffs_MemAllocator *mem, void *p, HeapHashTable * hash_tbl);
 
-
-///* init malloc/free system */
-//static HASHTBL * InitHeapMM(void)
-//{
-//	HASHTBL * heapHashTbl;
-//	heapHashTbl = (HASHTBL *)_kmalloc(sizeof(HEAP_MM*) * HEAP_HASH_SIZE);
-//	if(heapHashTbl != NULL){
-//		memset(heapHashTbl, 0, sizeof(HEAP_MM*) * HEAP_HASH_SIZE);
-//		return heapHashTbl;
-//	}
-//	else{
-//		return NULL;
-//	}
-//}
 
 /* release all alloced memory from hash table,
  * return alloced pointer nummber.
  */
-static int ReleaseHeap(uffs_memAllocator *mem, HASHTBL *heapHashTbl)
+static int ReleaseHeap(uffs_MemAllocator *mem, HeapHashTable *hash_tbl)
 {
 	int i;
 	int count = 0;
-	HEAP_MM volatile * node;
+	HeapMm volatile * node;
 
-	if(heapHashTbl == NULL) return -1;
-	for(i = 0; i < HEAP_HASH_SIZE; i++){
-		while((node = heapHashTbl[i]) != NULL){
-			__ufree(mem, node->p, heapHashTbl);
+	if (hash_tbl == NULL) 
+		return -1;
+	for (i = 0; i < HEAP_HASH_SIZE; i++){
+		while ((node = hash_tbl[i]) != NULL){
+			__ufree(mem, node->p, hash_tbl);
 			count++;
 		}
 	}
-	_kfree(heapHashTbl);
+	_kfree(hash_tbl);
+
 	return count;
 }
 
 static void *uffs_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 {
-	HASHTBL * heapHashTbl;
+	HeapHashTable * hash_tbl;
 
-	if((int)size < 0) return NULL;
-	heapHashTbl = dev->mem.tbl;
-	if(heapHashTbl){
-		return __umalloc(&dev->mem, size, heapHashTbl);
+	if ((int)size < 0)
+		return NULL;
+
+	hash_tbl = dev->mem.tbl;
+	if (hash_tbl) {
+		return __umalloc(&dev->mem, size, hash_tbl);
 	}
 	else{
 		return NULL;
@@ -619,18 +609,18 @@ static void *uffs_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 
 
 /* alloc one block with given size, return the block pointer */
-static void *__umalloc(uffs_memAllocator *mem, unsigned int size, HASHTBL *heapHashTbl)
+static void *__umalloc(uffs_MemAllocator *mem, unsigned int size, HeapHashTable *hash_tbl)
 {
 	void *p;
-	HEAP_MM *node;
+	HeapMm *node;
 	int idx;
 	
 	/* calling kernel routin allocate bigger size memory block */
 	p = _kmalloc(HEAP_MAGIC_SIZE + size + HEAP_MAGIC_SIZE);
 	
-	if(p){
-		node = (HEAP_MM *)_kmalloc(sizeof(HEAP_MM));
-		if(node == NULL){
+	if (p) {
+		node = (HeapMm *)_kmalloc(sizeof(HeapMm));
+		if (node == NULL) {
 			_kfree(p);
 			return NULL;
 		}
@@ -638,42 +628,46 @@ static void *__umalloc(uffs_memAllocator *mem, unsigned int size, HASHTBL *heapH
 		node->p = p;
 		node->size = size;
 		mem->count += size;
-		if (mem->maxused < mem->count) mem->maxused = mem->count;
+
+		if (mem->maxused < mem->count) 
+			mem->maxused = mem->count;
+
 		node->task_id = uffs_OSGetTaskId();	/* get task id */
 		
 		uffs_CriticalEnter();
 		
 		/* insert node to hash table */
 		idx = GET_HASH_INDEX(p);
-		node->next = heapHashTbl[idx];
-		heapHashTbl[idx] = node;
+		node->next = hash_tbl[idx];
+		hash_tbl[idx] = node;
 		
 		uffs_CriticalExit();
+
 		return p;	/* ok, return the pointer */
 	}
 	return NULL;
 }
 
 /* Allocates an array in memory with elements initialized to 0 */
-static void *__ucalloc(uffs_memAllocator *mem, unsigned int num, unsigned int size, HASHTBL *heapHashTbl)
+static void *__ucalloc(uffs_MemAllocator *mem, unsigned int num, unsigned int size, HeapHashTable *hash_tbl)
 {
-	return __umalloc(mem, num * size, heapHashTbl);
+	return __umalloc(mem, num * size, hash_tbl);
 }
 
 
 /* realloc one block with given size, return the block pointer */
-static void *__urealloc(uffs_memAllocator *mem, void *block, unsigned int size, HASHTBL *heapHashTbl)
+static void *__urealloc(uffs_MemAllocator *mem, void *block, unsigned int size, HeapHashTable *hash_tbl)
 {
 	void *p, *pNew;
-	HEAP_MM *prev, *node;
+	HeapMm *prev, *node;
 	int idx;
 
-	if(block == NULL) {
-		return __umalloc(mem, size, heapHashTbl);
+	if (block == NULL) {
+		return __umalloc(mem, size, hash_tbl);
 	}
 
-	if(size == 0) {
-		__ufree(mem, block, heapHashTbl);
+	if (size == 0) {
+		__ufree(mem, block, hash_tbl);
 		return NULL;
 	}
 
@@ -682,17 +676,18 @@ static void *__urealloc(uffs_memAllocator *mem, void *block, unsigned int size, 
 
 	/* check whether block pointer is alloc from this heap... */
 	uffs_CriticalEnter();
-	node = heapHashTbl[idx];
+	node = hash_tbl[idx];
 	prev = NULL;
-	while(node){
-		if(node->p == block){
+
+	while (node){
+		if (node->p == block) {
 			break; /* got it! */
 		}
 		prev = node;
 		node = node->next;	/* search for next node */
 	}
 
-	if(!node) {
+	if (!node) {
 		/* not my duty :-) */
 		uffs_CriticalExit();
 		return NULL;
@@ -703,25 +698,25 @@ static void *__urealloc(uffs_memAllocator *mem, void *block, unsigned int size, 
 	p = (void *)((u32)block - HEAP_MAGIC_SIZE);	/* get real pointer which kernel need */
 	pNew = _krealloc(p, HEAP_MAGIC_SIZE + size + HEAP_MAGIC_SIZE);
 
-	if(pNew == NULL) {	/* realloc fail */
+	if (pNew == NULL) {	/* realloc fail */
 		uffs_CriticalExit();
 		return NULL;
 	}
 
-	if(pNew == p) {
+	if (pNew == p) {
 		/* new block is the same as the old block */
 		uffs_CriticalExit();
 		return block;
 	}
 
 	/* new block is difference with old block, we need to change hash table ... */
-	if(prev){
+	if (prev){
 		/* prev is not the first */
 		prev->next = node->next;
 	}
 	else{
 		/* this node is the first, so.. */
-		heapHashTbl[idx] = node->next;
+		hash_tbl[idx] = node->next;
 	}
 	uffs_CriticalExit();
 
@@ -732,8 +727,8 @@ static void *__urealloc(uffs_memAllocator *mem, void *block, unsigned int size, 
 	/* insert node into hash table */
 	idx = GET_HASH_INDEX(node->p);
 	uffs_CriticalEnter();
-	node->next = heapHashTbl[idx];
-	heapHashTbl[idx] = node;
+	node->next = hash_tbl[idx];
+	hash_tbl[idx] = node;
 	uffs_CriticalExit();
 
 	return node->p;
@@ -745,30 +740,30 @@ static void *__urealloc(uffs_memAllocator *mem, void *block, unsigned int size, 
  * not valid(allocated by this allocate system) or error occur, return -1,
  * else return 0
  */
-static int __ufree(uffs_memAllocator *mem, void *p, HASHTBL *heapHashTbl)
+static int __ufree(uffs_MemAllocator *mem, void *p, HeapHashTable *hash_tbl)
 {
-	HEAP_MM *node, *prev;
+	HeapMm *node, *prev;
 	
-	if(p){	/* check the pointer */
+	if (p) {	/* check the pointer */
 		uffs_CriticalEnter();
-		node = heapHashTbl[GET_HASH_INDEX(p)];
+		node = hash_tbl[GET_HASH_INDEX(p)];
 		prev = NULL;
-		while(node){
-			if(node->p == p) {
+		while (node) {
+			if (node->p == p) {
 				/* we find the node, so begin to release */
-				if(prev){
+				if (prev) {
 					/* this node is not the first */
 					prev->next = node->next;
 				}
-				else{
+				else {
 					/* this node is the first node of hash channel */
-					heapHashTbl[GET_HASH_INDEX(p)] = node->next;
+					hash_tbl[GET_HASH_INDEX(p)] = node->next;
 				}
 
 				mem->count -= node->size;
 				
 				uffs_CriticalExit();
-				if(_kfree(node) == -1)	/* calling kernel routine release node */
+				if (_kfree(node) == -1)	/* calling kernel routine release node */
 					return -1;			/* fail, return -1 */
 				
 				/* calling kernel routine and return */
@@ -779,25 +774,28 @@ static int __ufree(uffs_memAllocator *mem, void *p, HASHTBL *heapHashTbl)
 		}
 		uffs_CriticalExit();
 	}
+
 	return -1;
 }
 
 static URET uffs_free(struct uffs_DeviceSt *dev, void *block)
 {
-	HASHTBL *heapHashTbl;
-	heapHashTbl = dev->mem.tbl;
-	if(heapHashTbl){
-		if (__ufree(&dev->mem, block, heapHashTbl) < 0) {
+	HeapHashTable *hash_tbl;
+	hash_tbl = dev->mem.tbl;
+
+	if (hash_tbl) {
+		if (__ufree(&dev->mem, block, hash_tbl) < 0) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Try to free unmanaged memory ?\n");
 			return U_FAIL;
 		}
 	}
+
 	return U_SUCC;
 }
 
 URET uffs_initNativeMemAllocator(uffs_Device *dev)
 {
-	uffs_memAllocator *mem = &dev->mem;
+	uffs_MemAllocator *mem = &dev->mem;
 
 	memset(mem->tbl, 0, sizeof(mem->tbl));
 	mem->malloc = uffs_malloc;
@@ -815,6 +813,7 @@ URET uffs_releaseNativeMemAllocator(uffs_Device *dev)
 {
 	int count;
 	URET ret = U_SUCC;
+
 	if (dev) {
 		count = ReleaseHeap(&dev->mem, dev->mem.tbl);
 		if (count < 0) {
@@ -825,6 +824,7 @@ URET uffs_releaseNativeMemAllocator(uffs_Device *dev)
 			uffs_Perror(UFFS_ERR_NORMAL, PFX"Find %d block memory leak!\n", count);
 		}
 	}
+
 	return ret;
 }
 
@@ -833,9 +833,9 @@ URET uffs_releaseNativeMemAllocator(uffs_Device *dev)
  *
  * \param allocator memory allocator to be setup
  */
-void uffs_SetupNativeMemoryAllocator(uffs_memAllocator *allocator)
+void uffs_SetupNativeMemoryAllocator(uffs_MemAllocator *allocator)
 {
-	memset(allocator, 0, sizeof(uffs_memAllocator));
+	memset(allocator, 0, sizeof(uffs_MemAllocator));
 	allocator->init = uffs_initNativeMemAllocator;
 	allocator->release = uffs_releaseNativeMemAllocator;
 }

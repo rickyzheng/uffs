@@ -39,6 +39,7 @@
 #ifndef _UFFS_CONFIG_H_
 #define _UFFS_CONFIG_H_
 
+
 /**
  * \def MAX_CACHED_BLOCK_INFO
  * \note uffs cache the block info for opened directories and files,
@@ -133,10 +134,14 @@
 
 
 /* micros for calculating buffer sizes */
-#define UFFS_BLOCK_INFO_BUFFER_SIZE(n_pages_per_block) ((sizeof(uffs_blockInfo) + sizeof(uffs_pageSpare) * n_pages_per_block) * MAX_CACHED_BLOCK_INFO)
+#define UFFS_BLOCK_INFO_BUFFER_SIZE(n_pages_per_block) ((sizeof(uffs_BlockInfo) + sizeof(uffs_PageSpare) * n_pages_per_block) * MAX_CACHED_BLOCK_INFO)
 #define UFFS_PAGE_BUFFER_SIZE(n_page_size) ((sizeof(uffs_Buf) + n_page_size) * MAX_PAGE_BUFFERS)
 #define UFFS_TREE_BUFFER_SIZE(n_blocks) (sizeof(TreeNode) * n_blocks)
 
 #define UFFS_STATIC_BUFF_SIZE(n_pages_per_block, n_page_size, n_blocks) (UFFS_BLOCK_INFO_BUFFER_SIZE(n_pages_per_block) + UFFS_PAGE_BUFFER_SIZE(n_page_size) + UFFS_TREE_BUFFER_SIZE(n_blocks) + n_page_size)
+
+#ifdef WIN32
+# pragma warning(disable : 4996)
+#endif
 
 #endif

@@ -61,12 +61,13 @@ static const u8 bits_tbl[256] = {
 	4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
 };
 
-static const u8 line_parity_tbl[16] =       {
+static const u8 line_parity_tbl[16] = {
 	0x00, 0x02, 0x08, 0x0a, 0x20, 0x22, 0x28, 0x2a, 0x80, 0x82, 0x88, 0x8a, 0xa0, 0xa2, 0xa8, 0xaa
- };
+};
+
 static const u8 line_parity_prime_tbl[16] = {
 	0x00, 0x01, 0x04, 0x05, 0x10, 0x11, 0x14, 0x15, 0x40, 0x41, 0x44, 0x45, 0x50, 0x51, 0x54, 0x55
- };
+};
 
 static const u8 column_parity_tbl[256] = {
 	0x00, 0x55, 0x59, 0x0c, 0x65, 0x30, 0x3c, 0x69, 0x69, 0x3c, 0x30, 0x65, 0x0c, 0x59, 0x55, 0x00, 
@@ -122,20 +123,20 @@ static void uffs_MakeEccChunk256(uffs_Device *dev, void *data, void *ecc, u16 le
 
 	dev = dev;
 
-	for(i = 0; i < len; i++) {
+	for (i = 0; i < len; i++) {
 		b = column_parity_tbl[*p++];
 		col_parity ^= b;
-		if(b & 0x01) { // odd number of bits in the byte
+		if (b & 0x01) { // odd number of bits in the byte
 			line_parity ^= i;
 			line_parity_prime ^= ~i;
 		}
 	}
 
-	for(i = 0; i < 256 - len; i++) {
+	for (i = 0; i < 256 - len; i++) {
 		b = column_parity_tbl[0];	//always use 0 for the rest of data
 		col_parity ^= b;
 
-		if(b & 0x01) { // odd number of bits in the byte
+		if (b & 0x01) { // odd number of bits in the byte
 			line_parity ^= i;
 			line_parity_prime ^= ~i;
 		}
@@ -199,10 +200,8 @@ static int uffs_EccCorrectChunk256(uffs_Device *dev, void *data, void *read_ecc,
 	d1 = pread_ecc[1] ^ ptest_ecc[1];
 	d2 = pread_ecc[2] ^ ptest_ecc[2];
 	
-	if((d0 | d1 | d2) == 0)
-	{
+	if ((d0 | d1 | d2) == 0)
 		return 0;
-	}
 	
 	if( ((d0 ^ (d0 >> 1)) & 0x55) == 0x55 &&
 	    ((d1 ^ (d1 >> 1)) & 0x55) == 0x55 &&
@@ -235,7 +234,7 @@ static int uffs_EccCorrectChunk256(uffs_Device *dev, void *data, void *read_ecc,
 		return 1;
 	}
 	
-	if((bits_tbl[d0]+bits_tbl[d1]+bits_tbl[d2]) == 1) {
+	if ((bits_tbl[d0]+bits_tbl[d1]+bits_tbl[d2]) == 1) {
 		// error in ecc, no action need		
 		return 1;
 	}
@@ -264,10 +263,13 @@ int uffs_EccCorrect512(uffs_Device *dev, void *data, void *read_ecc, const void 
 	int ret1, ret2;
 
 	ret1 = uffs_EccCorrectChunk256(dev, data, read_ecc, test_ecc, 256);
-	if (ret1 < 0) return ret1;
+	if (ret1 < 0)
+		return ret1;
 
 	ret2 = uffs_EccCorrectChunk256(dev, (char *)data + 256, (char *)read_ecc + 3, (const char *)test_ecc + 3, 250);
-	if (ret2 < 0) return ret2;
+
+	if (ret2 < 0)
+		return ret2;
 
 	return ret1 + ret2;
 }
@@ -291,7 +293,9 @@ int uffs_EccCorrect1K(uffs_Device *dev, void *data, void *read_ecc, const void *
 		p += 256; pecc += 3; ptecc += 3;
 	}
 	ret[i] = uffs_EccCorrectChunk256(dev, p, pecc, ptecc, 256 - 12); //last chunk
-	if (ret[i] < 0) return ret[i];
+
+	if (ret[i] < 0)
+		return ret[i];
 
 	return ret[0] + ret[1] + ret[2] + ret[3];
 }
@@ -314,8 +318,11 @@ int uffs_EccCorrect2K(uffs_Device *dev, void *data, void *read_ecc, const void *
 		if (ret[i] < 0) return ret[i];
 		p += 256; pecc += 3; ptecc += 3;
 	}
+
 	ret[i] = uffs_EccCorrectChunk256(dev, p, pecc, ptecc, 256 - 24); //last chunk
-	if (ret[i] < 0) return ret[i];
+
+	if (ret[i] < 0)
+		return ret[i];
 
 	return ret[0] + ret[1] + ret[2] + ret[3] + ret[4] + ret[5] + ret[6] + ret[7];
 }

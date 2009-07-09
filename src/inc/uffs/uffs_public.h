@@ -60,18 +60,18 @@ struct uffs_TagsSt {
 	u8 dirty:1;				//!< 0: dirty, 1: clear
 	u8 valid:1;				//!< 0: valid, 1: invalid
 	u8 type:4;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA or #UFFS_TYPE_RESV
-	u8 blockTimeStamp:2;	//!< time stamp of block;
+	u8 block_ts:2;	//!< time stamp of block;
 
-	u8 pageID;				//!< page id
+	u8 page_id;				//!< page id
 	u16 father;				//!< father's serial number
 	u16 serial;				//!< serial number
 
-	u16 dataLength;			//!< length of page data length
+	u16 data_len;			//!< length of page data length
 	u16 dataSum;			//!< sum of file name or directory name
 #if defined(ENABLE_TAG_CHECKSUM) && ENABLE_TAG_CHECKSUM == 1
-	u8 checkSum;			//!< checksum of above, or ecc of tag...
+	u8 checksum;			//!< checksum of above, or ecc of tag...
 #endif
-	u8 blockStatus;			//!< block status, this byte is loaded from flash, but not write to flash directly
+	u8 block_status;			//!< block status, this byte is loaded from flash, but not write to flash directly
 
 };
 
@@ -83,15 +83,15 @@ struct uffs_TagsSt_8 {
 	u8 dirty:1;				//!< 0: dirty, 1: clear
 	u8 valid:1;				//!< 0: valid, 1: invalid
 	u8 type:4;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA or #UFFS_TYPE_RESV
-	u8 blockTimeStamp:2;	//!< time stamp of block;
+	u8 block_ts:2;	//!< time stamp of block;
 
-	u8 pageID;				//!< page id
+	u8 page_id;				//!< page id
 	u8 father;				//!< father's serial number, warning: using 8-bit, blocks should not > 254
 	u8 serial;				//!< serial number, warning: using 8-bit, blocks should not > 254
 
 	u16 dataSum;			//!< sum of file name or directory name
-	u8 dataLength;			//!< length of page data length, warning: using 8-bit
-	u8 blockStatus;			//!< block status, this byte is loaded from flash, but not write to flash directly
+	u8 data_len;			//!< length of page data length, warning: using 8-bit
+	u8 block_status;			//!< block status, this byte is loaded from flash, but not write to flash directly
 };
 
 /*
@@ -101,14 +101,14 @@ struct uffs_TagsSt {
 	u8 dirty:1;				//!< 0: dirty, 1: clear
 	u8 valid:1;				//!< 0: valid, 1: invalid
 	u8 type:4;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA or #UFFS_TYPE_RESV
-	u8 blockTimeStamp:2;	//!< time stamp of block;
+	u8 block_ts:2;	//!< time stamp of block;
 //1:
 	u8 dataSum;				//!< sum of file name or directory name, or ... ?
 //2:
 	u16 father;				//!< father's serial number
 	u16 serial;				//!< serial number
 //6:	
-	u16 dataLength;			//!< length of page data: maximum 64K bytes
+	u16 data_len;			//!< length of page data: maximum 64K bytes
 //8:
 #if NAND_PAGE_DATASIZE == 512
 	u8 ecc[6];				//!< ecc for 512 page size
@@ -117,9 +117,9 @@ struct uffs_TagsSt {
 #elseif NAND_PAGE_DATASIZE == 2048
 	u8 ecc[24];				//!< ecc for 2K page size
 #endif
-	u8 pageID;				//!< maximum 256 pages in a block
+	u8 page_id;				//!< maximum 256 pages in a block
 
-	u8 blockStatus;			//!< block status, this byte is loaded from flash, but not write to flash directly !
+	u8 block_status;			//!< block status, this byte is loaded from flash, but not write to flash directly !
 
 }
 
@@ -166,7 +166,7 @@ struct uffs_DiskInfoSt {
 
 struct uffs_PartitionInfoSt {
 	u32 status;				//partition status
-	u32 createTime;			//create time
+	u32 create_time;			//create time
 	u32 lastModified;		//last modified time
 	u32 block_begin;		//partition begin block
 	u32 block_end;			//partition end block
@@ -207,7 +207,7 @@ void uffs_Perror( int level, const char *errFmt, ... );
 URET uffs_LoadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag);
 URET uffs_WritePageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag);
 URET uffs_MakePageValid(uffs_Device *dev, int block, int page, uffs_Tags *tag);
-UBOOL uffs_IsBlockBad(uffs_Device *dev, uffs_blockInfo *bc);
+UBOOL uffs_IsBlockBad(uffs_Device *dev, uffs_BlockInfo *bc);
 
 /********************************** Public defines *****************************/
 /**
@@ -225,29 +225,29 @@ UBOOL uffs_IsBlockBad(uffs_Device *dev, uffs_blockInfo *bc);
 
 
 URET uffs_NewBlock(uffs_Device *dev, u16 block, uffs_Tags *tag, uffs_Buf *buf);
-URET uffs_BlockRecover(uffs_Device *dev, uffs_blockInfo *old, u16 newBlock);
+URET uffs_BlockRecover(uffs_Device *dev, uffs_BlockInfo *old, u16 newBlock);
 URET uffs_PageRecover(uffs_Device *dev, 
-					  uffs_blockInfo *bc, 
+					  uffs_BlockInfo *bc, 
 					  u16 oldPage, 
 					  u16 newPage, 
 					  uffs_Buf *buf);
-int uffs_FindFreePageInBlock(uffs_Device *dev, uffs_blockInfo *bc);
+int uffs_FindFreePageInBlock(uffs_Device *dev, uffs_BlockInfo *bc);
 u8 uffs_CalTagCheckSum(uffs_Tags *tag);
-u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_blockInfo *bc, u16 page);
-u16 uffs_FindFirstValidPage(uffs_Device *dev, uffs_blockInfo *bc);
-u16 uffs_FindFirstFreePage(uffs_Device *dev, uffs_blockInfo *bc, u16 pageFrom);
-u16 uffs_FindPageInBlockWithPageId(uffs_Device *dev, uffs_blockInfo *bc, u16 pageID);
+u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page);
+u16 uffs_FindFirstValidPage(uffs_Device *dev, uffs_BlockInfo *bc);
+u16 uffs_FindFirstFreePage(uffs_Device *dev, uffs_BlockInfo *bc, u16 pageFrom);
+u16 uffs_FindPageInBlockWithPageId(uffs_Device *dev, uffs_BlockInfo *bc, u16 page_id);
 
 u8 uffs_MakeSum8(void *p, int len);
 u16 uffs_MakeSum16(void *p, int len);
-URET uffs_CreateNewFile(uffs_Device *dev, u16 father, u16 serial, uffs_blockInfo *bc, uffs_fileInfo *fi);
+URET uffs_CreateNewFile(uffs_Device *dev, u16 father, u16 serial, uffs_BlockInfo *bc, uffs_FileInfo *fi);
 
-int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_blockInfo *bc, u8 type);
-UBOOL uffs_IsPageErased(uffs_Device *dev, uffs_blockInfo *bc, u16 page);
-int uffs_GetFreePagesCount(uffs_Device *dev, uffs_blockInfo *bc);
-UBOOL uffs_IsDataBlockReguFull(uffs_Device *dev, uffs_blockInfo *bc);
+int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type);
+UBOOL uffs_IsPageErased(uffs_Device *dev, uffs_BlockInfo *bc, u16 page);
+int uffs_GetFreePagesCount(uffs_Device *dev, uffs_BlockInfo *bc);
+UBOOL uffs_IsDataBlockReguFull(uffs_Device *dev, uffs_BlockInfo *bc);
 
-int uffs_GetBlockTimeStamp(uffs_Device *dev, uffs_blockInfo *bc);
+int uffs_GetBlockTimeStamp(uffs_Device *dev, uffs_BlockInfo *bc);
 
 URET uffs_WriteDataToNewPage(uffs_Device *dev, 
 							 u16 block, 

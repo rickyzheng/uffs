@@ -43,7 +43,7 @@
 #include "uffs/uffs_types.h"
 #include "uffs/uffs_config.h"
 #include "uffs/uffs_buf.h"
-#include "uffs/uffs_blockInfo.h"
+#include "uffs/uffs_BlockInfo.h"
 #include "uffs/ubuffer.h"
 #include "uffs/uffs_tree.h"
 #include "uffs/uffs_mem.h"
@@ -66,7 +66,7 @@ struct uffs_FlashOpsSt {
 	int  (*GetEccSize)(uffs_Device *dev);
 	void (*MakeEcc)(uffs_Device *dev, void *data, void *ecc);
 	int (*EccCollect)(uffs_Device *dev, void *data, void *read_ecc, const void *test_ecc);
-	UBOOL (*IsBlockBad)(uffs_Device *dev, uffs_blockInfo *bc);
+	UBOOL (*IsBlockBad)(uffs_Device *dev, uffs_BlockInfo *bc);
 	URET (*MakeBadBlockMark)(uffs_Device *dev, int block);
 };
 
@@ -136,8 +136,8 @@ struct uffs_storageAttrSt {
  * \brief block information structure, used to manager block information caches
  */
 struct uffs_blockInfoCacheSt {
-	uffs_blockInfo *head;			//!< buffer head of block info(spares)
-	uffs_blockInfo *tail;
+	uffs_BlockInfo *head;			//!< buffer head of block info(spares)
+	uffs_BlockInfo *tail;
 	int maxBlockCached;				//!< maximun block info buffers
 	void *internalBufHead;			//!< internal buffer head, used for release whole buffer
 };
@@ -173,8 +173,8 @@ struct uffs_pageBufsSt {
 	uffs_Buf *bufHead;
 	uffs_Buf *bufTail;
 	struct uffs_dirtyGroupSt dirtyGroup[MAX_DIRTY_BUF_GROUPS];
-	int maxBuf;
-	int maxDirtyBuf;
+	int buf_max;
+	int dirty_buf_max;
 	void *pool;
 };
 
@@ -223,11 +223,11 @@ struct uffs_DeviceSt {
 	struct uffs_lockSt lock;					//!< lock data structure
 	struct uffs_pageBufsSt buf;					//!< page buffers
 	struct uffs_commInfoSt com;					//!< common information
-	struct uffs_treeSt tree;					//!< tree list of block
+	struct uffs_TreeSt tree;					//!< tree list of block
 	struct uffs_newBadBlockSt bad;				//!< new bad block
 	struct uffs_StatisticSt st;					//!< statistic (counters)
 	struct uffs_memAllocatorSt mem;				//!< uffs native memory allocator
-	u32 refCount;								//!< device reference count
+	u32 ref_count;								//!< device reference count
 };
 
 URET uffs_DeviceInitLock(uffs_Device *dev);

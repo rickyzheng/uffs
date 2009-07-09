@@ -49,11 +49,11 @@ extern "C"{
 *	global referenced macro defines & type defines
 *********************************************************************************************/
 
-struct ubufm{
+struct uffs_StaticBufSt {
 	void *node_pool;		/* data pool */
 	unsigned int node_size; /* data struct size */
 	unsigned int node_nums;	/* ubuf(data) num */
-	void *freeList;			/* free list, used by ubuf internal */
+	void *free_list;		/* free list, used by internal */
 	int lock;				/* buffer lock */
 };
 
@@ -66,13 +66,13 @@ struct ubufm{
 *********************************************************************************************/
 
 /** init ubuffer data structure with given discriptor */
-int uBufInit(struct ubufm *dis); 
+int uffs_StaticBufInit(struct uffs_StaticBufSt *dis); 
 
 /** release descriptor, delete lock */
-int uBufRelease(struct ubufm *dis);
+int uffs_StaticBufRelease(struct uffs_StaticBufSt *dis);
 
 /** get buffer from pool */
-void * uBufGet(struct ubufm *dis);
+void * uffs_StaticBufGet(struct uffs_StaticBufSt *dis);
 
 /**
  * get buffer from pool
@@ -80,10 +80,10 @@ void * uBufGet(struct ubufm *dis);
  * you should use this version when multitherad 
  * access the same buffer pool
  */
-void * uBufGetCt(struct ubufm *dis);
+void * uffs_StaticBufGetCt(struct uffs_StaticBufSt *dis);
 
 /** put buffer to pool */
-int uBufPut(void *p, struct ubufm *dis);
+int uffs_StaticBufPut(void *p, struct uffs_StaticBufSt *dis);
 
 /**
  * put buffer to pool, 
@@ -91,13 +91,13 @@ int uBufPut(void *p, struct ubufm *dis);
  * you should use this version when multithread
  * access the same buffer pool
  */
-int uBufPutCt(void *p, struct ubufm *dis);
+int uffs_StaticBufPutCt(void *p, struct uffs_StaticBufSt *dis);
 
 /** get buffer pointer by index(offset) */
-void * uBufGetBufByIndex(unsigned int idx, struct ubufm *dis);
+void * uffs_StaticBufGetByIndex(unsigned int idx, struct uffs_StaticBufSt *dis);
 
 /** get index by pointer */
-int uBufGetIndex(void *p, struct ubufm *dis);
+int uffs_StaticBufGetIndex(void *p, struct uffs_StaticBufSt *dis);
 
 
 #ifdef __cplusplus

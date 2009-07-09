@@ -57,36 +57,36 @@ extern "C"{
 /** file object */
 struct uffs_ObjectSt {
 	/******* objects manager ********/
-	int devLockCount;
-	int devGetCount;
+	int dev_lock_count;
+	int dev_get_count;
 
 	/******** init level 0 ********/
 	char name[MAX_FILENAME_LENGTH];		//!< name, for open or create
-	u32 nameLen;						//!< name length
+	u32 name_len;						//!< name length
 	u16 sum;							//!< sum of name
 	uffs_Device *dev;					//!< uffs device
 	u32 oflag;
 	u32 pmode;
 	u8 type;
-	int pagesOnHead;					//!< data pages on file head block
+	int head_pages;						//!< data pages on file head block
 	u16 father;
 
 	/******* init level 1 ********/
 	TreeNode *node;						//!< file entry node in tree
 	u16 serial;
 	u32 attr;
-	u32 createTime;
-	u32 lastModify;
+	u32 create_time;
+	u32 last_modify;
 	u32 access;
 	
 	/******* output ******/
-	int err;					//!< error number
+	int err;							//!< error number
 
 	/******* current *******/
-	u32 pos;					//!< current position in file
+	u32 pos;							//!< current position in file
 
 	/***** others *******/
-	UBOOL openSucc;			//!< U_TRUE: succ, U_FALSE: fail
+	UBOOL open_succ;					//!< U_TRUE: succ, U_FALSE: fail
 
 };
 
@@ -97,7 +97,7 @@ typedef struct uffs_FindInfoSt {
 	uffs_Object *obj;
 	uffs_Device *dev;
 	u16 father;
-	int step;		//step 0: working on dir entries, 1: working on file entries, 2: stoped.
+	int step;		//step: 0 - working on dir entries, 1 - working on file entries, 2 - stoped.
 	int hash;
 	TreeNode *work;
 } uffs_FindInfo;

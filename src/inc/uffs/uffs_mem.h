@@ -47,14 +47,14 @@ extern "C"{
 #define GET_HASH_INDEX(p) ((((u32)(p)) >> 2) & HEAP_HASH_MASK)
 
 /* memory alloc node  */
-typedef struct _heap_mm_node{
+typedef struct HeapManagementNodeSt{
 	int task_id;					/* who alloc this block? it's the caller's task id */
-	struct _heap_mm_node * next;	/* point to next node */
+	struct HeapManagementNodeSt * next;	/* point to next node */
 	void *p;						/* point to allocated block */
 	int size;						/* block size */
-} HEAP_MM;
+} HeapMm;
 
-typedef HEAP_MM* HASHTBL;
+typedef HeapMm* HeapHashTable;
 
 /** \note: uffs_InitHeapMemory should be called before using native memory allocator on each device */
 void uffs_InitHeapMemory(void *addr, int size);
@@ -84,7 +84,7 @@ typedef struct uffs_memAllocatorSt {
 	int one_page_buffer_size;
 
 #if defined(USE_NATIVE_MEMORY_ALLOCATOR)
-	HASHTBL tbl[HEAP_HASH_SIZE];
+	HeapHashTable tbl[HEAP_HASH_SIZE];
 	int count;
 	int maxused;
 #endif
@@ -95,10 +95,10 @@ typedef struct uffs_memAllocatorSt {
 	int pos;
 #endif
 
-} uffs_memAllocator;
+} uffs_MemAllocator;
 
 #if defined(USE_NATIVE_MEMORY_ALLOCATOR)
-void uffs_SetupNativeMemoryAllocator(uffs_memAllocator *allocator);
+void uffs_SetupNativeMemoryAllocator(uffs_MemAllocator *allocator);
 #endif
 
 #ifdef __cplusplus

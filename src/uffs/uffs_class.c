@@ -62,22 +62,23 @@ URET uffs_InitFlashClass(uffs_Device *dev)
 	struct uffs_FlashClassSt *work;
 	int i;
 
-	while(work_p != NULL) {
+	while (work_p != NULL) {
 		work = *work_p;
-		if (work == NULL) return U_FAIL;
-		if(dev->attr->maker == work->maker) {
+		if (work == NULL)
+			return U_FAIL;
+		if (dev->attr->maker == work->maker) {
 			if (work->id_list) {	/* if flash class give an id list, we need to check the list */
-				for(i = 0; i < MAX_CHIP_ID_LIST; i++) {
-					if(work->id_list[i] == -1){
+				for (i = 0; i < MAX_CHIP_ID_LIST; i++) {
+					if (work->id_list[i] == -1){
 						return U_FAIL;
 					}
-					if(work->id_list[i] == dev->attr->id) {
+					if (work->id_list[i] == dev->attr->id) {
 						break;
 					}
 				}
 			}
 			if (work->InitClass) {  /* if flash class has init function, call it. */
-				if(work->InitClass(dev, dev->attr->id) != U_SUCC) {
+				if (work->InitClass(dev, dev->attr->id) != U_SUCC) {
 					return U_FAIL;
 				}
 			}

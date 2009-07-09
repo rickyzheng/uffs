@@ -30,7 +30,7 @@
   on this file might be covered by the GNU General Public License.
 */
 /** 
- * \file uffs_blockInfo.h
+ * \file uffs_BlockInfo.h
  * \brief data structure for operating block information
  * \author Ricky Zheng
  */
@@ -46,41 +46,41 @@
 extern "C"{
 #endif
 /** 
- * \struct uffs_pageSpareSt
+ * \struct uffs_PageSpareSt
  * \brief this structure is for storing uffs tag and more. 
  */
-struct uffs_pageSpareSt {
+struct uffs_PageSpareSt {
 	u8 expired:1;			//!< 0 not expired. 1 expired. 
-	u8 checkOk:1;           //!< 0 check sum is OK. 1 check sum is error. 
-	u8 blockStatus:1;       //!< for block status, 1 bad, 0 valid 
+	u8 check_ok:1;			//!< 0 check sum is OK. 1 check sum is error. 
+	u8 block_status:1;		//!< for block status, 1 bad, 0 valid 
 	uffs_Tags tag;			//!< page tag 
 };
 
 /** 
- * \struct uffs_blockInfoSt
+ * \struct uffs_BlockInfoSt
  * \brief block information data. Block info is frequently accessed,
           UFFS use a cache system to speed up block info access.
  */
-struct uffs_blockInfoSt {
-	struct uffs_blockInfoSt *next;
-	struct uffs_blockInfoSt *prev;
-	u16 blockNum;					//!< block number
-	struct uffs_pageSpareSt *spares;//!< page spare info array
-	int expiredCount;		//!< how many pages expired in this block ? 
-	int refCount;			//!< reference counter, it's safe to reuse this block memory when the counter is 0.
+struct uffs_BlockInfoSt {
+	struct uffs_BlockInfoSt *next;
+	struct uffs_BlockInfoSt *prev;
+	u16 block;							//!< block number
+	struct uffs_PageSpareSt *spares;	//!< page spare info array
+	int expired_count;					//!< how many pages expired in this block ? 
+	int ref_count;						//!< reference counter, it's safe to reuse this block memory when the counter is 0.
 };
 
 
 URET uffs_InitBlockInfoCache(uffs_Device *dev, int maxCachedBlocks);
 URET uffs_ReleaseBlockInfoCache(uffs_Device *dev);
-void uffs_CheckPageSpare(uffs_Device *dev, uffs_pageSpare *spare);
-URET uffs_LoadBlockInfo(uffs_Device *dev, uffs_blockInfo *work, int page);
-uffs_blockInfo * uffs_FindBlockInfoInCache(uffs_Device *dev, int block);
-uffs_blockInfo * uffs_GetBlockInfo(uffs_Device *dev, int block);
-void uffs_PutBlockInfo(uffs_Device *dev, uffs_blockInfo *p);
-void uffs_ExpireBlockInfo(uffs_Device *dev, uffs_blockInfo *p, int page);
-//uffs_blockInfo * uffs_CloneBlockInfo(uffs_Device *dev, uffs_blockInfo *p);
-//void uffs_ReleaseCloneBlockInfo(uffs_blockInfo *p);
+void uffs_CheckPageSpare(uffs_Device *dev, uffs_PageSpare *spare);
+URET uffs_LoadBlockInfo(uffs_Device *dev, uffs_BlockInfo *work, int page);
+uffs_BlockInfo * uffs_FindBlockInfoInCache(uffs_Device *dev, int block);
+uffs_BlockInfo * uffs_GetBlockInfo(uffs_Device *dev, int block);
+void uffs_PutBlockInfo(uffs_Device *dev, uffs_BlockInfo *p);
+void uffs_ExpireBlockInfo(uffs_Device *dev, uffs_BlockInfo *p, int page);
+//uffs_BlockInfo * uffs_CloneBlockInfo(uffs_Device *dev, uffs_BlockInfo *p);
+//void uffs_ReleaseCloneBlockInfo(uffs_BlockInfo *p);
 UBOOL uffs_IsAllBlockInfoFree(uffs_Device *dev);
 void uffs_ExpireAllBlockInfo(uffs_Device *dev);
 

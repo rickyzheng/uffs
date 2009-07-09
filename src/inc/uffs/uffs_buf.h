@@ -58,27 +58,27 @@ extern "C"{
 struct uffs_BufSt{
 	struct uffs_BufSt *next;	//!< link to next buffer
 	struct uffs_BufSt *prev;	//!< link to previous buffer
-	struct uffs_BufSt *nextDirty;
-	struct uffs_BufSt *prevDirty;
+	struct uffs_BufSt *next_dirty;
+	struct uffs_BufSt *prev_dirty;
 	u8 type;					//!< file, dir, or data
 	u16 father;					//!< father serial
 	u16 serial;					//!< serial 
-	u16 pageID;					//!< page id 
+	u16 page_id;					//!< page id 
 	u16 mark;					//!< #UFFS_BUF_EMPTY, #UFFS_BUF_VALID, or #UFFS_BUF_DIRTY ?
-	u16 refCount;				//!< reference counter
-	u16 dataLen;				//!< length of data
+	u16 ref_count;				//!< reference counter
+	u16 data_len;				//!< length of data
 	u8 * data;					//!< data buffer
 	u8 * ecc;					//!< ecc buffer
 };
 
 
-URET uffs_BufInit(struct uffs_DeviceSt *dev, int maxBuf, int maxDirtyBuf);
+URET uffs_BufInit(struct uffs_DeviceSt *dev, int buf_max, int dirty_buf_max);
 URET uffs_BufReleaseAll(struct uffs_DeviceSt *dev);
 
-uffs_Buf * uffs_BufGet(struct uffs_DeviceSt *dev, u16 father, u16 serial, u16 pageID);
-uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 father, u16 serial, u16 pageID);
-uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 pageID);
-uffs_Buf * uffs_BufFind(uffs_Device *dev, u16 father, u16 serial, u16 pageID);
+uffs_Buf * uffs_BufGet(struct uffs_DeviceSt *dev, u16 father, u16 serial, u16 page_id);
+uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 father, u16 serial, u16 page_id);
+uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 page_id);
+uffs_Buf * uffs_BufFind(uffs_Device *dev, u16 father, u16 serial, u16 page_id);
 
 URET uffs_BufPut(uffs_Device *dev, uffs_Buf *buf);
 

@@ -93,7 +93,7 @@ extern "C"{
 
 /** 
  * \def MAX_FILENAME_LENGTH 
- * \note Be careful: it's part of the physical format (see: uffs_fileInfoSt.name)
+ * \note Be careful: it's part of the physical format (see: uffs_FileInfoSt.name)
  *    !!DO NOT CHANGE IT AFTER FILE SYSTEM IS FORMATED!!
  */
 #define MAX_FILENAME_LENGTH			32
@@ -103,20 +103,20 @@ extern "C"{
 
 
 /** file info in physical format */
-struct uffs_fileInfoSt {
+struct uffs_FileInfoSt {
 	u32 attr;
-	u32 createTime;
-	u32 lastModify;
+	u32 create_time;
+	u32 last_modify;
 	u32 access;
 	u32 reserved;
 	u32 name_len;
 	char name[MAX_FILENAME_LENGTH];
 };
 
-typedef struct uffs_fileInfoSt uffs_fileInfo;
+typedef struct uffs_FileInfoSt uffs_FileInfo;
 
 typedef struct uffs_ObjectInfoSt {
-	uffs_fileInfo info;
+	uffs_FileInfo info;
 	u32 len;
 	u16 serial;
 } uffs_ObjectInfo;

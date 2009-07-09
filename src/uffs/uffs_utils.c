@@ -56,7 +56,8 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 	if (dev->mem.one_page_buffer_size == 0) {
 		if (dev->mem.malloc) {
 			dev->mem.one_page_buffer = dev->mem.malloc(dev, pageSize);
-			if (dev->mem.one_page_buffer) dev->mem.one_page_buffer_size = pageSize;
+			if (dev->mem.one_page_buffer) 
+				dev->mem.one_page_buffer_size = pageSize;
 		}
 	}
 	if (pageSize > dev->mem.one_page_buffer_size) {
@@ -73,22 +74,24 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 	//step 1: Erase, fully fill with 0x0, and check
 	dev->ops->EraseBlock(dev, block);
 	memset(pageBuf, 0, pageSize);
-	for(i = 0; i < dev->attr->pages_per_block; i++) {
+	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		dev->ops->WritePage(dev, block, i, pageBuf, (u8 *)pageBuf + dev->attr->page_data_size);
 	}
-	for(i = 0; i < dev->attr->pages_per_block; i++) {
+	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		dev->ops->ReadPage(dev, block, i, pageBuf, (u8 *)pageBuf + dev->attr->page_data_size);
-		for(j = 0; j < pageSize; j++) {
-			if(pageBuf[j] != 0) goto bad_out;
+		for (j = 0; j < pageSize; j++) {
+			if(pageBuf[j] != 0)
+				goto bad_out;
 		}
 	}
 
 	//step 2: Erase, and check
 	dev->ops->EraseBlock(dev, block);
-	for(i = 0; i < dev->attr->pages_per_block; i++) {
+	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		dev->ops->ReadPage(dev, block, i, pageBuf, (u8 *)pageBuf + dev->attr->page_data_size);
-		for(j = 0; j < pageSize; j++) {
-			if(pageBuf[j] != 0xff) goto bad_out;
+		for (j = 0; j < pageSize; j++) {
+			if(pageBuf[j] != 0xff) 
+				goto bad_out;
 		}
 	}
 
@@ -111,17 +114,20 @@ URET uffs_FormatDevice(uffs_Device *dev)
 {
 	u16 i, slot;
 	
-	if(dev == NULL) return U_FAIL;
-	if(dev->ops == NULL || dev->flash == NULL) return U_FAIL;
+	if (dev == NULL)
+		return U_FAIL;
+
+	if (dev->ops == NULL || dev->flash == NULL) 
+		return U_FAIL;
 
 
-	if(uffs_BufIsAllFree(dev) == U_FALSE) {
+	if (uffs_BufIsAllFree(dev) == U_FALSE) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"some page still in used!\n");
 		return U_FAIL;
 	}
 
 	for (slot = 0; slot < MAX_DIRTY_BUF_GROUPS; slot++) {
-		if(dev->buf.dirtyGroup[slot].dirtyCount > 0) {
+		if (dev->buf.dirtyGroup[slot].dirtyCount > 0) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"there still have dirty pages!\n");
 			return U_FAIL;
 		}
@@ -130,15 +136,15 @@ URET uffs_FormatDevice(uffs_Device *dev)
 	uffs_BufSetAllEmpty(dev);
 
 
-	if(uffs_IsAllBlockInfoFree(dev) == U_FALSE) {
+	if (uffs_IsAllBlockInfoFree(dev) == U_FALSE) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"there still have block info cache ? fail to format\n");
 		return U_FAIL;
 	}
 
 	uffs_ExpireAllBlockInfo(dev);
 
-	for(i = dev->par.start; i <= dev->par.end; i++) {
-		if(dev->ops->IsBlockBad(dev, i) == U_FALSE) {
+	for (i = dev->par.start; i <= dev->par.end; i++) {
+		if (dev->ops->IsBlockBad(dev, i) == U_FALSE) {
 			dev->ops->EraseBlock(dev, i);
 		}
 		else {
@@ -146,15 +152,15 @@ URET uffs_FormatDevice(uffs_Device *dev)
 		}
 	}
 
-	if(uffs_ReleaseTreeBuf(dev) == U_FAIL) {
+	if (uffs_ReleaseTreeBuf(dev) == U_FAIL) {
 		return U_FAIL;
 	}
 
-	if(uffs_InitTreeBuf(dev) == U_FAIL) {
+	if (uffs_InitTreeBuf(dev) == U_FAIL) {
 		return U_FAIL;
 	}
 
-	if(uffs_BuildTree(dev) == U_FAIL) {
+	if (uffs_BuildTree(dev) == U_FAIL) {
 		return U_FAIL;
 	}
 	

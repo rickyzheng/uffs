@@ -65,7 +65,7 @@ void uffs_Perror( int level, const char *errFmt, ...)
 		
 		va_list arg;
 
-		if( strlen(errFmt) > 800 ) {
+		if (strlen(errFmt) > 800) {
 			// dangerous!!
 			printf("uffs_Perror buffer is not enough !\r\n");
 			return;
@@ -77,7 +77,7 @@ void uffs_Perror( int level, const char *errFmt, ...)
 
 #ifdef OUTPUT_TOFILE
 		fp = fopen(DEBUG_LOGFILE, "a+b");
-		if(fp) {
+		if (fp) {
 			fwrite(buf, 1, strlen(buf), fp);
 			fclose(fp);
 		}

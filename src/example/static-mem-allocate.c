@@ -72,11 +72,11 @@ extern struct cli_commandset * get_helper_cmds(void);
 
 static uffs_Device demo_device = {0};
 static struct uffs_mountTableSt demo_mount = {
-  &demo_device,
-  0,    /* start from block 0 */
-  -1,   /* use whole chip */
-  "/",  /* mount point */
-  NULL
+	&demo_device,
+	0,    /* start from block 0 */
+	-1,   /* use whole chip */
+	"/",  /* mount point */
+	NULL
 };
 
 static struct uffs_storageAttrSt emu_storage = {0};
@@ -89,32 +89,32 @@ static struct uffs_memAllocatorSt static_allocator = {0};
 /* init memory allocator, setup buffer sizes */
 static URET static_mem_alloc_init(struct uffs_DeviceSt *dev)
 {
-  struct uffs_memAllocatorSt *mem = &dev->mem;
-  mem->buf_start = (unsigned char *)static_buffer;
-  mem->buf_size = sizeof(static_buffer);
-  mem->pos = 0;
+	struct uffs_memAllocatorSt *mem = &dev->mem;
+	mem->buf_start = (unsigned char *)static_buffer;
+	mem->buf_size = sizeof(static_buffer);
+	mem->pos = 0;
 
-  uffs_Perror(UFFS_ERR_NOISY, PFX"Total static memory: %d bytes\n", mem->buf_size);
+	uffs_Perror(UFFS_ERR_NOISY, PFX"Total static memory: %d bytes\n", mem->buf_size);
 
-  return U_SUCC;
+	return U_SUCC;
 }
   
 /* allocate memory (for dynamic memory allocation) */
 static void * static_mem_alloc_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 {
-  struct uffs_memAllocatorSt *mem = &dev->mem;
-  void *p = NULL;
+	struct uffs_memAllocatorSt *mem = &dev->mem;
+	void *p = NULL;
 
-  if (mem->buf_size - mem->pos < (int)size) {
-    uffs_Perror(UFFS_ERR_SERIOUS, PFX"Memory alloc failed! (alloc %d, free %d)\n", size, mem->buf_size - mem->pos);
-  }
-  else {
-    p = mem->buf_start + size;
-    mem->pos += size;
-    uffs_Perror(UFFS_ERR_NOISY, PFX"Allocated %d, free %d\n", size, mem->buf_size - mem->pos);
-  }
+	if (mem->buf_size - mem->pos < (int)size) {
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Memory alloc failed! (alloc %d, free %d)\n", size, mem->buf_size - mem->pos);
+	}
+	else {
+		p = mem->buf_start + size;
+		mem->pos += size;
+		uffs_Perror(UFFS_ERR_NOISY, PFX"Allocated %d, free %d\n", size, mem->buf_size - mem->pos);
+	}
 
-  return p;
+	return p;
 }
 
 
@@ -173,6 +173,7 @@ int main(int argc, char *argv[])
 	int ret;
 
 	ret = init_uffs_fs();
+
 	if (ret != 0) {
 		printf ("Init file system fail: %d\n", ret);
 		return -1;

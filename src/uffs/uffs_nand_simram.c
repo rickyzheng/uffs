@@ -56,7 +56,7 @@ typedef struct uffs_SimramSpareSt		uffs_SimramSpare;		//NAND flash page spare
 
 
 
-/** \brief load NAND spare data to "uffs_pageSpare"
+/** \brief load NAND spare data to "uffs_PageSpare"
  *  \param[in] dev uffs device
  *  \param[in] block block number to be loaded
  *  \param[in] page page number to be loaded
@@ -73,9 +73,9 @@ static URET Simram_LoadPageSpare(uffs_Device *dev, int block, int page, uffs_Tag
 
 	dev->ops->ReadPage(dev, block, page, NULL, p_spare);
 
-	ofs_end = (u32)(&(((uffs_Tags *)NULL)->blockStatus));
+	ofs_end = (u32)(&(((uffs_Tags *)NULL)->block_status));
 	memcpy(p, p_spare, ofs_end);
-	tag->blockStatus = 0xFF;
+	tag->block_status = 0xFF;
 
 	return U_SUCC;
 }
@@ -98,7 +98,7 @@ static URET Simram_WritePageSpare(uffs_Device *dev, int block, int page, uffs_Ta
 	u32 ofs_end;
 
 	memset(p_spare, 0xFF, dev->attr->spare_size);
-	ofs_end = (u32)(&(((uffs_Tags *)NULL)->blockStatus));
+	ofs_end = (u32)(&(((uffs_Tags *)NULL)->block_status));
 	memcpy(p_spare, p, ofs_end);  //the rest bytes
 
 	return dev->ops->WritePage(dev, block, page, NULL, (u8 *)(&phi_spare));
@@ -118,7 +118,7 @@ static URET Simram_MakePageValid(uffs_Device *dev, int block, int page, uffs_Tag
 }
 
 
-static UBOOL Simram_IsBlockBad(uffs_Device *dev, uffs_blockInfo *bc)
+static UBOOL Simram_IsBlockBad(uffs_Device *dev, uffs_BlockInfo *bc)
 {
 	bc = bc;
 	dev = dev;
@@ -133,6 +133,7 @@ static URET Simram_MakeBadBlockMark(uffs_Device *dev, int block)
 	block = block;
 
 	uffs_Perror(UFFS_ERR_NOISY, PFX"It's no sense to generate a bad block for sim RAM.\n");
+
 	return U_SUCC;
 }
 

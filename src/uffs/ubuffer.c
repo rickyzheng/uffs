@@ -52,18 +52,18 @@ usage:
   #define NODE_NUMS	1024
 
   static int my_data_buf[NODE_SIZE * NODE_NUMS / sizeof(int)];
-  static struct ubufm dis;
+  static struct uffs_StaticBufSt dis;
 
   dis.node_pool = &my_data_buf;
   dis.node_size = NODE_SIZE;
   dis.node_nums = NODE_NUMS;
 
-  uBufInit(&dis);
+  uffs_StaticBufInit(&dis);
 
   void * p;
-  p = uBufGet(&dis);
+  p = uffs_StaticBufGet(&dis);
   ...
-  uBufPut(p, &dis);
+  uffs_StaticBufPut(p, &dis);
 
 notice:
 	NODE_SIZE's lowest 2 bit must be 0, and NODE_SIZE must be large then or equal to 4.
@@ -71,7 +71,7 @@ notice:
 
 */
 
-static int uBufInitLock(struct ubufm *dis)
+static int _InitLock(struct uffs_StaticBufSt *dis)
 {
 	if (!dis->lock) {
 		dis->lock = uffs_SemCreate(1);
@@ -79,7 +79,7 @@ static int uBufInitLock(struct ubufm *dis)
 	return 0;
 }
 
-static int uBufReleaseLock(struct ubufm *dis)
+static int _ReleaseLock(struct uffs_StaticBufSt *dis)
 {
 	if (dis->lock) {
 		if (uffs_SemDelete(dis->lock) < 0) {
@@ -92,18 +92,18 @@ static int uBufReleaseLock(struct ubufm *dis)
 	return 0;
 }
 
-static int uBufLock(struct ubufm *dis)
+static int _LockLock(struct uffs_StaticBufSt *dis)
 {
 	return uffs_SemWait(dis->lock);
 }
 
-static int uBufUnlock(struct ubufm *dis)
+static int _UnlockLock(struct uffs_StaticBufSt *dis)
 {
 	return uffs_SemSignal(dis->lock);
 }
 
 /* init ubuffer data structure with given descriptor */
-int uBufInit(struct ubufm *dis)
+int uffs_StaticBufInit(struct uffs_StaticBufSt *dis)
 {
 	unsigned int i;
 	int *p1, *p2;
@@ -111,38 +111,38 @@ int uBufInit(struct ubufm *dis)
 	if(dis == NULL) return -1;
 	if(dis->node_nums < 1) return -1;
 
-	uBufInitLock(dis);
-	uBufLock(dis);
-	//initialize freeList. 
-	dis->freeList = dis->node_pool;
+	_InitLock(dis);
+	_LockLock(dis);
+	//initialize free_list. 
+	dis->free_list = dis->node_pool;
 	p1 = p2 = (int *)(dis->node_pool);
-	for(i = 1; i < dis->node_nums; i++) {
+	for (i = 1; i < dis->node_nums; i++) {
 		p2 = (int *)((char *)(dis->node_pool) + i * dis->node_size);
 		*p1 = (int)p2;
 		p1 = p2;
 	}
-	*p2 = (int)NULL;	//end of freeList
-	uBufUnlock(dis);
+	*p2 = (int)NULL;	//end of free_list
+	_UnlockLock(dis);
 
 	return 0;
 }
 
 /** release descriptor, delete lock **/
-int uBufRelease(struct ubufm *dis)
+int uffs_StaticBufRelease(struct uffs_StaticBufSt *dis)
 {
-	uBufReleaseLock(dis);
+	_ReleaseLock(dis);
 	return 0;
 }
 
 
 /* get buffer from pool */
-void * uBufGet(struct ubufm *dis)
+void * uffs_StaticBufGet(struct uffs_StaticBufSt *dis)
 {
 	void *p;
 
-	p = dis->freeList;
-	if(p) {
-		dis->freeList = (void *)(*((int *)(dis->freeList)));
+	p = dis->free_list;
+	if (p) {
+		dis->free_list = (void *)(*((int *)(dis->free_list)));
 	}
 	return p;
 }
@@ -152,26 +152,26 @@ void * uBufGet(struct ubufm *dis)
  * you should use this version when multi-therad 
  * access the same buffer pool
  */
-void * uBufGetCt(struct ubufm *dis)
+void * uffs_StaticBufGetCt(struct uffs_StaticBufSt *dis)
 {
 	void *p;
 
-	uBufLock(dis);
-	p = dis->freeList;
-	if(p) {
-		dis->freeList = (void *)(*((int *)(dis->freeList)));
+	_LockLock(dis);
+	p = dis->free_list;
+	if (p) {
+		dis->free_list = (void *)(*((int *)(dis->free_list)));
 	}
-	uBufUnlock(dis);
+	_UnlockLock(dis);
 
 	return p;
 }
 
 /* put buffer to pool */
-int uBufPut(void *p, struct ubufm *dis)
+int uffs_StaticBufPut(void *p, struct uffs_StaticBufSt *dis)
 {
-	if(p) {
-		*((int *)p) = (int)(dis->freeList);
-		dis->freeList = p;
+	if (p) {
+		*((int *)p) = (int)(dis->free_list);
+		dis->free_list = p;
 		return 0;
 	}
 	return -1;
@@ -182,26 +182,26 @@ int uBufPut(void *p, struct ubufm *dis)
  * you should use this version when multithread
  * access the same buffer pool
  */
-int uBufPutCt(void *p, struct ubufm *dis)
+int uffs_StaticBufPutCt(void *p, struct uffs_StaticBufSt *dis)
 {
-	if(p) {
-		uBufLock(dis);
-		*((int *)p) = (int)(dis->freeList);
-		dis->freeList = p;
-		uBufUnlock(dis);
+	if (p) {
+		_LockLock(dis);
+		*((int *)p) = (int)(dis->free_list);
+		dis->free_list = p;
+		_UnlockLock(dis);
 		return 0;
 	}
 	return -1;
 }
 
 /* get buffer pointer by index(offset) */
-void * uBufGetBufByIndex(unsigned int idx, struct ubufm *dis)
+void * uffs_StaticBufGetByIndex(unsigned int idx, struct uffs_StaticBufSt *dis)
 {
 	return (char *)(dis->node_pool) + idx * dis->node_size;
 }
 
 /* get index by pointer */
-int uBufGetIndex(void *p, struct ubufm *dis)
+int uffs_StaticBufGetIndex(void *p, struct uffs_StaticBufSt *dis)
 {
 	return ((char *)p - (char *)(dis->node_pool)) / dis->node_size;
 }

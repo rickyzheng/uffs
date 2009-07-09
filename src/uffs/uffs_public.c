@@ -59,20 +59,21 @@ int uffs_GetNextBlockTimeStamp(int prev)
 
 UBOOL uffs_IsSrcNewerThanObj(int src, int obj)
 {
-	switch(src - obj) {
-		case 0:
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX "the two block have the same time stamp ?\n");
-			break;
-		case 1:
-		case -2:
-			return U_TRUE;
-		case -1:
-		case 2:
-			return U_FALSE;
-		default:
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX "time stamp out of range !\n");
-			break;
+	switch (src - obj) {
+	case 0:
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX "the two block have the same time stamp ?\n");
+		break;
+	case 1:
+	case -2:
+		return U_TRUE;
+	case -1:
+	case 2:
+		return U_FALSE;
+	default:
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX "time stamp out of range !\n");
+		break;
 	}
+
 	return U_FALSE;
 }
 
@@ -91,16 +92,16 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj)
 u8 uffs_CalTagCheckSum(uffs_Tags *tag)
 {
 #if defined(ENABLE_TAG_CHECKSUM) && ENABLE_TAG_CHECKSUM == 1
-	u8 checkSum = 0;
+	u8 checksum = 0;
 	int i;
 	int ofs;
 
-	ofs = (int)(&(((uffs_Tags *)NULL)->checkSum));
+	ofs = (int)(&(((uffs_Tags *)NULL)->checksum));
 
 	for(i = 0; i < ofs; i++) {
-		checkSum += *((u8 *)(tag) + i);
+		checksum += *((u8 *)(tag) + i);
 	}
-	return checkSum;
+	return checksum;
 #else
 	tag = tag;
 	return 0xff;
@@ -115,22 +116,23 @@ u8 uffs_CalTagCheckSum(uffs_Tags *tag)
  * \param[in] page page number to be compared with
  * \return the better page number, could be the same with given page
  */
-u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_blockInfo *bc, u16 page)
+u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 {
-	uffs_pageSpare *spare_old, *spare;
+	uffs_PageSpare *spare_old, *spare;
 	int i;
 	int best;
 
-	if(page == dev->attr->pages_per_block - 1) return page;
+	if (page == dev->attr->pages_per_block - 1)
+		return page;
 	
 	uffs_LoadBlockInfo(dev, bc, page); //load old page
 	spare_old = &(bc->spares[page]);
 
-	if(spare_old->tag.pageID == page) {
+	if (spare_old->tag.page_id == page) {
 		//well, try to speed up ....
 		uffs_LoadBlockInfo(dev, bc, dev->attr->pages_per_block - 1); 
 		spare = &(bc->spares[dev->attr->pages_per_block - 1]);
-		if(spare->tag.pageID == dev->attr->pages_per_block - 1) {
+		if (spare->tag.page_id == dev->attr->pages_per_block - 1) {
 			return page;
 		}
 	}
@@ -138,50 +140,56 @@ u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_blockInfo *bc, u16 page)
 	uffs_LoadBlockInfo(dev, bc, UFFS_ALL_PAGES);
 	best = page;
 	//the better page must be ahead of page, so ...i = page + 1; i < ...
-	for(i = page + 1; i < dev->attr->pages_per_block; i++) {
+	for (i = page + 1; i < dev->attr->pages_per_block; i++) {
 		spare = &(bc->spares[i]);
-		if(spare->tag.pageID == spare_old->tag.pageID) {
-			if(	spare->tag.father == spare_old->tag.father &&
+		if (spare->tag.page_id == spare_old->tag.page_id) {
+			if (spare->tag.father == spare_old->tag.father &&
 				spare->tag.serial == spare_old->tag.serial &&
 				spare->tag.dirty == TAG_DIRTY && //0: dirty, 1:clear
 				spare->tag.valid == TAG_VALID) { //0: valid, 1:invalid
-				if(i > best) best = i;
+				if (i > best) 
+					best = i;
 			}
 		}
 	}
+
 	return best;
 }
 
 /** 
- * \brief find a valid page with given pageID
+ * \brief find a valid page with given page_id
  * \param[in] dev uffs device
  * \param[in] bc block info
- * \param[in] pageID pageID to be find
- * \return the valid page number which has given pageID
+ * \param[in] page_id page_id to be find
+ * \return the valid page number which has given page_id
  * \retval >=0 page number
  * \retval UFFS_INVALID_PAGE page not found
  */
-u16 uffs_FindPageInBlockWithPageId(uffs_Device *dev, uffs_blockInfo *bc, u16 pageID)
+u16 uffs_FindPageInBlockWithPageId(uffs_Device *dev, uffs_BlockInfo *bc, u16 page_id)
 {
 	u16 page;
 	uffs_Tags *tag;
 
-	//Indeed, the page which has pageID, should ahead of pageID ...
-	for(page = pageID; page < dev->attr->pages_per_block; page++) {
+	//Indeed, the page which has page_id, should ahead of page_id ...
+	for (page = page_id; page < dev->attr->pages_per_block; page++) {
 		uffs_LoadBlockInfo(dev, bc, page);
 		tag = &(bc->spares[page].tag);
-		if(tag->pageID == pageID) return page;
+		if (tag->page_id == page_id)
+			return page;
 	}
+
 	return UFFS_INVALID_PAGE;
 }
 
 /** 
  * Are all the pages in the block used ?
  */
-UBOOL uffs_IsBlockPagesFullUsed(uffs_Device *dev, uffs_blockInfo *bc)
+UBOOL uffs_IsBlockPagesFullUsed(uffs_Device *dev, uffs_BlockInfo *bc)
 {
 	uffs_LoadBlockInfo(dev, bc, dev->attr->pages_per_block - 1);
-	if(bc->spares[dev->attr->pages_per_block - 1].tag.dirty == TAG_DIRTY) return U_TRUE;
+
+	if (bc->spares[dev->attr->pages_per_block - 1].tag.dirty == TAG_DIRTY) 
+		return U_TRUE;
 
 	return U_FALSE;
 }
@@ -193,10 +201,12 @@ UBOOL uffs_IsBlockPagesFullUsed(uffs_Device *dev, uffs_blockInfo *bc)
  * \retval U_TRUE block is used
  * \retval U_FALSE block is free
  */
-UBOOL uffs_IsThisBlockUsed(uffs_Device *dev, uffs_blockInfo *bc)
+UBOOL uffs_IsThisBlockUsed(uffs_Device *dev, uffs_BlockInfo *bc)
 {
 	uffs_LoadBlockInfo(dev, bc, 0);
-	if(bc->spares[0].tag.dirty == TAG_DIRTY) return U_TRUE;
+
+	if(bc->spares[0].tag.dirty == TAG_DIRTY) 
+		return U_TRUE;
 
 	return U_FALSE;
 }
@@ -206,13 +216,13 @@ UBOOL uffs_IsThisBlockUsed(uffs_Device *dev, uffs_blockInfo *bc)
  * \param[in] dev uffs device
  * \param[in] bc block info
  */
-int uffs_GetBlockTimeStamp(uffs_Device *dev, uffs_blockInfo *bc)
+int uffs_GetBlockTimeStamp(uffs_Device *dev, uffs_BlockInfo *bc)
 {
 	if(uffs_IsThisBlockUsed(dev, bc) == U_FALSE) 
 		return uffs_GetFirstBlockTimeStamp();
 	else{
 		uffs_LoadBlockInfo(dev, bc, 0);
-		return bc->spares[0].tag.blockTimeStamp;
+		return bc->spares[0].tag.block_ts;
 	}
 
 }
@@ -226,15 +236,16 @@ int uffs_GetBlockTimeStamp(uffs_Device *dev, uffs_blockInfo *bc)
  * \retval UFFS_INVALID_PAGE no free page found
  * \retval >=0 the first free page number
  */
-u16 uffs_FindFirstFreePage(uffs_Device *dev, uffs_blockInfo *bc, u16 pageFrom)
+u16 uffs_FindFirstFreePage(uffs_Device *dev, uffs_BlockInfo *bc, u16 pageFrom)
 {
 	u16 i;
 
-	for(i = pageFrom; i < dev->attr->pages_per_block; i++) {
+	for (i = pageFrom; i < dev->attr->pages_per_block; i++) {
 		uffs_LoadBlockInfo(dev, bc, i);
-		if(uffs_IsPageErased(dev, bc, i) == U_TRUE)
+		if (uffs_IsPageErased(dev, bc, i) == U_TRUE)
 			return i;
 	}
+
 	return UFFS_INVALID_PAGE; //free page not found
 }
 
@@ -242,12 +253,14 @@ u16 uffs_FindFirstFreePage(uffs_Device *dev, uffs_blockInfo *bc, u16 pageFrom)
 /** 
  * Find first valid page from a block, just used in mounting a partition
  */
-u16 uffs_FindFirstValidPage(uffs_Device *dev, uffs_blockInfo *bc)
+u16 uffs_FindFirstValidPage(uffs_Device *dev, uffs_BlockInfo *bc)
 {
 	u16 i;
-	for(i = 0; i < dev->attr->pages_per_block; i++) {
+
+	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		uffs_LoadBlockInfo(dev, bc, i);
-		if(bc->spares[i].checkOk) return i;
+		if (bc->spares[i].check_ok)
+			return i;
 	}
 	return UFFS_INVALID_PAGE;
 }
@@ -271,30 +284,30 @@ URET uffs_WriteDataToNewPage(uffs_Device *dev,
 	tag->dirty = 0;
 	tag->valid = 1;
 #if defined(ENABLE_TAG_CHECKSUM) && ENABLE_TAG_CHECKSUM == 1
-	tag->checkSum = 0xff;
+	tag->checksum = 0xff;
 #endif
 
 //	uffs_Perror(UFFS_ERR_NOISY, PFX"write b:%d p:%d t:%d f:%d s:%d id:%d L:%d\n",
-//				block, page, buf->type, buf->father, buf->serial, buf->pageID, buf->dataLen);
+//				block, page, buf->type, buf->father, buf->serial, buf->page_id, buf->data_len);
 
 	//step 1: write spare
 	ret = dev->flash->WritePageSpare(dev, block, page, tag);
-	if(ret != U_SUCC)
+	if (ret != U_SUCC)
 		return ret;
 	
 	//step 2: write page data
 	dev->flash->MakeEcc(dev, buf->data, buf->ecc);
 	ret = dev->ops->WritePageData(dev, block, page, buf->data, 0, dev->com.pgSize);
-	if(ret != U_SUCC)
+	if (ret != U_SUCC)
 		return ret;
 
 	//step 3: write spare again, make page valid
 	tag->valid = 0;
 #if defined(ENABLE_TAG_CHECKSUM) && ENABLE_TAG_CHECKSUM == 1
-	tag->checkSum = uffs_CalTagCheckSum(tag); //calculate right check sum
+	tag->checksum = uffs_CalTagCheckSum(tag); //calculate right check sum
 #endif
 	ret = dev->flash->MakePageValid(dev, block, page, tag);
-	if(ret != U_SUCC)
+	if (ret != U_SUCC)
 		return ret;
 
 	return U_SUCC;
@@ -310,13 +323,13 @@ URET uffs_WriteDataToNewPage(uffs_Device *dev,
 // * \note the new data and length should be set to buf before this function invoked
 // */
 //URET uffs_PageRecover(uffs_Device *dev, 
-//					  uffs_blockInfo *bc, 
+//					  uffs_BlockInfo *bc, 
 //					  int oldPage, 
 //					  int newPage, 
 //					  uffs_Buf *buf)
 //{
 //	uffs_Tags *oldTag, *newTag;
-//	uffs_pageSpare *newSpare;
+//	uffs_PageSpare *newSpare;
 //
 //	if(newPage < 0 || newPage >= dev->attr->pages_per_block) {
 //		uffs_Perror(UFFS_ERR_SERIOUS, PFX "new page number outof range!\n");
@@ -334,15 +347,15 @@ URET uffs_WriteDataToNewPage(uffs_Device *dev,
 //	newSpare->expired = 1; // make it expired firstly
 //
 //	newTag->fdn = oldTag->fdn;
-//	newTag->blockTimeStamp = oldTag->blockTimeStamp;
+//	newTag->block_ts = oldTag->block_ts;
 //	newTag->fsn = oldTag->fsn;
-//	newTag->pageID = oldTag->pageID;
+//	newTag->page_id = oldTag->page_id;
 //	newTag->dirty = 0;
-//	newTag->dataLength = buf->dataLen;
-//	newTag->checkSum = 0xff; //set check sum with 0xff first.
+//	newTag->data_len = buf->data_len;
+//	newTag->checksum = 0xff; //set check sum with 0xff first.
 //	newTag->valid = 1;
 //
-//	uffs_WriteDataToNewPage(dev, bc->blockNum, newPage, newTag, buf);
+//	uffs_WriteDataToNewPage(dev, bc->block, newPage, newTag, buf);
 //
 //	return U_SUCC;
 //}
@@ -357,11 +370,15 @@ u8 uffs_MakeSum8(void *p, int len)
 {
 	u8 ret = 0;
 	u8 *data = (u8 *)p;
-	if (!p) return 0;
-	while(len > 0) {
+
+	if (!p)
+		return 0;
+
+	while (len > 0) {
 		ret += *data++;
 		len--;
 	}
+
 	return ret;
 }
 
@@ -376,13 +393,17 @@ u16 uffs_MakeSum16(void *p, int len)
 	u8 ret_lo = 0;
 	u8 ret_hi = 0;
 	u8 *data = (u8 *)p;
-	if (!p) return 0;
-	while(len > 0) {
+
+	if (!p)
+		return 0;
+
+	while (len > 0) {
 		ret_lo += *data;
 		ret_hi ^= *data;
 		data++;
 		len--;
 	}
+
 	return (ret_hi << 8) | ret_lo;
 }
 
@@ -395,29 +416,29 @@ u16 uffs_MakeSum16(void *p, int len)
  * \param[in] fi file information
  * \note father, serial, bc must be provided before, and all information in fi should be filled well before.
  */
-URET uffs_CreateNewFile(uffs_Device *dev, u16 father, u16 serial, uffs_blockInfo *bc, uffs_fileInfo *fi)
+URET uffs_CreateNewFile(uffs_Device *dev, u16 father, u16 serial, uffs_BlockInfo *bc, uffs_FileInfo *fi)
 {
 	uffs_Tags *tag;
 	uffs_Buf *buf;
 
-	fi->createTime = fi->lastModify = uffs_GetCurDateTime();
+	fi->create_time = fi->last_modify = uffs_GetCurDateTime();
 
 	uffs_LoadBlockInfo(dev, bc, 0);
 
 	tag = &(bc->spares[0].tag);
 	tag->father = father;
 	tag->serial = serial;
-	tag->dataLength = sizeof(uffs_fileInfo);
+	tag->data_len = sizeof(uffs_FileInfo);
 	tag->dataSum = uffs_MakeSum16(fi->name, fi->name_len);
 
 	buf = uffs_BufGet(dev, father, serial, 0);
-	if(buf == NULL) {
+	if (buf == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"get buf fail.\n");
 		return U_FAIL;
 	}
 
-	memcpy(buf->data, fi, tag->dataLength);
-	buf->dataLen = tag->dataLength;
+	memcpy(buf->data, fi, tag->data_len);
+	buf->data_len = tag->data_len;
 
 	return uffs_BufPut(dev, buf);
 }
@@ -428,9 +449,9 @@ URET uffs_CreateNewFile(uffs_Device *dev, u16 father, u16 serial, uffs_blockInfo
  * \param[in] dev uffs device
  * \param[in] bc block info
  */
-int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_blockInfo *bc, u8 type)
+int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type)
 {
-	u16 pageID;
+	u16 page_id;
 	u16 i;
 	uffs_Tags *tag;
 	int size = 0;
@@ -442,16 +463,16 @@ int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_blockInfo *bc, u8 type)
 	uffs_LoadBlockInfo(dev, bc, lastPage);
 	tag = &(bc->spares[lastPage].tag);
 
-	if(type == UFFS_TYPE_FILE) {
-		if(tag->pageID == (lastPage - 1) &&
-			tag->dataLength == dev->com.pgDataSize) {
+	if (type == UFFS_TYPE_FILE) {
+		if(tag->page_id == (lastPage - 1) &&
+			tag->data_len == dev->com.pgDataSize) {
 			size = dev->com.pgDataSize * (dev->attr->pages_per_block - 1);
 			return size;
 		}
 	}
-	if(type == UFFS_TYPE_DATA) {
-		if(tag->pageID == lastPage &&
-			tag->dataLength == dev->com.pgDataSize) {
+	if (type == UFFS_TYPE_DATA) {
+		if(tag->page_id == lastPage &&
+			tag->data_len == dev->com.pgDataSize) {
 			size = dev->com.pgDataSize * dev->attr->pages_per_block;
 			return size;
 		}
@@ -460,22 +481,23 @@ int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_blockInfo *bc, u8 type)
 	// ok, it's not the full loaded file/data block, need to read all spares....
 	uffs_LoadBlockInfo(dev, bc, UFFS_ALL_PAGES);
 	tag = &(bc->spares[0].tag);
-	if(tag->type == UFFS_TYPE_FILE) {
-		pageID = 1; //In file header block, file data pageID from 1
+	if (tag->type == UFFS_TYPE_FILE) {
+		page_id = 1; //In file header block, file data page_id from 1
 		i = 1;		//search from page 1
 	}
 	else {
-		pageID = 0;	//in normal file data block, pageID from 0
+		page_id = 0;	//in normal file data block, page_id from 0
 		i = 0;		//in normal file data block, search from page 0
 	}
-	for(; i < dev->attr->pages_per_block; i++) {
+	for (; i < dev->attr->pages_per_block; i++) {
 		tag = &(bc->spares[i].tag);
-		if(pageID == tag->pageID) {
+		if (page_id == tag->page_id) {
 			page = uffs_FindBestPageInBlock(dev, bc, i);
-			size += bc->spares[page].tag.dataLength;
-			pageID++;
+			size += bc->spares[page].tag.data_len;
+			page_id++;
 		}
 	}
+
 	return size;
 }
 
@@ -484,18 +506,19 @@ int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_blockInfo *bc, u8 type)
  * \param[in] dev uffs device
  * \param[in] bc block info
  */
-int uffs_GetFreePagesCount(uffs_Device *dev, uffs_blockInfo *bc)
+int uffs_GetFreePagesCount(uffs_Device *dev, uffs_BlockInfo *bc)
 {
 	int count = 0;
 	int i;
 
-	for(i = dev->attr->pages_per_block - 1; i >= 0; i--) {
+	for (i = dev->attr->pages_per_block - 1; i >= 0; i--) {
 		uffs_LoadBlockInfo(dev, bc, i);
-		if(uffs_IsPageErased(dev, bc, (u16)i) == U_TRUE) {
+		if (uffs_IsPageErased(dev, bc, (u16)i) == U_TRUE) {
 			count++;
 		}
 		else break;
 	}
+
 	return count;
 }
 /** 
@@ -506,17 +529,17 @@ int uffs_GetFreePagesCount(uffs_Device *dev, uffs_blockInfo *bc)
  * \retval U_TRUE block is erased, ready to use
  * \retval U_FALSE block is dirty, maybe use by file
  */
-UBOOL uffs_IsPageErased(uffs_Device *dev, uffs_blockInfo *bc, u16 page)
+UBOOL uffs_IsPageErased(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 {
 	uffs_Tags *tag;
 
 	uffs_LoadBlockInfo(dev, bc, page);
 	tag = &(bc->spares[page].tag);
 
-	if(tag->dirty == TAG_CLEAR &&
+	if (tag->dirty == TAG_CLEAR &&
 		tag->valid == TAG_INVALID
 #if defined(ENABLE_TAG_CHECKSUM) && ENABLE_TAG_CHECKSUM == 1
-		&& tag->checkSum == 0xff
+		&& tag->checksum == 0xff
 #endif
 		) {
 		return U_TRUE;
@@ -526,13 +549,14 @@ UBOOL uffs_IsPageErased(uffs_Device *dev, uffs_blockInfo *bc, u16 page)
 }
 
 /** 
- * \brief Is this block the last block of file ? (no free pages, and full filled with full pageID)
+ * \brief Is this block the last block of file ? (no free pages, and full filled with full page_id)
  */
-UBOOL uffs_IsDataBlockReguFull(uffs_Device *dev, uffs_blockInfo *bc)
+UBOOL uffs_IsDataBlockReguFull(uffs_Device *dev, uffs_BlockInfo *bc)
 {
 	uffs_LoadBlockInfo(dev, bc, dev->attr->pages_per_block - 1);
-	if(bc->spares[dev->attr->pages_per_block - 1].tag.pageID == (dev->attr->pages_per_block - 1) &&
-		bc->spares[dev->attr->pages_per_block - 1].tag.dataLength == dev->com.pgDataSize) {
+
+	if (bc->spares[dev->attr->pages_per_block - 1].tag.page_id == (dev->attr->pages_per_block - 1) &&
+		bc->spares[dev->attr->pages_per_block - 1].tag.data_len == dev->com.pgDataSize) {
 		return U_TRUE;
 	}
 	return U_FALSE;
@@ -543,8 +567,8 @@ UBOOL uffs_IsDataBlockReguFull(uffs_Device *dev, uffs_blockInfo *bc)
  */
 int uffs_GetDeviceUsed(uffs_Device *dev)
 {
-	return (dev->par.end - dev->par.start + 1 - dev->tree.badCount
-				- dev->tree.erasedCount) * dev->attr->block_data_size;
+	return (dev->par.end - dev->par.start + 1 - dev->tree.bad_count
+				- dev->tree.erased_count) * dev->attr->block_data_size;
 }
 
 /** 
@@ -552,7 +576,7 @@ int uffs_GetDeviceUsed(uffs_Device *dev)
  */
 int uffs_GetDeviceFree(uffs_Device *dev)
 {
-	return dev->tree.erasedCount * dev->attr->block_data_size;
+	return dev->tree.erased_count * dev->attr->block_data_size;
 }
 
 /** 
@@ -572,13 +596,13 @@ void uffs_TransferToTag8(uffs_Tags *tag, uffs_Tags_8 *tag_8)
 	tag_8->dirty = tag->dirty;
 	tag_8->valid = tag->valid;
 	tag_8->type = tag->type;
-	tag_8->blockTimeStamp = tag->blockTimeStamp;
-	tag_8->pageID = tag->pageID;
+	tag_8->block_ts = tag->block_ts;
+	tag_8->page_id = tag->page_id;
 	tag_8->father = tag->father & 0xFF;
 	tag_8->serial = tag->serial & 0xFF;
-	tag_8->dataLength = tag->dataLength & 0xFF;
+	tag_8->data_len = tag->data_len & 0xFF;
 	tag_8->dataSum = tag->dataSum;
-	tag_8->blockStatus = tag->blockStatus;
+	tag_8->block_status = tag->block_status;
 }
 
 /** \brief transfer the small uffs_Tags_8 to standard uffs_Tags
@@ -590,11 +614,11 @@ void uffs_TransferFromTag8(uffs_Tags *tag, uffs_Tags_8 *tag_8)
 	tag->dirty = tag_8->dirty;
 	tag->valid = tag_8->valid;
 	tag->type = tag_8->type;
-	tag->blockTimeStamp = tag_8->blockTimeStamp;
-	tag->pageID = tag_8->pageID;
+	tag->block_ts = tag_8->block_ts;
+	tag->page_id = tag_8->page_id;
 	tag->father = tag_8->father;
 	tag->serial = tag_8->serial;
-	tag->dataLength = tag_8->dataLength;
+	tag->data_len = tag_8->data_len;
 	tag->dataSum = tag_8->dataSum;
-	tag->blockStatus = tag_8->blockStatus;
+	tag->block_status = tag_8->block_status;
 }

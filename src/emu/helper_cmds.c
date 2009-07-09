@@ -47,6 +47,7 @@
 
 #define PFX "cmd: "
 
+
 BOOL cmdFormat(const char *tail)
 {
 	URET ret;
@@ -150,7 +151,7 @@ static int CountObjectUnder(const char *dir)
 	ret = uffs_OpenFindObject(&find, dir);
 	if (ret == U_SUCC) {
 		ret = uffs_FindFirstObject(NULL, &find);
-		while(ret == U_SUCC) {
+		while (ret == U_SUCC) {
 			count++;
 			ret = uffs_FindNextObject(NULL, &find);
 		}
@@ -195,7 +196,7 @@ BOOL cmdLs(const char *tail)
 
 	uffs_Perror(UFFS_ERR_NORMAL, "------name----size----serial--\n");
 	ret = uffs_FindFirstObject(&info, &find);
-	while(ret == U_SUCC) {
+	while (ret == U_SUCC) {
 		uffs_Perror(UFFS_ERR_NORMAL, "%9s", info.info.name);
 		if (info.info.attr & FILE_ATTR_DIR) {
 			strcpy(buf, name);
@@ -239,9 +240,11 @@ BOOL cmdRen(const char *tail)
 	const char *oldname;
 	char *newname;
 
-	if (tail == NULL) return FALSE;
+	if (tail == NULL) 
+		return FALSE;
 	oldname = cli_getparam(tail, &newname);
-	if (newname == NULL) return FALSE;
+	if (newname == NULL)
+		return FALSE;
 	if (uffs_RenameObject(oldname, newname) == U_SUCC) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"Rename from '%s' to '%s' succ.\n", oldname, newname);
 	}
@@ -301,6 +304,7 @@ BOOL cmdSt(const char *tail)
 	uffs_BufInspect(dev);
 
 	uffs_PutDevice(dev);
+
 	return TRUE;
 
 }
@@ -316,9 +320,13 @@ BOOL cmdCp(const char *tail)
 	BOOL src_local = FALSE, des_local = FALSE;
 	FILE *fp1 = NULL, *fp2 = NULL;
 
-	if (!tail) return FALSE;
+	if (!tail) 
+		return FALSE;
+
 	src = cli_getparam(tail, &des);
-	if (!des) return FALSE;
+
+	if (!des)
+		return FALSE;
 
 	if (memcmp(src, "::", 2) == 0) {
 		src += 2;
@@ -330,7 +338,9 @@ BOOL cmdCp(const char *tail)
 	}
 	f1 = uffs_GetObject();
 	f2 = uffs_GetObject();
-	if (!f1 || !f2) goto fail_2;
+
+	if (!f1 || !f2) 
+		goto fail_2;
 	
 	if (src_local) {
 		if ((fp1 = fopen(src, "rb")) == NULL) {
@@ -365,7 +375,8 @@ BOOL cmdCp(const char *tail)
 		else {
 			len = uffs_ReadObject(f1, buf, sizeof(buf));
 		}
-		if (len == 0) break;
+		if (len == 0) 
+			break;
 		if (len < 0) {
 			uffs_Perror(UFFS_ERR_NORMAL, PFX"read file %s fail ?\n", src);
 			break;
@@ -387,8 +398,11 @@ BOOL cmdCp(const char *tail)
 fail_1:
 	uffs_CloseObject(f1);
 	uffs_CloseObject(f2);
-	if (fp1) fclose(fp1);
-	if (fp2) fclose(fp2);
+	if (fp1) 
+		fclose(fp1);
+	if (fp2)
+		fclose(fp2);
+
 fail_2:
 	if (f1) {
 		uffs_PutObject(f1);
@@ -407,11 +421,15 @@ BOOL cmdCat(const char *tail)
 	char buf[100];
 	int start = 0, size = 0, printed = 0, n, len;
 
-	if (!tail) return FALSE;
+	if (!tail) 
+		return FALSE;
+
 	name = cli_getparam(tail, &next);
 
 	obj = uffs_GetObject();
-	if (!obj) return FALSE;
+
+	if (!obj) 
+		return FALSE;
 
 	if (uffs_OpenObject(obj, name, UO_RDONLY, US_IREAD) == U_FAIL) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s\n", name);
@@ -430,7 +448,8 @@ BOOL cmdCat(const char *tail)
 
 	while (uffs_EndOfFile(obj) == 0) {
 		len = uffs_ReadObject(obj, buf, sizeof(buf) - 1);
-		if (len == 0) break;
+		if (len == 0) 
+			break;
 		if (len > 0) {
 			if (size == 0 || printed < size) {
 				n = (size == 0 ? len : (size - printed > len ? len : size - printed));
@@ -496,6 +515,7 @@ test_failed:
 
 test_exit:
 	uffs_PutObject(f);
+
 	return ret;
 }
 
@@ -551,7 +571,9 @@ test_failed:
 	uffs_CloseObject(f);
 
 test_exit:
-	if (f) uffs_PutObject(f);
+	if (f) 
+		uffs_PutObject(f);
+
 	return ret;
 }
 
@@ -586,7 +608,9 @@ test_failed:
 	uffs_CloseObject(f);
 
 test_exit:
-	if (f) uffs_PutObject(f);
+	if (f) 
+		uffs_PutObject(f);
+
 	return ret;
 }
 
@@ -759,7 +783,8 @@ BOOL cmdTest4(const char *tail)
 	f1 = uffs_GetObject();
 	f2 = uffs_GetObject();
 
-	if (f1 == NULL || f2 == NULL) goto fail_exit;
+	if (f1 == NULL || f2 == NULL)
+		goto fail_exit;
 
 	uffs_Perror(UFFS_ERR_NORMAL, "open /a ...\n");
 	if (uffs_OpenObject(f1, "/a", UO_RDWR | UO_CREATE, US_IWRITE) != U_SUCC) {
@@ -786,8 +811,10 @@ BOOL cmdTest4(const char *tail)
 	uffs_CloseObject(f2);
 
 fail_exit:
-	if (f1) uffs_PutObject(f1);
-	if (f2) uffs_PutObject(f2);
+	if (f1)
+		uffs_PutObject(f1);
+	if (f2)
+		uffs_PutObject(f2);
 
 	return TRUE;
 }
@@ -796,10 +823,12 @@ BOOL cmdMount(const char *tail)
 {
 	uffs_mountTable *tab = uffs_GetMountTable();
 	tail = tail;
+
 	while (tab) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX" %s : (%d) ~ (%d)\n", tab->mountPoint, tab->startBlock, tab->endBlock);
 		tab = tab->next;
 	}
+
 	return TRUE;
 }
 

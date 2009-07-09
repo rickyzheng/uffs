@@ -53,15 +53,25 @@ static char str_buf[128];
 const char * cli_getparam(const char *tail, char **next)
 {
 	char *p;
-	if (tail == NULL) return NULL;
+
+	if (tail == NULL) 
+		return NULL;
+
 	strcpy(str_buf, tail);
 	p = str_buf;
-	while(*tail != ' ' && *tail != 0) { tail++; p++; }
+
+	while (*tail != ' ' && *tail != 0) {
+		tail++; p++; 
+	}
+
 	if (*tail == ' ') {
 		*p = 0;
-		while(*tail == ' ') tail++;
+		while(*tail == ' ') 
+			tail++;
 	}
-	if(next) *next = (char *)(*tail ? tail : NULL);
+
+	if(next) 
+		*next = (char *)(*tail ? tail : NULL);
 	
 	return str_buf;
 }
@@ -85,8 +95,11 @@ static struct cli_commandset default_cmdset[] =
 
 static BOOL match_cmd(const char *src, int start, int end, const char *des)
 {
-	while (src[start] == ' ' && start < end) start++;
-	while (src[end] == ' ' && start < end) end--;
+	while (src[start] == ' ' && start < end) 
+		start++;
+
+	while (src[end] == ' ' && start < end) 
+		end--;
 	
 	if ((int)strlen(des) == (end - start + 1)) {
 		if (memcmp(src + start, des, end - start + 1) == 0) {
@@ -102,9 +115,12 @@ static BOOL check_cmd(const char *cmds, const char *cmd)
 	int start, end;
 
 	for (start = end = 0; cmds[end] != 0 && cmds[end] != '|'; end++);
+
 	while (end > start) {
-		if (match_cmd(cmds, start, end - 1, cmd) == TRUE) return TRUE;
-		if (cmds[end] == 0) break;
+		if (match_cmd(cmds, start, end - 1, cmd) == TRUE) 
+			return TRUE;
+		if (cmds[end] == 0) 
+			break;
 		if (cmds[end] == '|') {
 			end++;
 			for (start = end; cmds[end] != 0 && cmds[end] != '|'; end++);
@@ -120,7 +136,8 @@ static int cmdFind(const char *cmd)
 
     for (icmd = 0; cmdset[icmd].cmd != NULL; icmd++) {
 		//printf("cmdFind: Check cmd: %s with %s\n", cmd, cmdset[icmd].cmd);
-        if (check_cmd(cmdset[icmd].cmd, cmd) == TRUE) return icmd;
+        if (check_cmd(cmdset[icmd].cmd, cmd) == TRUE)
+			return icmd;
     }
     return -1;
 }
@@ -134,9 +151,9 @@ static BOOL cmdHelp(const char *tail)
         printf("Available commands:\n");
         for (icmd = 0; cmdset[icmd].cmd != NULL; icmd++) {
             int i;
-
             printf("%s", cmdset[icmd].cmd);
             for (i = strlen(cmdset[icmd].cmd); i%10; i++,printf(" "));
+
             //if ((icmd & 7) == 7 || cmdset[icmd+1].cmd == NULL) printf("\n");
         }
 		printf("\n");
@@ -151,6 +168,7 @@ static BOOL cmdHelp(const char *tail)
             printf("Usage: %s %s\n", cmdset[icmd].cmd, cmdset[icmd].args);
         }
     }
+
     return TRUE;
 }
 
@@ -164,6 +182,7 @@ void cliInterpret(const char *line)
 
     psep = strchr(line, ' ');
     cmd[0] = 0;
+
     if (psep == NULL) {
         strncat(cmd, line, sizeof(cmd) - 1);
         tail = NULL;
@@ -171,10 +190,12 @@ void cliInterpret(const char *line)
     else {
         strncat(cmd, line, psep - line);
         for (tail = psep; *tail == ' '; ++tail);
-        if (*tail == 0) tail = NULL;
+        if (*tail == 0) 
+			tail = NULL;
     }
 
     icmd = cmdFind(cmd);
+
     if (icmd < 0) {
         printf("Unknown command - try help\n");
         return;

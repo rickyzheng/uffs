@@ -37,6 +37,7 @@
  */
 
 #include "uffs/uffs_version.h"
+#include "uffs/uffs_config.h"
 
 #include <stdio.h>
 #define PFX "ver: "

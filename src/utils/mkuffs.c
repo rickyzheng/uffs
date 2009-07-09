@@ -94,13 +94,15 @@ BOOL cmdMeminfo(const char *tail)
 {
 	const char *mount = "/";
 	int i;
-	HEAP_MM *mm;
+	HeapMm *mm;
 	int count = 0;
 	int blocks = 0;
 
 	uffs_Device *dev;
 	
-	if (tail) mount = cli_getparam(tail, NULL);
+	if (tail) 
+		mount = cli_getparam(tail, NULL);
+
 	dev = uffs_GetDevice(mount);
 
 	if (!dev) {
@@ -176,7 +178,7 @@ static int init_uffs_fs(void)
 	setup_emu_private(&emu_private);
 	emu_storage.private = &emu_private;
 	
-	while(mtbl->dev) {
+	while (mtbl->dev) {
 		mtbl->dev->attr = &emu_storage;
 #ifdef USE_NATIVE_MEMORY_ALLOCATOR
 		uffs_SetupNativeMemoryAllocator(&mtbl->dev->mem);
@@ -209,22 +211,33 @@ static int parse_mount_point(char *arg, int m_idx)
 	char *p = arg;
 	struct uffs_mountTableSt *mtbl = &(conf_mounts[m_idx]);
 
-	while(*p && *p != ',' && *p != ' ' && *p != '\t') p++;
-	if (*p == 0 || p == arg) return -1;
+	while(*p && *p != ',' && *p != ' ' && *p != '\t')
+		p++;
+
+	if (*p == 0 || p == arg) 
+		return -1;
+
 	mtbl->mountPoint = &(mount_point_name[m_idx][0]);
 	memcpy((char *)mtbl->mountPoint, arg, p - arg);
 	((char *)(mtbl->mountPoint))[p - arg] = 0;
 
 	p++;
 	arg = p;
-	while(*p && *p != ',' && *p != ' ' && *p != '\t') p++;
+	while(*p && *p != ',' && *p != ' ' && *p != '\t')
+		p++;
+
 	if (p != arg) {
-		if (sscanf(arg, "%i", &start) < 1) return -1;
+		if (sscanf(arg, "%i", &start) < 1) 
+			return -1;
 		p++;
 		arg = p;
-		while(*p && *p != ',' && *p != ' ' && *p != '\t') p++;
+
+		while(*p && *p != ',' && *p != ' ' && *p != '\t')
+			p++;
+
 		if (p != arg) {
-			if (sscanf(arg, "%i", &end) < 1) return -1;
+			if (sscanf(arg, "%i", &end) < 1)
+				return -1;
 		}
 	}
 	mtbl->startBlock = start;
@@ -244,94 +257,98 @@ static int parse_options(int argc, char *argv[])
     for (iarg = 1; iarg < argc && !usage; iarg++) {
         const char *arg = argv[iarg];
         
-        if (arg[0] == '-')
-        {
-            if (!strcmp(arg, "-h") || !strcmp(arg, "--help"))
-            {
+        if (arg[0] == '-') {
+            if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
                 usage++;
             }
-            else if (!strcmp(arg, "-f") || !strcmp(arg, "--file"))
-            {
-                if (++iarg >= argc) usage++;
+            else if (!strcmp(arg, "-f") || !strcmp(arg, "--file")) {
+                if (++iarg >= argc)
+					usage++;
 				else {
 					strcpy(em_file, argv[iarg]);
 					conf_emu_filename = (const char *)em_file;
 				}
             }
-            else if (!strcmp(arg, "-c") || !strcmp(arg, "--command-line"))
-            {
+            else if (!strcmp(arg, "-c") || !strcmp(arg, "--command-line")) {
 				conf_command_line_mode = 1;
             }
-            else if (!strcmp(arg, "-p") || !strcmp(arg, "--page-size"))
-            {
-                if (++iarg >= argc) usage++;
-                else if (sscanf(argv[iarg], "%i", &conf_pages_data_size) < 1) usage++;
-				if (conf_pages_data_size <= 0 || (conf_pages_data_size % 512)) usage++;
+            else if (!strcmp(arg, "-p") || !strcmp(arg, "--page-size")) {
+                if (++iarg >= argc) 
+					usage++;
+                else if (sscanf(argv[iarg], "%i", &conf_pages_data_size) < 1)
+					usage++;
+				if (conf_pages_data_size <= 0 || (conf_pages_data_size % 512))
+					usage++;
             }
-            else if (!strcmp(arg, "-s") || !strcmp(arg, "--spare-size"))
-            {
-                if (++iarg >= argc) usage++;
-                else if (sscanf(argv[iarg], "%i", &conf_pages_spare_size) < 1) usage++;
-				if (conf_pages_spare_size < 16 || (conf_pages_spare_size % 4)) usage++;
+            else if (!strcmp(arg, "-s") || !strcmp(arg, "--spare-size")) {
+                if (++iarg >= argc) 
+					usage++;
+                else if (sscanf(argv[iarg], "%i", &conf_pages_spare_size) < 1) 
+					usage++;
+				if (conf_pages_spare_size < 16 || (conf_pages_spare_size % 4))
+					usage++;
             }
-            else if (!strcmp(arg, "-b") || !strcmp(arg, "--block-pages"))
-            {
-                if (++iarg >= argc) usage++;
-                else if (sscanf(argv[iarg], "%i", &conf_pages_per_block) < 1) usage++;
-				if (conf_pages_per_block < 2) usage++;
+            else if (!strcmp(arg, "-b") || !strcmp(arg, "--block-pages")) {
+                if (++iarg >= argc)
+					usage++;
+                else if (sscanf(argv[iarg], "%i", &conf_pages_per_block) < 1)
+					usage++;
+				if (conf_pages_per_block < 2)
+					usage++;
             }
-            else if (!strcmp(arg, "-t") || !strcmp(arg, "--total-blocks"))
-            {
-                if (++iarg >= argc) usage++;
-                else if (sscanf(argv[iarg], "%i", &conf_total_blocks) < 1) usage++;
-				if (conf_total_blocks < 2) usage++;
+            else if (!strcmp(arg, "-t") || !strcmp(arg, "--total-blocks")) {
+                if (++iarg >= argc) 
+					usage++;
+                else if (sscanf(argv[iarg], "%i", &conf_total_blocks) < 1)
+					usage++;
+				if (conf_total_blocks < 2)
+					usage++;
             }
 			else if (!strcmp(arg, "-i") || !strcmp(arg, "--id-man"))
 			{
 				if (++iarg > argc) usage++;
 				else if (sscanf(argv[iarg], "%x", &conf_sim_manid) < 1) usage++;
 			}
-            else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose"))
-            {
+            else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose")) {
 				conf_verbose_mode = 1;
             }
-            else if (!strcmp(arg, "-m") || !strcmp(arg, "--mount"))
-            {
-				if (++iarg > argc) usage++;
-				else if (parse_mount_point(argv[iarg], m_idx) < 0) usage++;
+            else if (!strcmp(arg, "-m") || !strcmp(arg, "--mount")) {
+				if (++iarg > argc)
+					usage++;
+				else if (parse_mount_point(argv[iarg], m_idx) < 0)
+					usage++;
 				m_idx++;
             }
-			else if (!strcmp(arg, "-e") || !strcmp(arg, "--exec"))
-			{
-				if (++iarg > argc) usage++;
+			else if (!strcmp(arg, "-e") || !strcmp(arg, "--exec")) {
+				if (++iarg > argc)
+					usage++;
 				else {
 					strcpy(script_file_name, argv[iarg]);
 					conf_exec_script = 1;
 				}
 			}
 #ifdef USE_NATIVE_MEMORY_ALLOCATOR			
-			else if (!strcmp(arg, "-a") || !strcmp(arg, "--alloc"))
-			{
-				if (++iarg > argc) usage++;
-				else if (sscanf(argv[iarg], "%d", &conf_memory_pool_size_kb) < 1) usage++;
-				if (conf_memory_pool_size_kb <= 0) usage++;
+			else if (!strcmp(arg, "-a") || !strcmp(arg, "--alloc")) {
+				if (++iarg > argc) 
+					usage++;
+				else if (sscanf(argv[iarg], "%d", &conf_memory_pool_size_kb) < 1)
+					usage++;
+				if (conf_memory_pool_size_kb <= 0) 
+					usage++;
 			}
 #endif
-            else
-            {
+            else {
                 printf("Unknown option: %s, try %s --help\n", arg, argv[0]);
 				return -1;
             }
         }
-        else
-        {
+        else {
             printf("Unexpected parameter: %s, try %s --help\n", arg, argv[0]);
 			return -1;
         }
     }
     
-    if (usage)
-    {
+    if (usage) {
         printf("Usage: %s [options]\n", argv[0]);
         printf("  -h  --help                        show usage\n");
         printf("  -c  --command-line                command line mode\n");
@@ -365,7 +382,7 @@ static void print_mount_points(void)
 	struct uffs_mountTableSt *mount;
 
 	mount = &(conf_mounts[0]);
-	while(mount->dev) {
+	while (mount->dev) {
 		printf ("Mount point: %s, start: %d, end: %d\n", mount->mountPoint, mount->startBlock, mount->endBlock);
 		mount++;
 	}
@@ -391,11 +408,13 @@ static void exec_script()
 		memset(line_buf, 0, sizeof(line_buf));
 		while (fgets(line_buf, sizeof(line_buf) - 1, fp)) {
 			p = line_buf + sizeof(line_buf) - 1;
-			while (*p == 0 && p > line_buf) p--;
+			while (*p == 0 && p > line_buf)
+				p--;
 			while ((*p == '\r' || *p == '\n') && p > line_buf) {
 				*p-- = 0;
 			}
-			if (conf_verbose_mode) printf("%s\r\n", line_buf);
+			if (conf_verbose_mode) 
+				printf("%s\r\n", line_buf);
 			cliInterpret(line_buf);
 			memset(line_buf, 0, sizeof(line_buf));
 		}
@@ -417,10 +436,10 @@ int main(int argc, char *argv[])
 		print_params();
 		#if 0
 		printf("TreeNode size: %d\n", sizeof(TreeNode));
-		printf("struct blocklistSt: %d\n", sizeof(struct blocklistSt));
-		printf("struct dirhSt: %d\n", sizeof(struct dirhSt));
-		printf("struct filehSt: %d\n", sizeof(struct filehSt));
-		printf("struct fdataSt: %d\n", sizeof(struct fdataSt));
+		printf("struct BlockListSt: %d\n", sizeof(struct BlockListSt));
+		printf("struct DirhSt: %d\n", sizeof(struct DirhSt));
+		printf("struct FilehSt: %d\n", sizeof(struct FilehSt));
+		printf("struct FdataSt: %d\n", sizeof(struct FdataSt));
 		#endif
 	}
 
@@ -455,6 +474,7 @@ int main(int argc, char *argv[])
 	}
 
 	release_uffs_fs();
+
 	return 0;
 }
 

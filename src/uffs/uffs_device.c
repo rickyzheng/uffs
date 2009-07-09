@@ -53,14 +53,15 @@ int uffs_RegisterMountTable(uffs_mountTable *mtab)
 {
 	uffs_mountTable *work = g_mtabHead;
 
-	if (mtab == NULL) return -1;
+	if (mtab == NULL) 
+		return -1;
 
 	if (work == NULL) {
 		g_mtabHead = mtab;
 		return 0;
 	}
 
-	while(work) {
+	while (work) {
 		if (mtab == work) {
 			/* already registered */
 			return 0;
@@ -79,31 +80,35 @@ int uffs_RegisterMountTable(uffs_mountTable *mtab)
 uffs_Device * uffs_GetDevice(const char *mountPoint)
 {
 	struct uffs_mountTableSt *devTab = uffs_GetMountTable();
-	while(devTab) {
-		if(strcmp(mountPoint, devTab->mountPoint) == 0) {
-			devTab->dev->refCount++;
+
+	while (devTab) {
+		if (strcmp(mountPoint, devTab->mountPoint) == 0) {
+			devTab->dev->ref_count++;
 			return devTab->dev;
 		}
 		devTab = devTab->next;
 	}
+
 	return NULL;
 }
 
 const char * uffs_GetDeviceMountPoint(uffs_Device *dev)
 {
 	struct uffs_mountTableSt * devTab = uffs_GetMountTable();
-	while(devTab) {
-		if(devTab->dev == dev) {
+
+	while (devTab) {
+		if (devTab->dev == dev) {
 			return devTab->mountPoint;
 		}
 		devTab = devTab->next;
 	}
+
 	return NULL;	
 }
 
 void uffs_PutDevice(uffs_Device *dev)
 {
-	dev->refCount--;
+	dev->ref_count--;
 }
 
 URET uffs_DeviceInitLock(uffs_Device *dev)
@@ -121,6 +126,7 @@ URET uffs_DeviceReleaseLock(uffs_Device *dev)
 		uffs_SemDelete(dev->lock.sem);
 		dev->lock.sem = 0;
 	}
+
 	return U_SUCC;
 }
 

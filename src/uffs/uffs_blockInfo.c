@@ -31,12 +31,12 @@
 */
 
 /**
- * \file uffs_blockInfo.c
+ * \file uffs_BlockInfo.c
  * \brief block information cache system manipulations
  * \author Ricky Zheng, created 10th May, 2005
  */
 
-#include "uffs/uffs_blockInfo.h"
+#include "uffs/uffs_BlockInfo.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_os.h"
 
@@ -44,7 +44,7 @@
 
 #define PFX "bc  : "
 
-#define UFFS_CLONE_BLOCK_INFO_NEXT ((uffs_blockInfo *)(-2))
+#define UFFS_CLONE_BLOCK_INFO_NEXT ((uffs_BlockInfo *)(-2))
 
 /** \brief before block info cache is enable, this function should be called to initialize it
  * \param[in] dev uffs device
@@ -55,20 +55,20 @@
  */
 URET uffs_InitBlockInfoCache(uffs_Device *dev, int maxCachedBlocks)
 {
-	uffs_blockInfo * blockInfos = NULL;
-	uffs_pageSpare * pageSpares = NULL;
+	uffs_BlockInfo * blockInfos = NULL;
+	uffs_PageSpare * pageSpares = NULL;
 	void * buf = NULL;
-	uffs_blockInfo *work = NULL;
+	uffs_BlockInfo *work = NULL;
 	int size, i, j;
 
-	if(dev->bc.head != NULL) {
+	if (dev->bc.head != NULL) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"block info cache has been inited already, now release it first.\n");
 		uffs_ReleaseBlockInfoCache(dev);
 	}
 
 	size = ( 
-			sizeof(uffs_blockInfo) +
-			sizeof(uffs_pageSpare) * dev->attr->pages_per_block
+			sizeof(uffs_BlockInfo) +
+			sizeof(uffs_PageSpare) * dev->attr->pages_per_block
 			) * maxCachedBlocks;
 
 	if (dev->mem.blockinfo_buffer_size == 0) {
@@ -92,42 +92,42 @@ URET uffs_InitBlockInfoCache(uffs_Device *dev, int maxCachedBlocks)
 	dev->bc.maxBlockCached = maxCachedBlocks;
 
 	size = 0;
-	blockInfos = (uffs_blockInfo *)buf;
-	size += sizeof(uffs_blockInfo) * maxCachedBlocks;
+	blockInfos = (uffs_BlockInfo *)buf;
+	size += sizeof(uffs_BlockInfo) * maxCachedBlocks;
 
-	pageSpares = (uffs_pageSpare *)((int)buf + size);
+	pageSpares = (uffs_PageSpare *)((int)buf + size);
 
 	//initialize block info
 	work = &(blockInfos[0]);
 	dev->bc.head = work;
-	work->refCount = 0;
+	work->ref_count = 0;
 	work->prev = NULL;
 	work->next = &(blockInfos[1]);
-	work->blockNum = UFFS_INVALID_BLOCK;
+	work->block = UFFS_INVALID_BLOCK;
 
-	for( i = 0; i < maxCachedBlocks - 2; i++) {
+	for (i = 0; i < maxCachedBlocks - 2; i++) {
 		work = &(blockInfos[i+1]);
 		work->prev = &(blockInfos[i]);
 		work->next = &(blockInfos[i+2]);
-		work->refCount = 0;
-		work->blockNum = UFFS_INVALID_BLOCK;
+		work->ref_count = 0;
+		work->block = UFFS_INVALID_BLOCK;
 	}
 	//the last node
 	work = &(blockInfos[i+1]);
 	work->prev = &(blockInfos[i]);
 	work->next = NULL;
-	work->blockNum = UFFS_INVALID_BLOCK;
-	work->refCount = 0;
+	work->block = UFFS_INVALID_BLOCK;
+	work->ref_count = 0;
 	dev->bc.tail = work;
 
 	//initialize spares
 	work = dev->bc.head;
-	for( i = 0; i < maxCachedBlocks; i++) {
+	for (i = 0; i < maxCachedBlocks; i++) {
 		work->spares = &(pageSpares[i*dev->attr->pages_per_block]);
-		for(j = 0; j < dev->attr->pages_per_block; j++) {
+		for (j = 0; j < dev->attr->pages_per_block; j++) {
 			work->spares[j].expired = 1;
 		}
-		work->expiredCount = dev->attr->pages_per_block;
+		work->expired_count = dev->attr->pages_per_block;
 		work = work->next;
 	}
 	return U_SUCC;
@@ -140,11 +140,11 @@ URET uffs_InitBlockInfoCache(uffs_Device *dev, int maxCachedBlocks)
  */
 URET uffs_ReleaseBlockInfoCache(uffs_Device *dev)
 {
-	uffs_blockInfo *work;
+	uffs_BlockInfo *work;
 
-	if(dev->bc.head) {
-		for(work = dev->bc.head; work != NULL; work = work->next) {
-			if(work->refCount != 0) {
+	if (dev->bc.head) {
+		for (work = dev->bc.head; work != NULL; work = work->next) {
+			if (work->ref_count != 0) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX "There have refed block info cache, release cache fail.\n");
 				return U_FAIL;
 			}
@@ -156,22 +156,26 @@ URET uffs_ReleaseBlockInfoCache(uffs_Device *dev)
 
 	dev->bc.head = dev->bc.tail = NULL;
 	dev->bc.internalBufHead = NULL;
+
 	return U_SUCC;
 }
 
-static void _BreakBcFromList(uffs_Device *dev, uffs_blockInfo *bc)
+static void _BreakBcFromList(uffs_Device *dev, uffs_BlockInfo *bc)
 {
-	if(bc->prev) {
+	if (bc->prev)
 		bc->prev->next = bc->next;
-	}
-	if(bc->next) {
+
+	if (bc->next)
 		bc->next->prev = bc->prev;
-	}
-	if(dev->bc.head == bc) dev->bc.head = bc->next;
-	if(dev->bc.tail == bc) dev->bc.tail = bc->prev;
+
+	if (dev->bc.head == bc)
+		dev->bc.head = bc->next;
+
+	if (dev->bc.tail == bc)
+		dev->bc.tail = bc->prev;
 }
 
-static void _InsertToBcListTail(uffs_Device *dev, uffs_blockInfo *bc)
+static void _InsertToBcListTail(uffs_Device *dev, uffs_BlockInfo *bc)
 {
 	bc->next = NULL;
 	bc->prev = dev->bc.tail;
@@ -179,29 +183,29 @@ static void _InsertToBcListTail(uffs_Device *dev, uffs_blockInfo *bc)
 	dev->bc.tail = bc;
 }
 
-static void _MoveBcToTail(uffs_Device *dev, uffs_blockInfo *bc)
+static void _MoveBcToTail(uffs_Device *dev, uffs_BlockInfo *bc)
 {
 	_BreakBcFromList(dev, bc);
 	_InsertToBcListTail(dev, bc);
 }
 
 /**
- * \brief check spare data, set .checkOk value.
+ * \brief check spare data, set .check_ok value.
  * \param[in] dev uffs device
  * \param[in,out] spare page spare
  */
-void uffs_CheckPageSpare(uffs_Device *dev, uffs_pageSpare *spare)
+void uffs_CheckPageSpare(uffs_Device *dev, uffs_PageSpare *spare)
 {
 #if defined(ENABLE_TAG_CHECKSUM) && ENABLE_TAG_CHECKSUM == 1
-	if(uffs_CalTagCheckSum(&(spare->tag)) == spare->tag.checkSum) {
-		spare->checkOk = 1;
+	if (uffs_CalTagCheckSum(&(spare->tag)) == spare->tag.checksum) {
+		spare->check_ok = 1;
 	}
 	else {
-		spare->checkOk = 0;
+		spare->check_ok = 0;
 	}
 #else
 	dev = dev;
-	spare->checkOk = 1;
+	spare->check_ok = 1;
 #endif
 }
 
@@ -214,41 +218,42 @@ void uffs_CheckPageSpare(uffs_Device *dev, uffs_pageSpare *spare)
  * \return load result
  * \retval U_SUCC successful
  * \retval U_FAIL fail to load
- * \note work->blockNum must be set before load block info
+ * \note work->block must be set before load block info
  */
-URET uffs_LoadBlockInfo(uffs_Device *dev, uffs_blockInfo *work, int page)
+URET uffs_LoadBlockInfo(uffs_Device *dev, uffs_BlockInfo *work, int page)
 {
 	int i;
-	uffs_pageSpare *spare;
+	uffs_PageSpare *spare;
 
-	if(page == UFFS_ALL_PAGES) {
-		for(i = 0; i < dev->attr->pages_per_block; i++) {
+	if (page == UFFS_ALL_PAGES) {
+		for (i = 0; i < dev->attr->pages_per_block; i++) {
 			spare = &(work->spares[i]);
-			if(spare->expired == 0) continue;
+			if (spare->expired == 0)
+				continue;
 			
-			if( dev->flash->LoadPageSpare(dev, work->blockNum, i, &(spare->tag)) == U_FAIL ) {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX "load block %d page %d spare fail.", work->blockNum, i);
+			if (dev->flash->LoadPageSpare(dev, work->block, i, &(spare->tag)) == U_FAIL ) {
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX "load block %d page %d spare fail.", work->block, i);
 				return U_FAIL;
 			}
 			uffs_CheckPageSpare(dev, spare);
 			spare->expired = 0;
-			work->expiredCount--;
+			work->expired_count--;
 		}
 	}
 	else {
-		if(page < 0 || page >= dev->attr->pages_per_block) {
+		if (page < 0 || page >= dev->attr->pages_per_block) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX "page out of range !\n");
 			return U_FAIL;
 		}
 		spare = &(work->spares[page]);
-		if(spare->expired != 0) {
-			if( dev->flash->LoadPageSpare(dev, work->blockNum, page, &(spare->tag)) == U_FAIL ) {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX "load block %d page %d spare fail.", work->blockNum, page);
+		if (spare->expired != 0) {
+			if (dev->flash->LoadPageSpare(dev, work->block, page, &(spare->tag)) == U_FAIL ) {
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX "load block %d page %d spare fail.", work->block, page);
 				return U_FAIL;
 			}
 			uffs_CheckPageSpare(dev, spare);
 			spare->expired = 0;
-			work->expiredCount--;
+			work->expired_count--;
 		}
 	}
 	return U_SUCC;
@@ -263,14 +268,14 @@ URET uffs_LoadBlockInfo(uffs_Device *dev, uffs_blockInfo *work, int page)
  * \retval NULL cache not found
  * \retval non-NULL found cache pointer
  */
-uffs_blockInfo * uffs_FindBlockInfoInCache(uffs_Device *dev, int block)
+uffs_BlockInfo * uffs_FindBlockInfoInCache(uffs_Device *dev, int block)
 {
-	uffs_blockInfo *work;
+	uffs_BlockInfo *work;
 	
 	//search cached block
-	for(work = dev->bc.head; work != NULL; work = work->next) {
-		if(work->blockNum == block) {
-			work->refCount++;
+	for (work = dev->bc.head; work != NULL; work = work->next) {
+		if (work->block == block) {
+			work->ref_count++;
 			return work;
 		}
 	}
@@ -288,34 +293,34 @@ uffs_blockInfo * uffs_FindBlockInfoInCache(uffs_Device *dev, int block)
  * \retval NULL caches used out
  * \retval non-NULL buffer pointer of given block
  */
-uffs_blockInfo * uffs_GetBlockInfo(uffs_Device *dev, int block)
+uffs_BlockInfo * uffs_GetBlockInfo(uffs_Device *dev, int block)
 {
-	uffs_blockInfo *work;
+	uffs_BlockInfo *work;
 	int i;
 
 	//search cached block
-	if((work = uffs_FindBlockInfoInCache(dev, block)) != NULL) {
+	if ((work = uffs_FindBlockInfoInCache(dev, block)) != NULL) {
 		_MoveBcToTail(dev, work);
 		return work;
 	}
 
 	//can't find block from cache, need to find a free(unlocked) cache
-	for(work = dev->bc.head; work != NULL; work = work->next) {
-		if(work->refCount == 0) break;
+	for (work = dev->bc.head; work != NULL; work = work->next) {
+		if(work->ref_count == 0) break;
 	}
-	if(work == NULL) {
+	if (work == NULL) {
 		//caches used out !
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX "insufficient block info cache\n");
 		return NULL;
 	}
 
-	work->blockNum = block;
-	work->expiredCount = dev->attr->pages_per_block;
-	for(i = 0; i < dev->attr->pages_per_block; i++) {
+	work->block = block;
+	work->expired_count = dev->attr->pages_per_block;
+	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		work->spares[i].expired = 1;
 	}
 
-	work->refCount = 1;
+	work->ref_count = 1;
 
 	_MoveBcToTail(dev, work);
 
@@ -327,14 +332,14 @@ uffs_blockInfo * uffs_GetBlockInfo(uffs_Device *dev, int block)
  * \param[in] dev uffs device
  * \param[in] p pointer of block info buffer
  */
-void uffs_PutBlockInfo(uffs_Device *dev, uffs_blockInfo *p)
+void uffs_PutBlockInfo(uffs_Device *dev, uffs_BlockInfo *p)
 {
 	dev = dev;
-	if(p->refCount == 0) {
+	if (p->ref_count == 0) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX "Put an unused block info cache back ?\n");
 	}
 	else {
-		p->refCount--;
+		p->ref_count--;
 	}
 }
 
@@ -345,26 +350,26 @@ void uffs_PutBlockInfo(uffs_Device *dev, uffs_blockInfo *p)
  * \param[in] p pointer of block info buffer
  * \param[in] page given page number. if #UFFS_ALL_PAGES presented, all pages in the block should be made expired.
  */
-void uffs_ExpireBlockInfo(uffs_Device *dev, uffs_blockInfo *p, int page)
+void uffs_ExpireBlockInfo(uffs_Device *dev, uffs_BlockInfo *p, int page)
 {
 	int i;
-	uffs_pageSpare *spare;
+	uffs_PageSpare *spare;
 
-	if(page == UFFS_ALL_PAGES) {
-		for(i = 0; i < dev->attr->pages_per_block; i++) {
+	if (page == UFFS_ALL_PAGES) {
+		for (i = 0; i < dev->attr->pages_per_block; i++) {
 			spare = &(p->spares[i]);
-			if(spare->expired == 0) {
+			if (spare->expired == 0) {
 				spare->expired = 1;
-				p->expiredCount++;
+				p->expired_count++;
 			}
 		}
 	}
 	else {
-		if(page >= 0 && page < dev->attr->pages_per_block) {
+		if (page >= 0 && page < dev->attr->pages_per_block) {
 			spare = &(p->spares[page]);
-			if(spare->expired == 0) {
+			if (spare->expired == 0) {
 				spare->expired = 1;
-				p->expiredCount++;
+				p->expired_count++;
 			}
 		}
 	}
@@ -375,11 +380,12 @@ void uffs_ExpireBlockInfo(uffs_Device *dev, uffs_blockInfo *p, int page)
  */
 UBOOL uffs_IsAllBlockInfoFree(uffs_Device *dev)
 {
-	uffs_blockInfo *work;
+	uffs_BlockInfo *work;
 
 	work = dev->bc.head;
-	while(work) {
-		if(work->refCount != 0) return U_FALSE;
+	while (work) {
+		if (work->ref_count != 0)
+			return U_FALSE;
 		work = work->next;
 	}
 
@@ -388,10 +394,10 @@ UBOOL uffs_IsAllBlockInfoFree(uffs_Device *dev)
 
 void uffs_ExpireAllBlockInfo(uffs_Device *dev)
 {
-	uffs_blockInfo *bc;
+	uffs_BlockInfo *bc;
 
 	bc = dev->bc.head;
-	while(bc) {
+	while (bc) {
 		uffs_ExpireBlockInfo(dev, bc, UFFS_ALL_PAGES);
 		bc = bc->next;
 	}

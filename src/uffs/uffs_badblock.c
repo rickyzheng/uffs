@@ -65,7 +65,7 @@ URET uffs_CheckBadBlock(uffs_Device *dev, uffs_Buf *buf, int block)
 
 	dev->flash->MakeEcc(dev, buf->data, ecc);
 	ret = dev->flash->EccCollect(dev, buf->data, buf->ecc, ecc);
-	if(ret > 0) {
+	if (ret > 0) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"bad block(%d) found but corrected by ecc!\n", block);
 
 		if (dev->bad.block == block) {
@@ -84,14 +84,14 @@ URET uffs_CheckBadBlock(uffs_Device *dev, uffs_Buf *buf, int block)
 		dev->bad.block = block;
 		return U_SUCC;
 	}
-	else if(ret < 0) {
+	else if (ret < 0) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"bad block(%d) found and can't be corrected by ecc!\n", block);
 		if (dev->bad.block == block) {
 			uffs_Perror(UFFS_ERR_NORMAL, PFX"The bad block %d has been reported before.\n", block);
 			return U_FAIL;
 		}
 
-		if(dev->bad.block != UFFS_INVALID_BLOCK) {
+		if (dev->bad.block != UFFS_INVALID_BLOCK) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"uffs can't handle more than one bad block!\n");
 			return U_FAIL;
 		}
@@ -134,7 +134,7 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 	uffs_Buf *buf;
 	u16 i;
 	u16 page;
-	uffs_blockInfo *bc = NULL;
+	uffs_BlockInfo *bc = NULL;
 	uffs_Tags *tag;
 	uffs_Tags newTag;
 	UBOOL succRecov;
@@ -143,11 +143,12 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 	int region;
 	u8 type;
 	
-	if(dev->bad.block == UFFS_INVALID_BLOCK) return;
+	if (dev->bad.block == UFFS_INVALID_BLOCK)
+		return;
 
 	// pick up a erased good block
 	good = uffs_GetErased(dev);
-	if(good == NULL) {
+	if (good == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free block to replace bad block!\n");
 		return;
 	}
@@ -155,13 +156,13 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 	//recover block
 	bc = uffs_GetBlockInfo(dev, dev->bad.block);
 	
-	if(bc == NULL) {
+	if (bc == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get bad block info\n");
 		return;
 	}
 
 	succRecov = U_TRUE;
-	for(i = 0; i < dev->attr->pages_per_block; i++) {
+	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		page = uffs_FindPageInBlockWithPageId(dev, bc, i);
 		if(page == UFFS_INVALID_PAGE) {
 			break;  //end of last valid page, normal break
@@ -169,36 +170,36 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 		page = uffs_FindBestPageInBlock(dev, bc, page);
 		tag = &(bc->spares[page].tag);
 		buf = uffs_BufClone(dev, NULL);
-		if(buf == NULL) {	
+		if (buf == NULL) {	
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't clone a new buf!\n");
 			succRecov = U_FALSE;
 			break;
 		}
 		//NOTE: since this is a bad block, we can't guarantee the data is ECC ok, so just load data even ECC is not OK.
-		ret = uffs_LoadPhiDataToBufEccUnCare(dev, buf, bc->blockNum, page);
-		if(ret == U_FAIL) {
+		ret = uffs_LoadPhiDataToBufEccUnCare(dev, buf, bc->block, page);
+		if (ret == U_FAIL) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"I/O error ?\n");
 			uffs_BufFreeClone(dev, buf);
 			succRecov = U_FALSE;
 			break;
 		}
-		buf->dataLen = tag->dataLength;
-		if(buf->dataLen > dev->com.pgDataSize) {
+		buf->data_len = tag->data_len;
+		if (buf->data_len > dev->com.pgDataSize) {
 			uffs_Perror(UFFS_ERR_NOISY, PFX"data length over flow!!!\n");
-			buf->dataLen = dev->com.pgDataSize;
+			buf->data_len = dev->com.pgDataSize;
 		}
 
 		buf->father = tag->father;
 		buf->serial = tag->serial;
 		buf->type = tag->type;
-		buf->pageID = tag->pageID;
+		buf->page_id = tag->page_id;
 		
 		newTag = *tag;
-		newTag.blockTimeStamp = uffs_GetNextBlockTimeStamp(tag->blockTimeStamp);
+		newTag.block_ts = uffs_GetNextBlockTimeStamp(tag->block_ts);
 		ret = uffs_WriteDataToNewPage(dev, good->u.list.block, i, &newTag, buf);
 		goodBlockIsDirty = U_TRUE;
 		uffs_BufFreeClone(dev, buf);
-		if(ret != U_SUCC) {
+		if (ret != U_SUCC) {
 			uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error ?\n");
 			succRecov = U_FALSE;
 			break;
@@ -206,13 +207,13 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 	}
 
 
-	if(succRecov == U_TRUE) {
+	if (succRecov == U_TRUE) {
 		//successful recover bad block, so need to mark bad block, and replace with good one
 
 		region = SEARCH_REGION_DIR|SEARCH_REGION_FILE|SEARCH_REGION_DATA;
 		bad = uffs_FindNodeByBlock(dev, dev->bad.block, &region);
-		if(bad != NULL) {
-			switch(region){
+		if (bad != NULL) {
+			switch (region) {
 			case SEARCH_REGION_DIR:
 				bad->u.dir.block = good->u.list.block;
 				type = UFFS_TYPE_DIR;

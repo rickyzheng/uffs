@@ -49,29 +49,29 @@ extern "C"{
 #define UFFS_TYPE_RESV		3
 #define UFFS_TYPE_INVALID	0xFF
 
-struct blocklistSt {	/* 10 bytes */
-	struct uffs_treeNodeSt * next;
-	struct uffs_treeNodeSt * prev;
+struct BlockListSt {	/* 10 bytes */
+	struct uffs_TreeNodeSt * next;
+	struct uffs_TreeNodeSt * prev;
 	u16 block;
 };
 
-struct dirhSt {		/* 8 bytes */
-	u16 checkSum;	/* check sum of dir name */
+struct DirhSt {		/* 8 bytes */
+	u16 checksum;	/* check sum of dir name */
 	u16 block;
 	u16 father;
 	u16 serial;
 };
 
 
-struct filehSt {	/* 12 bytes */
+struct FilehSt {	/* 12 bytes */
 	u16 block;
-	u16 checkSum;	/* check sum of file name */
+	u16 checksum;	/* check sum of file name */
 	u16 father;
 	u16 serial;
 	u32 len;		/* file length total */
 };
 
-struct fdataSt {	/* 10 bytes */
+struct FdataSt {	/* 10 bytes */
 	u16 block;
 	u16 father;
 	u32 len;		/* file data length on this block */
@@ -79,23 +79,23 @@ struct fdataSt {	/* 10 bytes */
 };
 
 //UFFS TreeNode (14 or 16 bytes)
-typedef struct uffs_treeNodeSt {
+typedef struct uffs_TreeNodeSt {
 	union {
-		struct blocklistSt list;
-		struct dirhSt dir;
-		struct filehSt file;
-		struct fdataSt data;
+		struct BlockListSt list;
+		struct DirhSt dir;
+		struct FilehSt file;
+		struct FdataSt data;
 	} u;
-	u16 hashNext;		
+	u16 hash_next;		
 #ifdef TREE_NODE_USE_DOUBLE_LINK
-	u16 hashPrev;			
+	u16 hash_prev;			
 #endif
 } TreeNode;
 
 
 //TODO: UFFS2 Tree structures
 /*
-struct fdataSt {
+struct FdataSt {
 	u32 len;
 };
 
@@ -106,18 +106,18 @@ struct filebSt {
 };
 
 //Extra data structure for storing file length information
-struct filehSt {
+struct FilehSt {
 	u32 len;
 };
 
 //UFFS2 TreeNode (12 bytes)
-typedef struct uffs_treeNodeSt {
+typedef struct uffs_TreeNodeSt {
 	u16 nextIdx;
 	u16 block;
 	u16 father;
 	u16 serial;
 	union {
-		struct filehSt h;
+		struct FilehSt h;
 		struct filedSt file;
 		struct data;
 	} u;
@@ -141,8 +141,8 @@ typedef struct uffs_treeNodeSt {
 
 #define DATA_NODE_HASH_MASK		0x1ff
 #define DATA_NODE_ENTRY_LEN		(DATA_NODE_HASH_MASK + 1)
-#define FROM_IDX(idx, dis)		((TreeNode *)uBufGetBufByIndex(idx, dis))
-#define TO_IDX(p, dis)			((u16)uBufGetIndex((void *)p, dis))
+#define FROM_IDX(idx, dis)		((TreeNode *)uffs_StaticBufGetByIndex(idx, dis))
+#define TO_IDX(p, dis)			((u16)uffs_StaticBufGetIndex((void *)p, dis))
 
 
 #define GET_FILE_HASH(serial)			(serial & FILE_NODE_HASH_MASK)
@@ -150,17 +150,17 @@ typedef struct uffs_treeNodeSt {
 #define GET_DATA_HASH(father, serial)	((father + serial) & DATA_NODE_HASH_MASK)
 
 
-struct uffs_treeSt {
+struct uffs_TreeSt {
 	TreeNode *erased;					//!< erased block list head
 	TreeNode *erased_tail;				//!< erased block list tail
-	int erasedCount;					//!< erased block counter
+	int erased_count;					//!< erased block counter
 	TreeNode *bad;						//!< bad block list
-	int badCount;						//!< bad block count
-	u16 dirEntry[DIR_NODE_ENTRY_LEN];
-	u16 fileEntry[FILE_NODE_ENTRY_LEN];
-	u16 dataEntry[DATA_NODE_ENTRY_LEN];
-	struct ubufm dis;
-	u16 maxSerialNo;
+	int bad_count;						//!< bad block count
+	u16 dir_entry[DIR_NODE_ENTRY_LEN];
+	u16 file_entry[FILE_NODE_ENTRY_LEN];
+	u16 data_entry[DATA_NODE_ENTRY_LEN];
+	struct uffs_StaticBufSt dis;
+	u16 max_serial;
 };
 
 
