@@ -30,7 +30,7 @@
   on this file might be covered by the GNU General Public License.
 */
 /** 
- * \file uffs_BlockInfo.h
+ * \file uffs_blockinfo.h
  * \brief data structure for operating block information
  * \author Ricky Zheng
  */

@@ -43,7 +43,7 @@
 #include "uffs/uffs_types.h"
 #include "uffs/uffs_config.h"
 #include "uffs/uffs_buf.h"
-#include "uffs/uffs_BlockInfo.h"
+#include "uffs/uffs_blockinfo.h"
 #include "uffs/ubuffer.h"
 #include "uffs/uffs_tree.h"
 #include "uffs/uffs_mem.h"

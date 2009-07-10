@@ -1,7 +1,7 @@
 SET (libuffs_SRCS 
 		ubuffer.c 
 		uffs_badblock.c 
-		uffs_blockInfo.c 
+		uffs_blockinfo.c 
 		uffs_buf.c 
 		uffs_class.c 
 		uffs_debug.c 
@@ -25,7 +25,7 @@ SET (libuffs_HEADS
 		${HDR}/ubuffer.h
 		${HDR}/uffs.h
 		${HDR}/uffs_badblock.h
-		${HDR}/uffs_blockInfo.h
+		${HDR}/uffs_blockinfo.h
 		${HDR}/uffs_buf.h 
 		${HDR}/uffs_config.h 
 		${HDR}/uffs_core.h 

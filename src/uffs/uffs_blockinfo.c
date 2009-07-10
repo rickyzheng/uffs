@@ -31,12 +31,12 @@
 */
 
 /**
- * \file uffs_BlockInfo.c
+ * \file uffs_blockinfo.c
  * \brief block information cache system manipulations
  * \author Ricky Zheng, created 10th May, 2005
  */
 
-#include "uffs/uffs_BlockInfo.h"
+#include "uffs/uffs_blockinfo.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_os.h"
 
