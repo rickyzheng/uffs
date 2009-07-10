@@ -437,7 +437,7 @@ BOOL cmdCat(const char *tail)
 	}
 
 	if (next) {
-		start = strtol(next, &next, 10);
+		start = strtol(next, (char **) &next, 10);
 		if (next) size = strtol(next, NULL, 10);
 	}
 

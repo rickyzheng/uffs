@@ -50,7 +50,7 @@ static struct cli_commandset cmdset[200] = {0};
 static int m_cmdCount = 0;
 static char str_buf[128];
 
-const char * cli_getparam(const char *tail, char **next)
+const char * cli_getparam(const char *tail, const char **next)
 {
 	char *p;
 
