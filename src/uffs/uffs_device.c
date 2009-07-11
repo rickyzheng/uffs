@@ -77,12 +77,18 @@ int uffs_RegisterMountTable(uffs_mountTable *mtab)
 	return -1;
 }
 
-uffs_Device * uffs_GetDevice(const char *mountPoint)
+/**
+ * get device from mount point.
+ *
+ * \param[in] mount mount point name.
+ * \return NULL if mount point is not found.
+ */
+uffs_Device * uffs_GetDeviceFromMountPoint(const char *mount)
 {
 	struct uffs_mountTableSt *devTab = uffs_GetMountTable();
 
 	while (devTab) {
-		if (strcmp(mountPoint, devTab->mountPoint) == 0) {
+		if (strcmp(mount, devTab->mountPoint) == 0) {
 			devTab->dev->ref_count++;
 			return devTab->dev;
 		}
@@ -92,6 +98,35 @@ uffs_Device * uffs_GetDevice(const char *mountPoint)
 	return NULL;
 }
 
+/**
+ * get device from mount point.
+ *
+ * \param[in] mount mount point name.
+ * \param[in] len mount point name length.
+ * \return NULL if mount point is not found.
+ */
+uffs_Device * uffs_GetDeviceFromMountPointEx(const char *mount, int len)
+{
+	struct uffs_mountTableSt *devTab = uffs_GetMountTable();
+
+	while (devTab) {
+		if (strlen(devTab->mountPoint) == len && strncmp(mount, devTab->mountPoint, len) == 0) {
+			devTab->dev->ref_count++;
+			return devTab->dev;
+		}
+		devTab = devTab->next;
+	}
+
+	return NULL;
+}
+
+
+/**
+ * return mount point from device
+ *
+ * \param[in] dev uffs device
+ * \return NULL if mount point is not found, otherwise return mount point name in mount table.
+ */
 const char * uffs_GetDeviceMountPoint(uffs_Device *dev)
 {
 	struct uffs_mountTableSt * devTab = uffs_GetMountTable();

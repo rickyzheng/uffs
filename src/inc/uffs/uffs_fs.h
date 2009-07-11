@@ -128,7 +128,7 @@ URET uffs_DeleteObject(const char * name);
 URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info);
 
 /* find objects */
-URET uffs_OpenFindObject(uffs_FindInfo *find_handle, const char * dir);
+URET uffs_OpenFindObject(uffs_FindInfo *find_handle, uffs_Object *dir);
 URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * find_handle);
 URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * find_handle);
 URET uffs_CloseFindObject(uffs_FindInfo * find_handle);

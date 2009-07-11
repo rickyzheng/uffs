@@ -234,7 +234,8 @@ URET uffs_DeviceInitLock(uffs_Device *dev);
 URET uffs_DeviceReleaseLock(uffs_Device *dev);
 URET uffs_DeviceLock(uffs_Device *dev);
 URET uffs_DeviceUnLock(uffs_Device *dev);
-uffs_Device * uffs_GetDevice(const char *mountPoint);
+uffs_Device * uffs_GetDeviceFromMountPoint(const char *mount);
+uffs_Device * uffs_GetDeviceFromMountPointEx(const char *mount, int len);
 const char * uffs_GetDeviceMountPoint(uffs_Device *dev);
 void uffs_PutDevice(uffs_Device *dev);
 

@@ -103,7 +103,7 @@ BOOL cmdMeminfo(const char *tail)
 	if (tail) 
 		mount = cli_getparam(tail, NULL);
 
-	dev = uffs_GetDevice(mount);
+	dev = uffs_GetDeviceFromMountPoint(mount);
 
 	if (!dev) {
 		printf("can't get device from mount point %s\n", mount);

@@ -238,27 +238,33 @@ URET uffs_CreateObject(uffs_Object *obj, const char *fullname, int oflag, int pm
 }
 
 
-/** find the matched mount point from path */
-static int find_maxMatchedMountPoint(const char *path)
+/**
+ * find the matched mount point from a given full absolute path.
+ *
+ * \param[in] path full path
+ * \return the length of mount point.
+ */
+int uffs_GetMatchedMountPointSize(const char *path)
 {
-	char buf[MAX_PATH_LENGTH+1] = {0};
 	int pos;
 	uffs_Device *dev;
 
+	if (path[0] != '/')
+		return 0;
+
 	pos = strlen(path);
-	memcpy(buf, path, pos + 1);
 
 	while (pos > 0) {
-		if ((dev = uffs_GetDevice(buf)) != NULL ) {
+		if ((dev = uffs_GetDeviceFromMountPointEx(path, pos)) != NULL ) {
 			uffs_PutDevice(dev);
 			return pos;
 		}
 		else {
-			buf[pos - 1] = '\0'; //replace the last '/' with '\0'
-
+			if (path[pos-1] == '/') 
+				pos--;
 			//back forward search the next '/'
-			for (; pos > 0 && buf[pos-1] != '/'; pos--)
-				buf[pos-1] = '\0';
+			for (; pos > 0 && path[pos-1] != '/'; pos--)
+				;
 		}
 	}
 
@@ -507,6 +513,18 @@ static u16 _GetDirSerial(uffs_Device *dev, const char *path, u16 father)
 	return serial;
 }
 
+
+static URET uffs_PrepareOpenObjectPart1(uffs_Object *obj, const char *fullname, int oflag, int pmode)
+{
+	return U_SUCC;
+}
+
+static URET uffs_PrepareOpenObjectPart2(uffs_Object *obj, uffs_Device *dev, 
+								   u16 father, const char *name, int oflag, int pmode)
+{
+	return U_SUCC;
+}
+
 /** prepare the object struct for open */
 static URET _PrepareOpenObj(uffs_Object *obj, const char *fullname, int oflag, int pmode)
 {
@@ -570,7 +588,7 @@ static URET _PrepareOpenObj(uffs_Object *obj, const char *fullname, int oflag, i
 	//  if it's file:       "/abc/def/"      |  X        |   "/"      |  X
 
 
-	pos = find_maxMatchedMountPoint(buf);
+	pos = uffs_GetMatchedMountPointSize(buf);
 	if (pos == 0) {
 		/* can't not find any mount point from the path ??? */
 		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't find any mount point from the path %s\n", buf);
@@ -582,7 +600,7 @@ static URET _PrepareOpenObj(uffs_Object *obj, const char *fullname, int oflag, i
 	memcpy(mount, buf, pos);
 	mount[pos] = '\0';
 
-	obj->dev = uffs_GetDevice(mount);
+	obj->dev = uffs_GetDeviceFromMountPoint(mount);
 	if (obj->dev == NULL) {
 		// uffs_Perror(UFFS_ERR_NOISY, "Can't get device from mount point: %s\r\n", mount);
 		obj->err = UENOENT;
@@ -678,7 +696,11 @@ URET uffs_OpenObject(uffs_Object *obj, const char *fullname, int oflag, int pmod
 	URET ret = U_FAIL;
 
 	if ((ret = _PrepareOpenObj(obj, fullname, oflag, pmode)) == U_SUCC) {
-		if (obj->name_len > 0) {
+		if (obj->name_len == 0) {
+			// it's root dir, always happy with that.
+			obj->open_succ = U_TRUE;
+		}
+		else {
 			uffs_ObjectDevLock(obj);
 			ret = _OpenObjectUnder(obj);
 			uffs_ObjectDevUnLock(obj);
@@ -964,7 +986,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 	if (obj == NULL) 
 		return 0;
 
-	if (obj->dev == NULL || obj->open_succ == U_FALSE)
+	if (obj->dev == NULL || obj->open_succ != U_TRUE)
 		return 0;
 
 	if (obj->type == UFFS_TYPE_DIR) {
@@ -1598,8 +1620,8 @@ URET uffs_RenameObject(const char *old_name, const char *new_name)
 		goto err_exit;
 	}
 
-	pos = find_maxMatchedMountPoint(old_name);
-	pos1 = find_maxMatchedMountPoint(new_name);
+	pos = uffs_GetMatchedMountPointSize(old_name);
+	pos1 = uffs_GetMatchedMountPointSize(new_name);
 	if (pos <= 0 || pos <= 0 || pos != pos1 || strncmp(old_name, new_name, pos) != 0) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't moving object to different mount point\n");
 		goto err_exit;
@@ -1748,52 +1770,18 @@ URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info)
 }
 
 /* find objects */
-URET uffs_OpenFindObject(uffs_FindInfo *f, const char * dir)
+URET uffs_OpenFindObject(uffs_FindInfo *f, uffs_Object *dir)
 {
-	if (f == NULL) return U_FAIL;
+	if (f == NULL || dir == NULL || dir->open_succ != U_TRUE)
+		return U_FAIL;
 
-	f->obj = uffs_GetObject();
-
-	if (f->obj == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't get a new object\n");
-		goto err;
-	}
-
-	if (_PrepareOpenObj(f->obj, dir, UO_RDONLY|UO_DIR, US_IREAD|US_IWRITE) == U_FAIL) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't prepare open dir %s for read.\n", dir);
-		goto err;
-	}
-
+	f->obj = dir;
 	f->dev = f->obj->dev;
-
-	if (f->obj->name_len == 0) {
-		// This is the root dir !!!, do not try to open it !
-		// obj->father and obj->serial should already prepared.
-	}
-	else {
-		uffs_ObjectDevLock(f->obj);
-		if (_OpenObjectUnder(f->obj) == U_FAIL) {
-			uffs_ObjectDevUnLock(f->obj);
-			uffs_Perror(UFFS_ERR_NOISY, PFX"Can't open dir %s, doesn't exist ?\n", dir);
-			goto err;
-		}
-		uffs_ObjectDevUnLock(f->obj);
-	}
-
 	f->hash = 0;
 	f->work = NULL;
 	f->step = 0;
 
 	return U_SUCC;
-
-err:
-	if (f->obj) {
-		_ReleaseObjectResource(f->obj);
-		uffs_PutObject(f->obj);
-		f->obj = NULL;
-	}
-
-	return U_FAIL;
 }
 
 URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
@@ -1953,13 +1941,6 @@ URET uffs_CloseFindObject(uffs_FindInfo * f)
 {
 	if (f == NULL)
 		return U_FAIL;
-
-	if (f->obj) {
-		/* close dir */
-		_ReleaseObjectResource(f->obj);
-		uffs_PutObject(f->obj);
-		f->obj = NULL;
-	}
 
 	f->dev = NULL;
 	f->hash = 0;

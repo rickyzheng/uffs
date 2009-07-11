@@ -59,7 +59,7 @@ BOOL cmdFormat(const char *tail)
 	}
 	uffs_Perror(UFFS_ERR_NORMAL, PFX"Formating %s ... ", mount);
 
-	dev = uffs_GetDevice(mount);
+	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't get device from mount point.\n");
 	}
@@ -147,15 +147,30 @@ static int CountObjectUnder(const char *dir)
 	uffs_FindInfo find = {0};
 	int count = 0;
 	URET ret;
+	uffs_Object *obj;
 
-	ret = uffs_OpenFindObject(&find, dir);
-	if (ret == U_SUCC) {
-		ret = uffs_FindFirstObject(NULL, &find);
-		while (ret == U_SUCC) {
-			count++;
-			ret = uffs_FindNextObject(NULL, &find);
+	obj = uffs_GetObject();
+
+	if (obj == NULL) {
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't get a new object\n");
+	}
+	else {
+		if (uffs_OpenObject(obj, dir, UO_RDONLY|UO_DIR, US_IREAD) == U_FAIL) {
+			uffs_Perror(UFFS_ERR_NOISY, PFX"Can't open dir %s for read.\n", dir);
 		}
-		uffs_CloseFindObject(&find);
+		else {
+			ret = uffs_OpenFindObject(&find, obj);
+			if (ret == U_SUCC) {
+				ret = uffs_FindFirstObject(NULL, &find);
+				while (ret == U_SUCC) {
+					count++;
+					ret = uffs_FindNextObject(NULL, &find);
+				}
+				uffs_CloseFindObject(&find);
+			}
+			uffs_CloseObject(obj);
+		}
+		uffs_PutObject(obj);
 	}
 
 	return count;
@@ -182,41 +197,57 @@ BOOL cmdLs(const char *tail)
 	char buf[MAX_PATH_LENGTH+2];
 	char *name = (char *)tail;
 	char *sub;
+	uffs_Object *obj;
 
 	if (name == NULL) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"Must provide file/dir name.\n");
 		return FALSE;
 	}
 
-	ret = uffs_OpenFindObject(&find, name);
-	if (ret == U_FAIL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open '%s'\n", name);
+	obj = uffs_GetObject();
+
+	if (obj == NULL) {
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't get a new object\n");
+		return TRUE;
+	}
+	if (uffs_OpenObject(obj, name, UO_RDONLY|UO_DIR, US_IREAD) == U_FAIL) {
+		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't open dir %s for read.\n", name);
+		uffs_PutObject(obj);
 		return TRUE;
 	}
 
-	uffs_Perror(UFFS_ERR_NORMAL, "------name----size----serial--\n");
-	ret = uffs_FindFirstObject(&info, &find);
-	while (ret == U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, "%9s", info.info.name);
-		if (info.info.attr & FILE_ATTR_DIR) {
-			strcpy(buf, name);
-			sub = buf;
-			if (name[strlen(name)-1] != '/') sub = strcat(buf, "/");
-			sub = strcat(sub, info.info.name);
-			sub = strcat(sub, "/");
-			uffs_Perror(UFFS_ERR_NORMAL, "/  \t<%2d>\t", CountObjectUnder(sub));
-		}
-		else {
-			uffs_Perror(UFFS_ERR_NORMAL, "   \t %2d \t", info.len);
-		}
-		uffs_Perror(UFFS_ERR_NORMAL, "%d\n", info.serial);
-		count++;
-		ret = uffs_FindNextObject(&info, &find);
+	ret = uffs_OpenFindObject(&find, obj);
+	if (ret == U_FAIL) {
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open '%s'\n", name);
 	}
-	
-	uffs_CloseFindObject(&find);
+	else {
+		uffs_Perror(UFFS_ERR_NORMAL, "------name----size----serial--\n");
+		ret = uffs_FindFirstObject(&info, &find);
+		while (ret == U_SUCC) {
+			uffs_Perror(UFFS_ERR_NORMAL, "%9s", info.info.name);
+			if (info.info.attr & FILE_ATTR_DIR) {
+				strcpy(buf, name);
+				sub = buf;
+				if (name[strlen(name)-1] != '/') sub = strcat(buf, "/");
+				sub = strcat(sub, info.info.name);
+				sub = strcat(sub, "/");
+				uffs_Perror(UFFS_ERR_NORMAL, "/  \t<%2d>\t", CountObjectUnder(sub));
+			}
+			else {
+				uffs_Perror(UFFS_ERR_NORMAL, "   \t %2d \t", info.len);
+			}
+			uffs_Perror(UFFS_ERR_NORMAL, "%d\n", info.serial);
+			count++;
+			ret = uffs_FindNextObject(&info, &find);
+		}
+		
+		uffs_CloseFindObject(&find);
 
-	uffs_Perror(UFFS_ERR_NORMAL, "Total: %d objects.\n", count);
+		uffs_Perror(UFFS_ERR_NORMAL, "Total: %d objects.\n", count);
+	}
+
+	uffs_CloseObject(obj);
+	uffs_PutObject(obj);
 
 	return TRUE;
 }
@@ -264,7 +295,7 @@ BOOL cmdSt(const char *tail)
 		mount = cli_getparam(tail, NULL);
 	}
 
-	dev = uffs_GetDevice(mount);
+	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't get device from mount point %s\n", mount);
 		return TRUE;
