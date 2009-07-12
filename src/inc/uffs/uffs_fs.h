@@ -49,11 +49,6 @@ extern "C"{
 #endif
 
 
-#define ENCODE_MBCS		1
-#define ENCODE_UNICODE	2
-#define UFFS_DEFAULT_ENCODE		ENCODE_MBCS
-
-
 /** file object */
 struct uffs_ObjectSt {
 	/******* objects manager ********/
@@ -61,12 +56,11 @@ struct uffs_ObjectSt {
 	int dev_get_count;
 
 	/******** init level 0 ********/
-	char name[MAX_FILENAME_LENGTH];		//!< name, for open or create
+	const char * name;					//!< pointer to the start of name, for open or create
 	u32 name_len;						//!< name length
 	u16 sum;							//!< sum of name
 	uffs_Device *dev;					//!< uffs device
 	u32 oflag;
-	u32 pmode;
 	u8 type;
 	int head_pages;						//!< data pages on file head block
 	u16 father;
@@ -74,10 +68,6 @@ struct uffs_ObjectSt {
 	/******* init level 1 ********/
 	TreeNode *node;						//!< file entry node in tree
 	u16 serial;
-	u32 attr;
-	u32 create_time;
-	u32 last_modify;
-	u32 access;
 	
 	/******* output ******/
 	int err;							//!< error number
@@ -86,6 +76,7 @@ struct uffs_ObjectSt {
 	u32 pos;							//!< current position in file
 
 	/***** others *******/
+	UBOOL attr_loaded;					//!< attributes loaded ?
 	UBOOL open_succ;					//!< U_TRUE: succ, U_FALSE: fail
 
 };
@@ -102,6 +93,7 @@ typedef struct uffs_FindInfoSt {
 	TreeNode *work;
 } uffs_FindInfo;
 
+#define uffs_GetObjectErr(obj) (obj->err)
 
 URET uffs_InitObjectBuf(void);
 URET uffs_ReleaseObjectBuf(void);
@@ -110,10 +102,16 @@ void uffs_PutObject(uffs_Object *obj);
 int uffs_GetObjectIndex(uffs_Object *obj);
 uffs_Object * uffs_GetObjectByIndex(int idx);
 
+URET uffs_ParseObject(uffs_Object *obj, const char *name);
 
-URET uffs_OpenObject(uffs_Object *obj, const char *fullname, int oflag, int pmode);
+URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev, 
+								   int dir, const char *name, int name_len, int oflag);
+URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev, 
+								   int dir, const char *name, int name_len, int oflag);
+
+URET uffs_OpenObject(uffs_Object *obj, const char *fullname, int oflag);
 URET uffs_TruncateObject(uffs_Object *obj, u32 remain);
-URET uffs_CreateObject(uffs_Object *obj, const char *fullname, int oflag, int pmode);
+URET uffs_CreateObject(uffs_Object *obj, const char *fullname, int oflag);
 
 URET uffs_CloseObject(uffs_Object *obj);
 int uffs_WriteObject(uffs_Object *obj, const void *data, int len);
@@ -129,8 +127,9 @@ URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info);
 
 /* find objects */
 URET uffs_OpenFindObject(uffs_FindInfo *find_handle, uffs_Object *dir);
-URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * find_handle);
-URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * find_handle);
+URET uffs_FindFirstObject(uffs_ObjectInfo *info, uffs_FindInfo *find_handle);
+URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo *find_handle);
+URET uffs_FindObjectRewind(uffs_FindInfo *find_handle);
 URET uffs_CloseFindObject(uffs_FindInfo * find_handle);
 
 #ifdef __cplusplus

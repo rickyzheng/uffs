@@ -45,6 +45,7 @@
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs_utils.h"
 #include "uffs/uffs_core.h"
+#include "uffs/uffs_mtb.h"
 #include "cmdline.h"
 #include "uffs_fileem.h"
 
@@ -71,7 +72,7 @@ extern struct cli_commandset * get_helper_cmds(void);
 #define MAX_MOUNT_POINT_NAME	32
 
 static uffs_Device demo_device = {0};
-static struct uffs_mountTableSt demo_mount = {
+static struct uffs_MountTableSt demo_mount = {
 	&demo_device,
 	0,    /* start from block 0 */
 	-1,   /* use whole chip */
@@ -139,7 +140,7 @@ static void setup_emu_private(uffs_FileEmu *emu)
 
 static int init_uffs_fs(void)
 {
-	struct uffs_mountTableSt *mtbl = &demo_mount;
+	struct uffs_MountTableSt *mtbl = &demo_mount;
 	struct uffs_memAllocatorSt *mem;
 
 	/* setup emu storage */
@@ -160,7 +161,7 @@ static int init_uffs_fs(void)
 	/* register mount table */
 	uffs_RegisterMountTable(mtbl);
 
-	return uffs_initMountTable() == U_SUCC ? 0 : -1;
+	return uffs_InitMountTable() == U_SUCC ? 0 : -1;
 }
 
 static int release_uffs_fs(void)

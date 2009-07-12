@@ -366,10 +366,10 @@ URET uffs_WriteDataToNewPage(uffs_Device *dev,
  * \param[in] len length of data
  * \return return sum of data, 8bit
  */
-u8 uffs_MakeSum8(void *p, int len)
+u8 uffs_MakeSum8(const void *p, int len)
 {
 	u8 ret = 0;
-	u8 *data = (u8 *)p;
+	const u8 *data = (const u8 *)p;
 
 	if (!p)
 		return 0;
@@ -388,11 +388,11 @@ u8 uffs_MakeSum8(void *p, int len)
  * \param[in] len length of data
  * \return return sum of data, 16bit
  */
-u16 uffs_MakeSum16(void *p, int len)
+u16 uffs_MakeSum16(const void *p, int len)
 {
 	u8 ret_lo = 0;
 	u8 ret_hi = 0;
-	u8 *data = (u8 *)p;
+	const u8 *data = (const u8 *)p;
 
 	if (!p)
 		return 0;
@@ -420,8 +420,6 @@ URET uffs_CreateNewFile(uffs_Device *dev, u16 father, u16 serial, uffs_BlockInfo
 {
 	uffs_Tags *tag;
 	uffs_Buf *buf;
-
-	fi->create_time = fi->last_modify = uffs_GetCurDateTime();
 
 	uffs_LoadBlockInfo(dev, bc, 0);
 

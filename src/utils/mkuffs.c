@@ -44,6 +44,8 @@
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs_utils.h"
 #include "uffs/uffs_core.h"
+#include "uffs/uffs_mtb.h"
+
 #include "cmdline.h"
 #include "uffs_fileem.h"
 
@@ -80,7 +82,7 @@ int conf_sim_manid = MAN_ID_SAMSUNG;	//default: simulate Samsung's NAND flash
 
 #define MAX_MOUNT_TABLES		10
 #define MAX_MOUNT_POINT_NAME	32
-static struct uffs_mountTableSt conf_mounts[MAX_MOUNT_TABLES] = {0};
+static struct uffs_MountTableSt conf_mounts[MAX_MOUNT_TABLES] = {0};
 static uffs_Device conf_devices[MAX_MOUNT_TABLES] = {0};
 static char mount_point_name[MAX_MOUNT_TABLES][MAX_MOUNT_POINT_NAME] = {0};
 
@@ -159,7 +161,7 @@ static void setup_emu_private(uffs_FileEmu *emu)
 static int init_uffs_fs(void)
 {
 	static int bIsFileSystemInited = 0;
-	struct uffs_mountTableSt *mtbl = &(conf_mounts[0]);
+	struct uffs_MountTableSt *mtbl = &(conf_mounts[0]);
 
 	if(bIsFileSystemInited) return -4;
 	bIsFileSystemInited = 1;
@@ -188,7 +190,7 @@ static int init_uffs_fs(void)
 		mtbl++;
 	}
 
-	return uffs_initMountTable() == U_SUCC ? 0 : -1;
+	return uffs_InitMountTable() == U_SUCC ? 0 : -1;
 }
 
 static int release_uffs_fs(void)
@@ -209,7 +211,7 @@ static int parse_mount_point(char *arg, int m_idx)
 {
 	int start = 0, end = -1;
 	char *p = arg;
-	struct uffs_mountTableSt *mtbl = &(conf_mounts[m_idx]);
+	struct uffs_MountTableSt *mtbl = &(conf_mounts[m_idx]);
 
 	while(*p && *p != ',' && *p != ' ' && *p != '\t')
 		p++;
@@ -379,7 +381,7 @@ static int parse_options(int argc, char *argv[])
 
 static void print_mount_points(void)
 {
-	struct uffs_mountTableSt *mount;
+	struct uffs_MountTableSt *mount;
 
 	mount = &(conf_mounts[0]);
 	while (mount->dev) {

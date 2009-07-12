@@ -30,65 +30,46 @@
   on this file might be covered by the GNU General Public License.
 */
 
-/**
- * \file uffs_device.c
- * \brief uffs device operation
- * \author Ricky Zheng, created 10th May, 2005
+/** 
+ * \file uffs_mtb.h
+ * \brief mount table related stuff
+ * \author Ricky Zheng
  */
-#include "uffs/uffs_device.h"
-#include "uffs/uffs_os.h"
-#include "uffs/uffs_public.h"
-#include "uffs/uffs_mtb.h"
-#include <string.h>
 
-#define PFX "dev: "
+#ifndef UFFS_MTB_H
+#define UFFS_MTB_H
+
+#include "uffs/uffs_types.h"
+#include "uffs/uffs_config.h"
+#include "uffs/uffs_core.h"
+#include "uffs/uffs.h"
+
+#ifdef __cplusplus
+extern "C"{
+#endif
 
 
+typedef struct uffs_MountTableSt {
+	uffs_Device *dev;
+	int startBlock;
+	int endBlock;
+	const char *mountPoint;
+	struct uffs_MountTableSt *next;
+} uffs_MountTable;
 
-URET uffs_DeviceInitLock(uffs_Device *dev)
-{
-	dev->lock.sem = uffs_SemCreate(1);
-	dev->lock.task_id = UFFS_TASK_ID_NOT_EXIST;
-	dev->lock.counter = 0;
 
-	return U_SUCC;
+URET uffs_InitMountTable(void);
+URET uffs_releaseMountTable(void);
+uffs_MountTable * uffs_GetMountTable(void);
+int uffs_RegisterMountTable(uffs_MountTable *mtab);
+
+uffs_Device * uffs_GetDeviceFromMountPoint(const char *mount);
+uffs_Device * uffs_GetDeviceFromMountPointEx(const char *mount, int len);
+const char * uffs_GetDeviceMountPoint(uffs_Device *dev);
+void uffs_PutDevice(uffs_Device *dev);
+
+
+#ifdef __cplusplus
 }
-
-URET uffs_DeviceReleaseLock(uffs_Device *dev)
-{
-	if (dev->lock.sem) {
-		uffs_SemDelete(dev->lock.sem);
-		dev->lock.sem = 0;
-	}
-
-	return U_SUCC;
-}
-
-URET uffs_DeviceLock(uffs_Device *dev)
-{
-
-	uffs_SemWait(dev->lock.sem);
-	
-	if (dev->lock.counter != 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Lock device, counter %d NOT zero?!\n", dev->lock.counter);
-	}
-
-	dev->lock.counter++;
-
-	return U_SUCC;
-}
-
-URET uffs_DeviceUnLock(uffs_Device *dev)
-{
-
-	dev->lock.counter--;
-
-	if (dev->lock.counter != 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Unlock device, counter %d NOT zero?!\n", dev->lock.counter);
-	}
-	
-	uffs_SemSignal(dev->lock.sem);
-
-	return U_SUCC;
-}
-
+#endif
+#endif

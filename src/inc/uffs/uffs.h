@@ -44,46 +44,49 @@
 extern "C"{
 #endif
 
-
+#if 0	// pmode is no longger needed.
 #define US_IWRITE		0x0000200
 #define US_IREAD		0x0000400
+#endif
 
-#define UO_RDONLY		0x0000		//read only
-#define UO_WRONLY		0x0001		//write only
-#define UO_RDWR			0x0002		//read and write
-#define UO_APPEND		0x0008		//append
+#define UO_RDONLY		0x0000		/** read only */
+#define UO_WRONLY		0x0001		/** write only */
+#define UO_RDWR			0x0002		/** read and write */
+#define UO_APPEND		0x0008		/** append */
 
-#define UO_BINARY		0x0000		//no used in uffs
+#define UO_BINARY		0x0000		/** no used in uffs */
 
 #define UO_CREATE		0x0100
 #define UO_TRUNC		0x0200
-#define UO_EXCL			0x0400		//
+#define UO_EXCL			0x0400		
 
-#define UO_DIR			0x1000		//open a directory
+#define UO_DIR			0x1000		/** open a directory */
 
 
 
-#define UENOERR 0		/* no error */
-#define UEACCES	1		/* Tried to open read-only file
+#define UENOERR 0		/** no error */
+#define UEACCES	1		/** Tried to open read-only file
 						 for writing, or files sharing mode
 						 does not allow specified operations,
 						 or given path is directory */
-#define UEEXIST	2		/* _O_CREAT and _O_EXCL flags specified,
+
+#define UEEXIST	2		/** _O_CREAT and _O_EXCL flags specified,
 							but filename already exists */
-#define UEINVAL	3		/* Invalid oflag or pmode argument */
-#define UEMFILE	4		/* No more file handles available
+#define UEINVAL	3		/** Invalid oflag or pmode argument */
+#define UEMFILE	4		/** No more file handles available
 						  (too many open files)  */
-#define UENOENT	5		/* file or path not found */
-#define UETIME	6		/* can't set file time */
-#define UEBADF	9		/* invalid file handle */
-#define UENOMEM	10		/* no enough memory */
-#define UEUNKNOWN	11	/* unknown error */
+#define UENOENT	5		/** file or path not found */
+#define UETIME	6		/** can't set file time */
+#define UEBADF	9		/** invalid file handle */
+#define UENOMEM	10		/** no enough memory */
+#define UEIOERR	11		/** I/O error from lower level flash operation */
+#define UEUNKNOWN	100	/** unknown error */
 
 
 
-#define _SEEK_CUR		0		/* seek from current position */
-#define _SEEK_SET		1		/* seek from beginning of file */
-#define _SEEK_END		2		/* seek from end of file */
+#define _SEEK_CUR		0		/** seek from current position */
+#define _SEEK_SET		1		/** seek from beginning of file */
+#define _SEEK_END		2		/** seek from end of file */
 
 #define USEEK_CUR		_SEEK_CUR
 #define USEEK_SET		_SEEK_SET

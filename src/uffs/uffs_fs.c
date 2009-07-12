@@ -42,6 +42,7 @@
 #include "uffs/uffs_ecc.h"
 #include "uffs/uffs_badblock.h"
 #include "uffs/uffs_os.h"
+#include "uffs/uffs_mtb.h"
 #include <string.h> 
 #include <stdio.h>
 
@@ -66,10 +67,9 @@
 #define GET_BLOCK_FROM_NODE(obj) ((obj)->type == UFFS_TYPE_DIR ? \
 									(obj)->node->u.dir.block : (obj)->node->u.file.block)
 
-static URET _PrepareOpenObj(uffs_Object *obj, const char *fullname, int oflag, int pmode);
-static URET _CreateObjectUnder(uffs_Object *obj);
 static void _ReleaseObjectResource(uffs_Object *obj);
 static URET _TruncateObject(uffs_Object *obj, u32 remain);
+
 
 static int _object_buf[sizeof(uffs_Object) * MAX_OBJECT_HANDLE / sizeof(int)];
 
@@ -112,10 +112,31 @@ uffs_Object * uffs_GetObject(void)
 	obj = (uffs_Object *)uffs_StaticBufGet(&_object_dis);
 	if (obj) {
 		memset(obj, 0, sizeof(uffs_Object));
+		obj->attr_loaded = U_FALSE;
 		obj->open_succ = U_FALSE;
 	}
 
 	return obj;
+}
+
+/**
+ * re-initialize an object.
+ *
+ * \return U_SUCC or U_FAIL if the object is openned.
+ */
+URET uffs_ReInitObject(uffs_Object *obj)
+{
+	if (obj == NULL)
+		return U_FAIL;
+
+	if (obj->open_succ == U_TRUE)
+		return U_FAIL;	// can't re-init an openned object.
+
+	memset(obj, 0, sizeof(uffs_Object));
+	obj->attr_loaded = U_FALSE;
+	obj->open_succ = U_FALSE;
+
+	return U_SUCC;	
 }
 
 /**
@@ -163,78 +184,19 @@ static void uffs_ObjectDevUnLock(uffs_Object *obj)
 	}
 } 
 
-/** get path from fullname, return path length
- * fullname: "/abc/def"		|	"/abc/def/"		| "/"
- * ==> path: "/abc/"        |   "/abc/def/"		| "/"
- */
-static int _getpath(const char *fullname, char *path)
-{
-	int i;
-	int len;
 
-	if (fullname[0] == 0)
-		return 0;
-
-	len = strlen(fullname);
-	for (i = len - 1; i > 0 && fullname[i] != '/'; i--);
-
-	i++;
-	if (path) {
-		memcpy(path, fullname, i);
-		path[i] = 0;
-	}
-
-	return i;
-}
-
-/** get name from fullname
- * fullname: "/abc/def"		|	"/abc/def/"		| "/"
- *  returen: "def"          |   ""		        | ""
- */
-static const char * _getname(const char *fullname)
-{
-	int pos = _getpath(fullname, NULL);
-
-	return fullname + pos;
-}
-
-static int forwad_search_slash(const char *str, int pos)
-{
-	int len = strlen(str);
-
-	while(str[pos] != '/' && pos < len)
-		pos++;
-
-	if (pos == len) 
-		return -1;
-	else
-		return pos;
-}
-
-static int back_search_slash(const char *str, int pos)
-{
-	while (str[pos] != '/' && pos >= 0) 
-		pos--;
-
-	return pos;
-}
 
 /**
  * create a new object and open it if success
  */
-URET uffs_CreateObject(uffs_Object *obj, const char *fullname, int oflag, int pmode)
+URET uffs_CreateObject(uffs_Object *obj, const char *fullname, int oflag)
 {
-	URET ret = U_FAIL;
-
 	oflag |= UO_CREATE;
 
-	if (_PrepareOpenObj(obj, fullname, oflag, pmode) == U_SUCC) {
-		uffs_ObjectDevLock(obj);
-		ret  = _CreateObjectUnder(obj);
-		uffs_ObjectDevUnLock(obj);
-	}
+	if (uffs_ParseObject(obj, fullname) == U_SUCC)
+		uffs_CreateObjectEx(obj, obj->dev, obj->father, obj->name, obj->name_len, oflag);
 
-	return ret;
+	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
 
@@ -271,80 +233,121 @@ int uffs_GetMatchedMountPointSize(const char *path)
 	return pos;
 }
 
-static URET _CreateObjectUnder(uffs_Object *obj)
-{
-	/**
-	 * \note: level 0 has been set in obj.
-	 */
-	uffs_Buf *buf = NULL;
-	uffs_FileInfo fi, *pfi;
-	URET ret;
 
+
+/**
+ * return the dir length from a path.
+ * for example, path = "abc/def/xyz", return 8 ("abc/def/")
+ */
+static int _GetDirLengthFromPath(const char *path, int path_len)
+{
+	const char *p = path;
+
+	if (path_len > 0) {
+		if (path[path_len - 1] == '/')
+			path_len--;		// skip the last '/'
+
+		p = path + path_len - 1;
+		while (p > path && *p != '/')
+			p--; 
+	}
+
+	return p - path;
+}
+
+/**
+ * Create an object under the given dir.
+ *
+ * \param[in|out] obj to be created, obj is returned from uffs_GetObject()
+ * \param[in] dev uffs device
+ * \param[in] dir object parent dir serial NO.
+ * \param[in] name point to the object name
+ * \param[in] name_len object name length
+ * \param[in] oflag open flag. UO_DIR should be passed for an dir object.
+ *
+ * \return U_SUCC or U_FAIL (error code in obj->err).
+ */
+URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev, 
+								   int dir, const char *name, int name_len, int oflag)
+{
+	uffs_Buf *buf = NULL;
+	uffs_FileInfo fi;
 	TreeNode *node;
+
+	obj->dev = dev;
+	obj->father = dir;
+	obj->type = (oflag & UO_DIR ? UFFS_TYPE_DIR : UFFS_TYPE_FILE);
+	obj->name = name;
+	obj->name_len = name_len;
+
+	if (obj->type == UFFS_TYPE_DIR) {
+		if (name[obj->name_len - 1] == '/')
+			obj->name_len--;
+	}
+	else {
+		if (name[obj->name_len - 1] == '/') {
+			obj->err = UENOENT;
+			goto ext;
+		}
+	}
+
+	if (obj->name_len == 0) {
+		obj->err = UENOENT;
+		goto ext;
+	}
+
+	obj->sum = (obj->name_len > 0 ? uffs_MakeSum16(obj->name, obj->name_len) : 0);
+
+	uffs_ObjectDevLock(obj);
 
 	if (obj->type == UFFS_TYPE_DIR) {
 		//find out whether have file with the same name
 		node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
 		if (node != NULL) {
-			obj->err = UEEXIST;
-			return U_FAIL;
+			obj->err = UEEXIST;	// we can't create a dir has the same name with exist file.
+			goto ext_1;
 		}
 		obj->node = uffs_FindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
+		if (obj->node != NULL) {
+			obj->err = UEEXIST; // we can't create a dir already exist.
+			goto ext_1;
+		}
 	}
 	else {
 		//find out whether have dir with the same name
 		node = uffs_FindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
 		if (node != NULL) {
 			obj->err = UEEXIST;
-			return U_FAIL;
+			goto ext_1;
 		}
 		obj->node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
-	}
-
-	if (obj->node) {
-		/* dir|file already exist, truncate it to zero length */
-		obj->serial = GET_SERIAL_FROM_NODE(obj);
-
-		buf = uffs_BufGetEx(obj->dev, obj->type, obj->node, 0);
-
-		if (buf == NULL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"found in tree, but can' load buffer ?\n");
-			goto err;
+		if (obj->node) {
+			/* file already exist, truncate it to zero length */
+			obj->serial = GET_SERIAL_FROM_NODE(obj);
+			obj->open_succ = U_TRUE; // set open_succ to U_TRUE before call _TruncateObject()
+			_TruncateObject(obj, 0);
+			goto ext_1;
 		}
-
-		pfi = (uffs_FileInfo *)(buf->data);
-		obj->access = pfi->access;
-		obj->attr = pfi->attr;
-		obj->create_time = pfi->create_time;
-		obj->last_modify = pfi->last_modify;
-		uffs_BufPut(obj->dev, buf);
-
-		obj->pos = 0;
-
-		obj->open_succ = U_TRUE;
-		ret = _TruncateObject(obj, 0);
-		if (ret != U_SUCC) {
-			obj->open_succ = U_FALSE;
-		}
-		return ret;
 	}
 
 	/* dir|file does not exist, create a new one */
 	obj->serial = uffs_FindFreeFsnSerial(obj->dev);
 	if (obj->serial == INVALID_UFFS_SERIAL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"No free serial num!\n");
-		goto err;
+		obj->err = UENOMEM;
+		goto ext_1;
 	}
 
 	if (obj->dev->tree.erased_count < MINIMUN_ERASED_BLOCK) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"insufficient block in create obj\n");
-		goto err;
+		obj->err = UENOMEM;
+		goto ext_1;
 	}
 
 	buf = uffs_BufNew(obj->dev, obj->type, obj->father, obj->serial, 0);
 	if (buf == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't new buffer when create obj!\n");
-		goto err;
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't create new buffer when create obj!\n");
+		goto ext_1;
 	}
 
 	memset(&fi, 0, sizeof(uffs_FileInfo));
@@ -358,11 +361,6 @@ static URET _CreateObjectUnder(uffs_Object *obj)
 		fi.attr |= FILE_ATTR_DIR;
 
 	fi.create_time = fi.last_modify = uffs_GetCurDateTime();
-
-	obj->create_time = fi.create_time;
-	obj->last_modify = fi.last_modify;
-	obj->attr = fi.attr;
-	obj->access = fi.access;
 
 	uffs_BufWrite(obj->dev, buf, &fi, 0, sizeof(uffs_FileInfo));
 	uffs_BufPut(obj->dev, buf);
@@ -378,38 +376,93 @@ static URET _CreateObjectUnder(uffs_Object *obj)
 
 	if (obj->node == NULL) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't find the node in the tree ?\n");
-		goto err;
+		obj->err = UEIOERR;
+		goto ext_1;
 	}
 
-	if (obj->type == UFFS_TYPE_DIR) {
-		//do nothing for dir ...
-	}
-	else {
+	if (obj->type == UFFS_TYPE_FILE)
 		obj->node->u.file.len = 0;	//init the length to 0
-	}
 
-	if (HAVE_BADBLOCK(obj->dev)) uffs_RecoverBadBlock(obj->dev);
+	if (HAVE_BADBLOCK(obj->dev))
+		uffs_RecoverBadBlock(obj->dev);
+
 	obj->open_succ = U_TRUE;
 
-	return U_SUCC;
-
-err:
-	if (buf && obj->dev) {
-		uffs_BufPut(obj->dev, buf);
-		buf = NULL;
-	}
-
-	return U_FAIL;
+ext_1:
+	uffs_ObjectDevUnLock(obj);
+ext:
+	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
-
-static URET _OpenObjectUnder(uffs_Object *obj)
+/**
+ * Open object under the given dir.
+ *
+ * \param[in|out] obj to be open, obj is returned from uffs_GetObject()
+ * \param[in] dev uffs device
+ * \param[in] dir object parent dir serial NO.
+ * \param[in] name point to the object name
+ * \param[in] name_len object name length
+ * \param[in] oflag open flag. UO_DIR should be passed for an dir object.
+ *
+ * \return U_SUCC or U_FAIL (error code in obj->err).
+ */
+URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev, 
+								   int dir, const char *name, int name_len, int oflag)
 {
-	uffs_Buf *buf = NULL;
-	uffs_FileInfo *fi = NULL;
+
+	obj->err = UENOERR;
+
+	if (dev == NULL) {
+		obj->err = UEINVAL;
+		goto ext;
+	}
+
+	if ((oflag & (UO_WRONLY | UO_RDWR)) == (UO_WRONLY | UO_RDWR)) {
+		/* UO_WRONLY and UO_RDWR can't appear together */
+		uffs_Perror(UFFS_ERR_NOISY, PFX"UO_WRONLY and UO_RDWR can't appear together\n");
+		obj->err = UEINVAL;
+		goto ext;
+	}
+
+	obj->oflag = oflag;
+	obj->father = dir;
+	obj->type = (oflag & UO_DIR ? UFFS_TYPE_DIR : UFFS_TYPE_FILE);
+	obj->pos = 0;
+	obj->dev = dev;
+	obj->name = name;
+	obj->name_len = name_len;
+
+	// adjust the name length
+	if (obj->type == UFFS_TYPE_DIR) {
+		if (obj->name_len > 0 && name[obj->name_len - 1] == '/')
+			obj->name_len--;	// truncate the ending '/' for dir
+	}
+
+	obj->sum = (obj->name_len > 0 ? uffs_MakeSum16(name, obj->name_len) : 0);
+	obj->head_pages = obj->dev->attr->pages_per_block - 1;
+
+	if (obj->type == UFFS_TYPE_DIR) {
+		if (obj->name_len == 0) {
+			if (dir != PARENT_OF_ROOT) {
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX"Bad parent for root dir!\n");
+				obj->err = UEINVAL;
+			}
+			else {
+				obj->serial = ROOT_DIR_SERIAL;
+			}
+			goto ext;
+		}
+	}
+	else {
+		if (obj->name_len == 0 || name[obj->name_len - 1] == '/') {
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Bad file name.\n");
+			obj->err = UEINVAL;
+		}
+	}
 
 
-	/*************** init level 1 ***************/
+	uffs_ObjectDevLock(obj);
+
 	if (obj->type == UFFS_TYPE_DIR) {
 		obj->node = uffs_FindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
 	}
@@ -417,301 +470,129 @@ static URET _OpenObjectUnder(uffs_Object *obj)
 		obj->node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
 	}
 
-	if (obj->node == NULL) {
-		/* dir|file not exist */
-		if (obj->oflag & UO_CREATE){
-			//create dir|file
-			return _CreateObjectUnder(obj);
+	if (obj->node == NULL) {			// dir or file not exist
+		if (obj->oflag & UO_CREATE) {	// expect to create a new one
+			uffs_ObjectDevUnLock(obj);
+			uffs_CreateObjectEx(obj, dev, dir, obj->name, obj->name_len, oflag);
+			goto ext;
 		}
 		else {
 			obj->err = UENOENT;
-			//uffs_Perror(UFFS_ERR_NOISY, PFX"dir or file not found\n");
-			return U_FAIL;
+			goto ext_1;
 		}
 	}
-
-	obj->serial = GET_SERIAL_FROM_NODE(obj);
-
-	buf = uffs_BufGetEx(obj->dev, obj->type, obj->node, 0);
-
-	if (buf == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get buf when open!\n");
-		return U_FAIL;
-	}
-
-	fi = (uffs_FileInfo *)(buf->data);
-	obj->attr = fi->attr;
-	obj->create_time = fi->create_time;
-	obj->last_modify = fi->last_modify;
-	obj->access = fi->access;
-	uffs_BufPut(obj->dev, buf);
 
 	if ((obj->oflag & (UO_CREATE | UO_EXCL)) == (UO_CREATE | UO_EXCL)){
 		obj->err = UEEXIST;
-		return U_FAIL;
+		goto ext_1;
 	}
 
+	obj->serial = GET_SERIAL_FROM_NODE(obj);
 	obj->open_succ = U_TRUE;
+
+	// this can be deferred ...
+	//uffs_LoadObjectAttr(obj);
 	
-	if (obj->oflag & UO_TRUNC) {
-		if (_TruncateObject(obj, 0) == U_FAIL) {
-			//obj->err will be set in _TruncateObject
-			return U_FAIL;
-		}
-	}
+	if (obj->oflag & UO_TRUNC)
+		_TruncateObject(obj, 0); //NOTE: obj->err will be set in _TruncateObject() if failed.
 
-	obj->err = UENOERR;
+ext_1:
+	uffs_ObjectDevUnLock(obj);
+ext:
+	obj->open_succ = (obj->err == UENOERR ? U_TRUE : U_FALSE);
 
-
-	return U_SUCC;
+	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
+
 
 /**
- * \brief search '/' in path from *pos
- * \param path the string to be search
- * \param pos[in/out] search start position, *pos will be updated after search
- * \return matched length
+ * Parse the full path name, initialize obj.
+ *
+ * \param[out] obj object to be initialize.
+ * \param[in] name full path name.
+ *
+ * \return U_SUCC if the name is parsed correctly,
+ *			 U_FAIL if failed, and obj->err is set.
+ *
+ *	\note the following fields in obj will be initialized:
+ *			obj->dev
+ *			obj->father
+ *			obj->name
+ *			obj->name_len
  */
-static int getPathPart(const char *path, int *pos)
+static URET uffs_ParseObject(uffs_Object *obj, const char *name)
 {
-	int len = 0;
-
-	for (len = 0; path[len+(*pos)] != '\0' && path[len+(*pos)] != '/'; len++) ;
-
-	*pos += len;
-
-	return len;
-}
-
-/** get dir's serial No. 
- *  path is the relative path from mount point: "abc/def/"  |  "" (in this case, return father)
- */
-static u16 _GetDirSerial(uffs_Device *dev, const char *path, u16 father)
-{
-	int pos = 0;
-	int pos_last = 0;
-	int len = 0;
-	char part[MAX_FILENAME_LENGTH+1] = {0};
-	TreeNode * node;
+	int len, m_len, d_len;
+	uffs_Device *dev;
+	const char *start, *p, *dname;
+	u16 dir;
+	TreeNode *node;
 	u16 sum;
-	u16 serial = father;
 
-	while ((len = getPathPart(path, &pos)) > 0) {
-		memcpy(part, path + pos_last, len);
-		part[len] = '\0';
-		sum = uffs_MakeSum16(part, len);
-		node = uffs_FindDirNodeByName(dev, part, len, sum, serial);
-		if (node) {
-			serial = node->u.dir.serial;
-			pos_last = ++pos;
-		}
-		else {
-			return INVALID_UFFS_SERIAL;
-		}
-	}
+	len = strlen(name);
+	m_len = uffs_GetMatchedMountPointSize(name);
+	dev = uffs_GetDeviceFromMountPointEx(name, m_len);
 
-	return serial;
-}
-
-
-static URET uffs_PrepareOpenObjectPart1(uffs_Object *obj, const char *fullname, int oflag, int pmode)
-{
-	return U_SUCC;
-}
-
-static URET uffs_PrepareOpenObjectPart2(uffs_Object *obj, uffs_Device *dev, 
-								   u16 father, const char *name, int oflag, int pmode)
-{
-	return U_SUCC;
-}
-
-/** prepare the object struct for open */
-static URET _PrepareOpenObj(uffs_Object *obj, const char *fullname, int oflag, int pmode)
-{
-	char buf[MAX_PATH_LENGTH+1] = {0};
-	char mount[MAX_FILENAME_LENGTH+1] = {0};
-	char *start_path = mount;
-	int pos;
-	int i, len;
-	u8 type;
-
-	type = (oflag & UO_DIR) ? UFFS_TYPE_DIR : UFFS_TYPE_FILE;
-
-	obj->dev = NULL;
-
-	if ((oflag & (UO_WRONLY | UO_RDWR)) == (UO_WRONLY | UO_RDWR)) {
-		/* UO_WRONLY and UO_RDWR can't appear together */
-		uffs_Perror(UFFS_ERR_NOISY, PFX"UO_WRONLY and UO_RDWR can't appear together\n");
-		obj->err = UEINVAL;
-		return U_FAIL;
-	}
-
-	obj->pos = 0;
-
-	if (!fullname) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"bad file/dir name: %s\n", fullname);
-		obj->err = UEINVAL;
-		return U_FAIL;
-	}
-
-	/************** init level 0 **************/
-	obj->oflag = oflag;
-	obj->pmode = pmode;
-
-	len = strlen(fullname);
-
-	if (oflag & UO_DIR) {
-		/** open a directory */
-		obj->type = UFFS_TYPE_DIR;
-
-		// dir name should end with '/'
-		if (fullname[len-1] != '/') {
-			uffs_Perror(UFFS_ERR_NOISY, PFX"bad dir name: %s\n", fullname);
-			obj->err = UEINVAL;
-			return U_FAIL;
-		}
-	}
-	else {
-		/** open a file */
-		obj->type = UFFS_TYPE_FILE;
-
-		if (fullname[len-1] == '/') {
-			uffs_Perror(UFFS_ERR_NOISY, PFX"bad file name: %s\n", fullname);
-			obj->err = UEINVAL;
-			return U_FAIL;
-		}
-	}
-
-	_getpath(fullname, buf);
-	// get path from full name, now what's on buf:
-	//	if it's dir:        "/abc/def/xyz/"  |  "/abc/"  |   "/abc/"  |  "/"
-	//  if it's file:       "/abc/def/"      |  X        |   "/"      |  X
-
-
-	pos = uffs_GetMatchedMountPointSize(buf);
-	if (pos == 0) {
-		/* can't not find any mount point from the path ??? */
-		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't find any mount point from the path %s\n", buf);
-		obj->err = UENOENT;
-		return U_FAIL;
-	}
-
-	// get mount point: "/abc/"	or "/"
-	memcpy(mount, buf, pos);
-	mount[pos] = '\0';
-
-	obj->dev = uffs_GetDeviceFromMountPoint(mount);
-	if (obj->dev == NULL) {
-		// uffs_Perror(UFFS_ERR_NOISY, "Can't get device from mount point: %s\r\n", mount);
-		obj->err = UENOENT;
-		return U_FAIL;
-	}
-
-	//here is a good chance to deal with bad block ...
-	if (HAVE_BADBLOCK(obj->dev)) 
-		uffs_RecoverBadBlock(obj->dev);
-
-	// get the rest name (fullname - mount point) to buf: 
-	//   if the mount point is "/abc/", then:
-	//		if it's dir:   "def/xyz/"     |   ""      |  ""     |  X
-	//		if it's file:  "def/xyz"      |   X       |  X      |  X
-	//   if the mount point is "/", then:
-	//      if it's dir:   "abc/def/xyz/  |   "abc/"  |  "abc/" |  ""
-	//      if it's file:  "abc/def/xyz"  |   X       |  "abc"  |  X
-	len = strlen(fullname) - strlen(mount);
-	memcpy(buf, fullname + strlen(mount), len);
-	buf[len] = '\0';
-
-	if (len == 0 && (oflag & UO_DIR) == 0) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"bad file name: %s\n", fullname);
-		obj->err = UEINVAL;
-		goto err;
-	}
-
-	if (oflag & UO_DIR) {
-		if (len == 0) {
-
-			// uffs_Perror(UFFS_ERR_NOISY, "Zero length name ? root dir ?\r\n");
-
+	if (dev) {
+		start = name + m_len;
+		d_len = _GetDirLengthFromPath(start, len - m_len);
+		p = start;
+		obj->dev = dev;
+		if (m_len == len) {
 			obj->father = PARENT_OF_ROOT;
-			obj->serial = ROOT_DIR_SERIAL;
+			obj->name = NULL;
 			obj->name_len = 0;
 		}
 		else {
-			if (buf[len-1] == '/') {
-				buf[len-1] = 0;
-				len--;
+			dir = ROOT_DIR_SERIAL;
+			dname = start;
+			while (p - start < d_len) {
+				while (*p != '/') p++;
+				sum = uffs_MakeSum16(start, p - dname);
+				node = uffs_FindDirNodeByName(dev, start, p - dname, sum, dir);
+				if (node == NULL) {
+					obj->err = UENOENT;
+					break;
+				}
+				else {
+					dir = node->u.dir.serial;
+					p++; // skip the '/'
+					dname = p;
+				}
 			}
-			for (i = len - 1; i >= 0 && buf[i] != '/'; i--);
-			obj->name_len = len - i - 1;
-			strcpy(obj->name, buf + i + 1);
-			if (i < 0) {
-				obj->father = ROOT_DIR_SERIAL;
-			}
-			else {
-				buf[i+1] = 0;
-				obj->father = _GetDirSerial(obj->dev, buf, ROOT_DIR_SERIAL);
-			}
+			obj->father = dir;
+			obj->name = start + (d_len > 0 ? d_len + 1 : 0);
+			obj->name_len = len - (d_len > 0 ? d_len + 1 : 0) - m_len;
 		}
 	}
 	else {
-		for (i = len - 1; i >= 0 && buf[i] != '/'; i--);
-
-		obj->name_len = len - i - 1;
-		strcpy(obj->name, buf + i + 1);
-
-		if (i < 0) {
-			obj->father = ROOT_DIR_SERIAL;
-		}
-		else {
-			buf[i+1] = 0;
-			obj->father = _GetDirSerial(obj->dev, buf, ROOT_DIR_SERIAL);
-		}
-	}
-
-	if (obj->father == INVALID_UFFS_SERIAL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"can't open path %s\n", start_path);
 		obj->err = UENOENT;
-		goto err;
 	}
 
-	obj->sum = uffs_MakeSum16(obj->name, obj->name_len);
-	obj->head_pages = obj->dev->attr->pages_per_block - 1;
-
-	//uffs_Perror(UFFS_ERR_NOISY, "Prepare name: %s\r\n", obj->name);
-
-	return U_SUCC;
-
-err:
-	if (obj->dev) {
-		uffs_PutDevice(obj->dev);
-		obj->dev = NULL;
-	}
-
-	return U_FAIL;
+	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
-URET uffs_OpenObject(uffs_Object *obj, const char *fullname, int oflag, int pmode)
+/**
+ * Open a UFFS object
+ *
+ * \param[in|out] obj the object to be open
+ * \param[in] name the full name of the object
+ * \param[in] oflag open flag
+ *
+ * \return U_SUCC if object is opened successfully,
+ *			 U_FAIL if failed, error code will be set to obj->err.
+ */
+URET uffs_OpenObject(uffs_Object *obj, const char *name, int oflag)
 {
-	URET ret = U_FAIL;
+	if (obj == NULL)
+		return U_FAIL;
 
-	if ((ret = _PrepareOpenObj(obj, fullname, oflag, pmode)) == U_SUCC) {
-		if (obj->name_len == 0) {
-			// it's root dir, always happy with that.
-			obj->open_succ = U_TRUE;
-		}
-		else {
-			uffs_ObjectDevLock(obj);
-			ret = _OpenObjectUnder(obj);
-			uffs_ObjectDevUnLock(obj);
-		}
-	}
+ 	if (uffs_ParseObject(obj, name) == U_SUCC)
+		uffs_OpenObjectEx(obj, obj->dev, obj->father, obj->name, obj->name_len, oflag);
 
-	if (ret == U_FAIL)
-		_ReleaseObjectResource(obj);
-
-	return ret;
+	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
+
 
 static void _ReleaseObjectResource(uffs_Object *obj)
 {
@@ -724,6 +605,7 @@ static void _ReleaseObjectResource(uffs_Object *obj)
 			}
 			uffs_PutDevice(obj->dev);
 			obj->dev = NULL;
+			obj->open_succ = U_FALSE;
 		}
 	}
 }
@@ -746,25 +628,39 @@ static URET _FlushObject(uffs_Object *obj)
 	return U_SUCC;
 }
 
+/**
+ * Flush object data.
+ *
+ * \param[in] obj object to be flushed
+ * \return U_SUCC or U_FAIL (error code in obj->err).
+ */
 URET uffs_FlushObject(uffs_Object *obj)
 {
 	uffs_Device *dev;
-	URET ret;
 
-	if(obj == NULL || obj->dev == NULL)
-		return U_FAIL;
-
-	if (obj->open_succ != U_TRUE)
-		return U_FAIL;
+	if(obj->dev == NULL || obj->open_succ != U_TRUE) {
+		obj->err = UEBADF;
+		goto ext;
+	}
 
 	dev = obj->dev;
 	uffs_ObjectDevLock(obj);
-	ret = _FlushObject(obj);
+
+	if (_FlushObject(obj) != U_SUCC)
+		obj->err = UEIOERR;
+
 	uffs_ObjectDevUnLock(obj);
 
-	return ret;
+ext:
+	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
+/**
+ * Close an openned object.
+ *
+ * \param[in] obj object to be closed
+ * \return U_SUCC or U_FAIL (error code in obj->err).
+ */
 URET uffs_CloseObject(uffs_Object *obj)
 {
 	uffs_Device *dev;
@@ -773,11 +669,10 @@ URET uffs_CloseObject(uffs_Object *obj)
 	uffs_FileInfo fi;
 #endif
 
-	if(obj == NULL || obj->dev == NULL)
-		return U_FAIL;
-
-	if (obj->open_succ != U_TRUE)
-		goto out;
+	if(obj->dev == NULL || obj->open_succ != U_TRUE) {
+		obj->err = UEBADF;
+		goto ext;
+	}
 
 	dev = obj->dev;
 	uffs_ObjectDevLock(obj);
@@ -796,7 +691,7 @@ URET uffs_CloseObject(uffs_Object *obj)
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get file header\n");
 				_FlushObject(obj);
 				uffs_ObjectDevUnLock(obj);
-				goto out;
+				goto ext;
 			}
 			uffs_BufRead(dev, buf, &fi, 0, sizeof(uffs_FileInfo));
 			fi.last_modify = uffs_GetCurDateTime();
@@ -809,10 +704,10 @@ URET uffs_CloseObject(uffs_Object *obj)
 
 	uffs_ObjectDevUnLock(obj);
 
-out:
+ext:
 	_ReleaseObjectResource(obj);
 
-	return U_SUCC;
+	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
 static u16 _GetFdnByOfs(uffs_Object *obj, u32 ofs)
@@ -968,9 +863,11 @@ static int _WriteInternalBlock(uffs_Object *obj,
 
 /**
  * write data to obj, from obj->pos
+ *
  * \param[in] obj file obj
  * \param[in] data data pointer
  * \param[in] len length of data to be write
+ *
  * \return bytes wrote to obj
  */
 int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
@@ -1066,9 +963,11 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 
 /**
  * read data from obj
+ *
  * \param[in] obj uffs object
  * \param[out] data output data buffer
  * \param[in] len required length of data to be read from object->pos
+ *
  * \return return bytes of data have been read
  */
 int uffs_ReadObject(uffs_Object *obj, void *data, int len)
@@ -1169,9 +1068,11 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 /**
  * move the file pointer
+ *
  * \param[in] obj uffs object
  * \param[in] offset offset from origin
  * \param[in] origin the origin position, one of:
+ *
  * \return return the new file pointer position
  */
 long uffs_SeekObject(uffs_Object *obj, long offset, int origin)
@@ -1219,8 +1120,10 @@ long uffs_SeekObject(uffs_Object *obj, long offset, int origin)
 }
 
 /**
- * return current file pointer
+ * get current file pointer
+ *
  * \param[in] obj uffs object
+ *
  * \return return the file pointer position if the obj is valid, return -1 if obj is invalid.
  */
 int uffs_GetCurOffset(uffs_Object *obj)
@@ -1234,7 +1137,9 @@ int uffs_GetCurOffset(uffs_Object *obj)
 
 /**
  * check whether the file pointer is at the end of file
+ *
  * \param[in] obj uffs object
+ *
  * \return return 1 if file pointer is at the end of file, return -1 if error occur, else return 0.
  */
 int uffs_EndOfFile(uffs_Object *obj)
@@ -1300,6 +1205,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 	else {
 		node = uffs_FindDataNode(dev, fnode->u.file.serial, fdn);
 		if (node == NULL) {
+			obj->err = UEIOERR;
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node when truncate obj\n");
 			goto _err;
 		}
@@ -1312,18 +1218,21 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 	bc = uffs_GetBlockInfo(dev, block);
 	if (bc == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get block info when truncate obj\n");
+		obj->err = UEIOERR;
 		goto _err;
 	}
 
 	newNode = uffs_GetErased(dev);
 	if (newNode == NULL) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"insufficient erased block, can't truncate obj.\n");
+		obj->err = UEIOERR;
 		goto _err;
 	}
 	newBlock = newNode->u.list.block;
 	newBc = uffs_GetBlockInfo(dev, newBlock);
 	if (newBc == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get block info when truncate obj\n");
+		obj->err = UEIOERR;
 		goto _err;
 	}
 
@@ -1334,6 +1243,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 	for (page_id = 0; page_id <= maxPageID; page_id++) {
 		page = uffs_FindPageInBlockWithPageId(dev, bc, page_id);
 		if (page == UFFS_INVALID_PAGE) {
+			obj->err = UEIOERR;
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"unknown error, truncate\n");
 			break;
 		}
@@ -1341,6 +1251,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 		buf = uffs_BufClone(dev, NULL);
 		if (buf == NULL) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't clone page buffer\n");
+			obj->err = UEIOERR;
 			goto _err;
 		}
 		tag = &(bc->spares[page].tag);
@@ -1367,6 +1278,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 
 			if (remain > end) {
 				if (tag->data_len != dev->com.pgDataSize) {
+					obj->err = UEIOERR;
 					uffs_Perror(UFFS_ERR_NOISY, PFX" ???? unknown error when truncate. \n");
 					break;
 				}
@@ -1412,6 +1324,7 @@ _err:
 		//fail to cover block, so erase new block
 		dev->ops->EraseBlock(dev, newBlock);
 		uffs_InsertToErasedListTail(dev, newNode);
+		obj->err = UEIOERR;
 	}
 
 	if (bc) {
@@ -1424,18 +1337,24 @@ _err:
 		uffs_PutBlockInfo(dev, newBc);
 	}
 
-	return U_SUCC;
+	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
+/**
+ * truncate an object
+ *
+ * \param[in] obj object to be truncated
+ * \param[in] remain data bytes to be remained in this object
+ *
+ * \return U_SUCC or U_FAIL (error code in obj->err)
+ */
 URET uffs_TruncateObject(uffs_Object *obj, u32 remain)
 {
-	URET ret;
-
 	uffs_ObjectDevLock(obj);
-	ret = _TruncateObject(obj, remain);
+	_TruncateObject(obj, remain);
 	uffs_ObjectDevUnLock(obj);
 
-	return ret;
+	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
 /** truncate obj without lock device */
@@ -1451,11 +1370,10 @@ static URET _TruncateObject(uffs_Object *obj, u32 remain)
 	uffs_Buf *buf;
 	u16 page;
 
-	if (obj == NULL) 
+	if (obj->dev == NULL || obj->open_succ == U_FALSE) {
+		obj->err = UEBADF;
 		return U_FAIL;
-
-	if (obj->dev == NULL || obj->open_succ == U_FALSE) 
-		return U_FAIL;
+	}
 
 	/* do nothing if the obj is a dir */
 	/* TODO: delete files under dir ? */
@@ -1464,8 +1382,10 @@ static URET _TruncateObject(uffs_Object *obj, u32 remain)
 		return U_FAIL;
 	}
 
-	if(remain > fnode->u.file.len)
+	if (remain > fnode->u.file.len) {
+		obj->err = UEINVAL;
 		return U_FAIL;
+	}
 
 	uffs_BufFlushAll(dev); //flush dirty buffers first
 
@@ -1478,16 +1398,19 @@ static URET _TruncateObject(uffs_Object *obj, u32 remain)
 			node = uffs_FindDataNode(dev, fnode->u.file.serial, fdn);
 			if (node == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node when trancate obj.\n");
+				obj->err = UEIOERR;
 				return U_FAIL;
 			}
 			bc = uffs_GetBlockInfo(dev, node->u.data.block);
 			if (bc == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get block info when trancate obj.\n");
+				obj->err = UEIOERR;
 				return U_FAIL;
 			}
 			for (page = 0; page < dev->attr->pages_per_block; page++) {
 				buf = uffs_BufFind(dev, fnode->u.file.serial, fdn, page);
-				if(buf) uffs_BufSetMark(buf, UFFS_BUF_EMPTY);
+				if(buf)
+					uffs_BufSetMark(buf, UFFS_BUF_EMPTY);
 			}
 			uffs_ExpireBlockInfo(dev, bc, UFFS_ALL_PAGES);
 			dev->ops->EraseBlock(dev, node->u.data.block);
@@ -1500,10 +1423,6 @@ static URET _TruncateObject(uffs_Object *obj, u32 remain)
 		else {
 			if (_TruncateInternalWithBlockRecover(obj, fdn, remain) == U_SUCC) {
 				fnode->u.file.len = remain;
-			}
-			else {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX"fail to truncate obj\n");
-				return U_FAIL;
 			}
 		}
 	}
@@ -1531,8 +1450,8 @@ URET uffs_DeleteObject(const char * name)
 	obj = uffs_GetObject();
 	if (obj == NULL) goto err1;
 
-	if (uffs_OpenObject(obj, name, UO_RDWR|UO_DIR, US_IREAD|US_IWRITE) == U_FAIL) {
-		if (uffs_OpenObject(obj, name, UO_RDWR, US_IREAD|US_IWRITE) == U_FAIL)
+	if (uffs_OpenObject(obj, name, UO_RDWR|UO_DIR) == U_FAIL) {
+		if (uffs_OpenObject(obj, name, UO_RDWR) == U_FAIL)
 			goto err1;
 	}
 
@@ -1588,141 +1507,141 @@ err1:
 	return ret;
 }
 
-URET uffs_RenameObject(const char *old_name, const char *new_name)
+/**
+ * Remove object under a new parent, change object name.
+ *
+ * \param[in|out] obj
+ * \param[in] new_parent new parent's serial number
+ * \param[in] new_name new name of the object. if new_name == NULL, keep the old name.
+ * \param[in] name_len new name length.
+ *
+ * \return U_SUCC or U_FAIL (obj->err for the reason)
+ */
+URET uffs_MoveObjectEx(uffs_Object *obj, int new_parent, const char *new_name, int name_len)
 {
-	uffs_Object *obj = NULL, *obj_new = NULL;
-	uffs_Device *dev;
-	TreeNode *node;
 	uffs_Buf *buf;
 	uffs_FileInfo fi;
-	int pos, pos1, len, new_len, old_len;
-	u16 father_new;
-	URET ret = U_FAIL;
+	uffs_Device *dev = obj->dev;
+	TreeNode *node = obj->node;
 
-	obj = uffs_GetObject();
-	obj_new = uffs_GetObject();
-
-	if (!obj || !obj_new) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't allocate uffs_Object.\n");
-		return U_FAIL;
+	if (dev == NULL || node == NULL || obj->open_succ != U_TRUE) {
+		obj->err = UEBADF;
+		goto ext;
 	}
-
-	new_len = strlen(new_name);
-	old_len = strlen(old_name);
-
-	if (old_len >= MAX_PATH_LENGTH ||
-		new_len >= MAX_PATH_LENGTH) 
-		return U_FAIL;
-
-	if ((old_name[old_len-1] == '/' && new_name[new_len-1] != '/') ||
-		(old_name[old_len-1] != '/' && new_name[new_len-1] == '/')) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't rename object between file and dir.\n");
-		goto err_exit;
-	}
-
-	pos = uffs_GetMatchedMountPointSize(old_name);
-	pos1 = uffs_GetMatchedMountPointSize(new_name);
-	if (pos <= 0 || pos <= 0 || pos != pos1 || strncmp(old_name, new_name, pos) != 0) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't moving object to different mount point\n");
-		goto err_exit;
-	}
-
-	/* check whether the new object exist ? */
-	memset(obj, 0, sizeof(uffs_Object));
-	if (new_name[new_len-1] == '/') {
-		if (uffs_OpenObject(obj, new_name, UO_DIR|UO_RDONLY, US_IREAD) == U_SUCC) {
-			uffs_CloseObject(obj);
-			goto err_exit;
-		}
-	}
-	else {
-		if (uffs_OpenObject(obj, new_name, UO_RDONLY, US_IREAD) == U_SUCC) {
-			uffs_CloseObject(obj);
-			goto err_exit;
-		}
-	}
-
-	/* check whether the old object exist ? */
-	memset(obj, 0, sizeof(uffs_Object));
-	if (old_name[old_len-1] == '/') {
-		if (uffs_OpenObject(obj, old_name, UO_DIR|UO_RDONLY, US_IREAD) == U_FAIL) {
-			goto err_exit;
-		}
-	}
-	else {
-		if (uffs_OpenObject(obj, old_name, UO_RDONLY, US_IREAD) == U_FAIL) {
-			goto err_exit;
-		}
-	}
-
-	/* get new object's farther's serail No. by prepare create the new object */
-	memset(obj_new, 0, sizeof(uffs_Object));
-	if (_PrepareOpenObj(obj_new, new_name, UO_RDWR, US_IREAD|US_IWRITE) == U_FAIL) {
-		goto err_exit;
-	}
-	father_new = obj_new->father;
-	_ReleaseObjectResource(obj_new);
-
-	dev = obj->dev;
-	node = obj->node;
 
 	uffs_ObjectDevLock(obj);
 
-	uffs_BufFlushAll(dev);
+	obj->father = new_parent;
 
-	buf = uffs_BufGetEx(dev, obj->type, node, 0);
-	if (buf == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get buf when rename!\n");
-		uffs_ObjectDevUnLock(obj);
-		uffs_CloseObject(obj);
-		goto err_exit;
+	if (name_len > 0) {
+
+		buf = uffs_BufGetEx(dev, obj->type, node, 0);
+		if (buf == NULL) {
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get buf when rename!\n");
+			obj->err = UEIOERR;
+			goto ext_1;
+		}
+
+		memcpy(&fi, buf->data, sizeof(uffs_FileInfo));
+
+		if (new_name[name_len-1] == '/')
+			name_len--;
+
+		memcpy(fi.name, new_name, name_len);
+		fi.name[name_len] = 0;
+		fi.name_len = name_len;
+		fi.last_modify = uffs_GetCurDateTime();
+
+		buf->father = new_parent;	// !! need to manually change the 'father' !!
+		uffs_BufWrite(dev, buf, &fi, 0, sizeof(uffs_FileInfo));
+		uffs_BufPut(dev, buf);
+
+		// !! force a block recover so that all old tag will be expired !!
+		// This is important so we only need to check the first spare when mount UFFS :)
+		uffs_BufFlushGroupEx(dev, obj->father, obj->serial, U_TRUE);
+
+		obj->name = new_name;
+		obj->name_len = name_len;
+		obj->sum = uffs_MakeSum16(fi.name, fi.name_len);
 	}
 
-	memcpy(&fi, buf->data, sizeof(uffs_FileInfo));
-	if (new_name[new_len-1] == '/') {
-		pos = back_search_slash(new_name, new_len - 2);
-		len = new_len - 2 - pos;
-	}
-	else {
-		pos = back_search_slash(new_name, new_len - 1);
-		len = new_len - 1 - pos;
-	}
-	memcpy(fi.name, new_name + pos + 1, len);
-	fi.name[len] = 0;
-	fi.name_len = len;
-	fi.last_modify = uffs_GetCurDateTime();
-
-	obj->sum = uffs_MakeSum16(fi.name, fi.name_len);
-
-	//update the check sum of tree node
+	//update the check sum and new parent of tree node
 	if (obj->type == UFFS_TYPE_DIR) {
 		obj->node->u.dir.checksum = obj->sum;
-		obj->node->u.dir.father = father_new;
+		obj->node->u.dir.father = new_parent;
 	}
 	else {
 		obj->node->u.file.checksum = obj->sum;
-		obj->node->u.file.father = father_new;
+		obj->node->u.file.father = new_parent;
 	}
 
-	buf->father = father_new;	// !! need to manually change the 'father' !!
-
-	uffs_BufWrite(dev, buf, &fi, 0, sizeof(uffs_FileInfo));
-	uffs_BufPut(dev, buf);
-
-	// FIXME: take care of dirty group !
-	uffs_BufFlushEx(dev, U_TRUE);	// !! force a block recover so that all old tag will be expired !!
-									// This is important so we only need to check the first spare when mount UFFS :)
-
+ext_1:
 	uffs_ObjectDevUnLock(obj);
+ext:
+
+	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
+}
+
+
+URET uffs_RenameObject(const char *old_name, const char *new_name)
+{
+	uffs_Object *obj = NULL, *new_obj = NULL;
+	URET ret = U_FAIL;
+	int oflag;
+
+	obj = uffs_GetObject();
+	new_obj = uffs_GetObject();
+
+	if (obj == NULL || new_obj == NULL)
+		goto ext;
+
+	oflag = UO_RDONLY;
+	if (uffs_OpenObject(new_obj, new_name, oflag) == U_SUCC) {
+		uffs_CloseObject(new_obj);
+		uffs_Perror(UFFS_ERR_NOISY, PFX"new object already exist!\n");
+		goto ext;
+	}
+	oflag |= UO_DIR;
+	uffs_ReInitObject(new_obj);
+	if (uffs_OpenObject(new_obj, new_name, oflag) == U_SUCC) {
+		uffs_CloseObject(new_obj);
+		uffs_Perror(UFFS_ERR_NOISY, PFX"new object already exist!\n");
+		goto ext;
+	}
+	uffs_ReInitObject(new_obj);
+
+	if (uffs_ParseObject(new_obj, new_name) != U_SUCC) {
+		uffs_Perror(UFFS_ERR_NOISY, PFX"parse new name fail !\n");
+		goto ext;
+	}
+
+	if (new_obj->name_len == 0) {
+		uffs_Perror(UFFS_ERR_NOISY, PFX"invalid new name\n");
+		goto ext;
+	}
+
+	oflag = UO_RDONLY;
+	if (uffs_OpenObject(obj, old_name, oflag) != U_SUCC) {
+		uffs_ReInitObject(obj);
+		oflag |= UO_DIR;
+		if (uffs_OpenObject(obj, old_name, oflag) != U_SUCC) {
+			uffs_Perror(UFFS_ERR_NOISY, PFX"Can't open old object !\n");
+			goto ext;
+		}
+	}
+
+	if (obj->dev != new_obj->dev) {
+		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't moving object between different mount point\n");
+	}
+	else {
+		ret = uffs_MoveObjectEx(obj, new_obj->father, new_obj->name, new_obj->name_len);
+	}
+
 	uffs_CloseObject(obj);
 
-	ret = U_SUCC;
-
-err_exit:
-	if (obj)
-		uffs_PutObject(obj);
-	if (obj_new)
-		uffs_PutObject(obj_new);
+ext:
+	if (obj) uffs_PutObject(obj);
+	if (new_obj) uffs_PutObject(new_obj);
 
 	return ret;
 }
@@ -1769,7 +1688,14 @@ URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info)
 	return ret;
 }
 
-/* find objects */
+/**
+ * Open a FindInfo for finding objects under dir
+ *
+ * \param[out] f uffs_FindInfo structure
+ * \param[in] dir an openned dir object (openned by uffs_OpenObject() ). 
+ * \return U_SUCC if success, U_FAIL if invalid param or the dir
+ *			is not been openned.
+ */
 URET uffs_OpenFindObject(uffs_FindInfo *f, uffs_Object *dir)
 {
 	if (f == NULL || dir == NULL || dir->open_succ != U_TRUE)
@@ -1784,6 +1710,15 @@ URET uffs_OpenFindObject(uffs_FindInfo *f, uffs_Object *dir)
 	return U_SUCC;
 }
 
+/**
+ * Find the first object
+ *
+ * \param[out] info the object information will be filled to info.
+ *				if info is NULL, then skip this object.
+ * \param[in] f uffs_FindInfo structure, openned by uffs_OpenFindObject().
+ *
+ * \return U_SUCC if an object is found, U_FAIL if no object is found.
+ */
 URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 {
 	uffs_Device *dev = f->dev;
@@ -1791,7 +1726,7 @@ URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 	u16 x;
 	URET ret = U_SUCC;
 
-	uffs_DeviceLock(dev);
+	uffs_ObjectDevLock(f->obj);
 	f->step = 0;
 
 	if (f->step == 0) {
@@ -1807,8 +1742,7 @@ URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 					f->work = node;
 					if (info) 
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
-					uffs_DeviceUnLock(dev);
-					return ret;
+					goto ext;
 				}
 				x = node->hash_next;
 			}
@@ -1831,8 +1765,7 @@ URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 					f->work = node;
 					if (info)
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
-					uffs_DeviceUnLock(dev);
-					return ret;
+					goto ext;
 				}
 				x = node->hash_next;
 			}
@@ -1840,11 +1773,24 @@ URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 		f->step++;
 	}
 
-	uffs_DeviceUnLock(dev);
+	ret = U_FAIL;
+ext:
+	uffs_ObjectDevUnLock(f->obj);
 
-	return U_FAIL;
+	return ret;
 }
 
+/**
+ * Find the next object.
+ *
+ * \param[out] info the object information will be filled to info.
+ *				if info is NULL, then skip this object.
+ * \param[in] f uffs_FindInfo structure, openned by uffs_OpenFindObject().
+ *
+ * \return U_SUCC if an object is found, U_FAIL if no object is found.
+ *
+ * \note uffs_FindFirstObject() should be called before uffs_FindNextObject().
+ */
 URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 {
 	uffs_Device *dev = f->dev;
@@ -1857,7 +1803,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 		f->step > 1) 
 		return U_FAIL;
 
-	uffs_DeviceLock(dev);
+	uffs_ObjectDevLock(f->obj);
 
 	x = f->work->hash_next;
 
@@ -1868,8 +1814,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 				f->work = node;
 				if (info)
 					ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
-				uffs_DeviceUnLock(dev);
-				return ret;
+				goto ext;
 			}
 			x = node->hash_next;
 		}
@@ -1884,8 +1829,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 					f->work = node;
 					if (info)
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
-					uffs_DeviceUnLock(dev);
-					return ret;
+					goto ext;
 				}
 				x = node->hash_next;
 			}
@@ -1905,8 +1849,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 				f->work = node;
 				if (info)
 					ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
-				uffs_DeviceUnLock(dev);
-				return ret;
+				goto ext;
 			}
 			x = node->hash_next;
 		}
@@ -1921,8 +1864,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 					f->work = node;
 					if (info) 
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
-					uffs_DeviceUnLock(dev);
-					return ret;
+					goto ext;
 				}
 				x = node->hash_next;
 			}
@@ -1932,11 +1874,36 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 		f->step++;
 	}
 
-	uffs_DeviceUnLock(dev);
+	ret = U_FAIL;
+ext:
+	uffs_ObjectDevUnLock(f->obj);
 
-	return U_FAIL;
+	return ret;
 }
 
+/**
+ * Rewind a find object process.
+ * \note After rewind, you can call uffs_FindFirstObject() to start find object process.
+ */
+URET uffs_FindObjectRewind(uffs_FindInfo *f)
+{
+	if (f->obj == NULL || f->obj->open_succ != U_TRUE)
+		return U_FAIL;
+
+	f->hash = 0;
+	f->work = NULL;
+	f->step = 0;
+
+	return U_SUCC;
+}
+
+/**
+ * Close Find Object.
+ *
+ * \param[in] f uffs_FindInfo structure, openned by uffs_OpenFindObject().
+ *
+ * \return U_SUCC if success, U_FAIL if invalid param.
+ */
 URET uffs_CloseFindObject(uffs_FindInfo * f)
 {
 	if (f == NULL)

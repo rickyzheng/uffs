@@ -182,14 +182,6 @@ struct uffs_StorageSt {
 };
 
 
-typedef struct uffs_mountTableSt {
-	uffs_Device *dev;
-	int startBlock;
-	int endBlock;
-	const char *mountPoint;
-	struct uffs_mountTableSt *next;
-} uffs_mountTable;
-
 
 /********************************** debug & error *************************************/
 #define UFFS_ERR_NOISY		-1
@@ -238,8 +230,8 @@ u16 uffs_FindFirstValidPage(uffs_Device *dev, uffs_BlockInfo *bc);
 u16 uffs_FindFirstFreePage(uffs_Device *dev, uffs_BlockInfo *bc, u16 pageFrom);
 u16 uffs_FindPageInBlockWithPageId(uffs_Device *dev, uffs_BlockInfo *bc, u16 page_id);
 
-u8 uffs_MakeSum8(void *p, int len);
-u16 uffs_MakeSum16(void *p, int len);
+u8 uffs_MakeSum8(const void *p, int len);
+u16 uffs_MakeSum16(const void *p, int len);
 URET uffs_CreateNewFile(uffs_Device *dev, u16 father, u16 serial, uffs_BlockInfo *bc, uffs_FileInfo *fi);
 
 int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type);
@@ -269,13 +261,9 @@ int uffs_GetDeviceTotal(uffs_Device *dev);
 URET uffs_InitDevice(uffs_Device *dev);
 URET uffs_ReleaseDevice(uffs_Device *dev);
 
-URET uffs_initMountTable(void);
-URET uffs_releaseMountTable(void);
 
 URET uffs_InitFlashClass(uffs_Device *dev);
 
-uffs_mountTable * uffs_GetMountTable(void);
-int uffs_RegisterMountTable(uffs_mountTable *mtab);
 
 
 #ifdef __cplusplus
