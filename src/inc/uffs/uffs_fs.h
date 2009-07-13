@@ -77,7 +77,7 @@ struct uffs_ObjectSt {
 
 	/***** others *******/
 	UBOOL attr_loaded;					//!< attributes loaded ?
-	UBOOL open_succ;					//!< U_TRUE: succ, U_FALSE: fail
+	UBOOL open_succ;					//!< U_TRUE or U_FALSE
 
 };
 
@@ -85,12 +85,11 @@ typedef struct uffs_ObjectSt uffs_Object;
 
 
 typedef struct uffs_FindInfoSt {
-	uffs_Object *obj;
-	uffs_Device *dev;
-	u16 father;
-	int step;		//step: 0 - working on dir entries, 1 - working on file entries, 2 - stoped.
-	int hash;
-	TreeNode *work;
+	uffs_Device *dev;				//!< the device to be searched
+	u16 serial;						//!< the dir serial number
+	int step;						//!< step: 0 - working on dir entries, 1 - working on file entries, 2 - stoped.
+	int hash;						//!< hash entry, internal used
+	TreeNode *work;					//!< working node, internal used.
 } uffs_FindInfo;
 
 #define uffs_GetObjectErr(obj) (obj->err)
@@ -127,6 +126,7 @@ URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info);
 
 /* find objects */
 URET uffs_OpenFindObject(uffs_FindInfo *find_handle, uffs_Object *dir);
+URET uffs_OpenFindObjectEx(uffs_FindInfo *f, uffs_Device *dev, int dir);
 URET uffs_FindFirstObject(uffs_ObjectInfo *info, uffs_FindInfo *find_handle);
 URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo *find_handle);
 URET uffs_FindObjectRewind(uffs_FindInfo *find_handle);

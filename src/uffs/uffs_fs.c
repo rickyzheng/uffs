@@ -1698,17 +1698,49 @@ URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info)
  */
 URET uffs_OpenFindObject(uffs_FindInfo *f, uffs_Object *dir)
 {
-	if (f == NULL || dir == NULL || dir->open_succ != U_TRUE)
+	if (f == NULL || dir == NULL || dir->dev == NULL || dir->open_succ != U_TRUE)
 		return U_FAIL;
 
-	f->obj = dir;
-	f->dev = f->obj->dev;
+	f->dev = dir->dev;
+	f->serial = dir->serial;
 	f->hash = 0;
 	f->work = NULL;
 	f->step = 0;
 
 	return U_SUCC;
 }
+
+/**
+ * Open a FindInfo for finding objects under dir
+ *
+ * \param[out] f uffs_FindInfo structure
+ * \param[in] dev uffs device
+ * \param[in] dir serial number of the dir to be searched
+ *
+ * \return U_SUCC if success, U_FAIL if invalid param or the dir
+ *			serial number is not valid.
+ */
+URET uffs_OpenFindObjectEx(uffs_FindInfo *f, uffs_Device *dev, int dir)
+{
+	TreeNode *node;
+
+	if (f == NULL || dev == NULL)
+		return U_FAIL;
+
+	node = uffs_FindDirNodeFromTree(dev, dir);
+
+	if (node == NULL)
+		return U_FAIL;
+
+	f->serial = dir;
+	f->dev = dev;
+	f->hash = 0;
+	f->work = NULL;
+	f->step = 0;
+
+	return U_SUCC;
+}
+
 
 /**
  * Find the first object
@@ -1726,7 +1758,7 @@ URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 	u16 x;
 	URET ret = U_SUCC;
 
-	uffs_ObjectDevLock(f->obj);
+	uffs_DeviceLock(dev);
 	f->step = 0;
 
 	if (f->step == 0) {
@@ -1738,7 +1770,7 @@ URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 
 			while (x != EMPTY_NODE) {
 				node = FROM_IDX(x, &(dev->tree.dis));
-				if(node->u.dir.father == f->obj->serial) {
+				if(node->u.dir.father == f->serial) {
 					f->work = node;
 					if (info) 
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
@@ -1761,7 +1793,7 @@ URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 
 			while (x != EMPTY_NODE) {
 				node = FROM_IDX(x, &(dev->tree.dis));
-				if (node->u.file.father == f->obj->serial) {
+				if (node->u.file.father == f->serial) {
 					f->work = node;
 					if (info)
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
@@ -1775,7 +1807,7 @@ URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 
 	ret = U_FAIL;
 ext:
-	uffs_ObjectDevUnLock(f->obj);
+	uffs_DeviceUnLock(dev);
 
 	return ret;
 }
@@ -1803,14 +1835,14 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 		f->step > 1) 
 		return U_FAIL;
 
-	uffs_ObjectDevLock(f->obj);
+	uffs_DeviceLock(dev);
 
 	x = f->work->hash_next;
 
 	if (f->step == 0) { //!< working on dirs
 		while (x != EMPTY_NODE) {
 			node = FROM_IDX(x, &(dev->tree.dis));
-			if (node->u.dir.father == f->obj->serial) {
+			if (node->u.dir.father == f->serial) {
 				f->work = node;
 				if (info)
 					ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
@@ -1825,7 +1857,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 			x = dev->tree.dir_entry[f->hash];
 			while (x != EMPTY_NODE) {
 				node = FROM_IDX(x, &(dev->tree.dis));
-				if (node->u.dir.father == f->obj->serial) {
+				if (node->u.dir.father == f->serial) {
 					f->work = node;
 					if (info)
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
@@ -1845,7 +1877,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 
 		while (x != EMPTY_NODE) {
 			node = FROM_IDX(x, &(dev->tree.dis));
-			if (node->u.file.father == f->obj->serial) {
+			if (node->u.file.father == f->serial) {
 				f->work = node;
 				if (info)
 					ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
@@ -1860,7 +1892,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 			x = dev->tree.file_entry[f->hash];
 			while (x != EMPTY_NODE) {
 				node = FROM_IDX(x, &(dev->tree.dis));
-				if (node->u.file.father == f->obj->serial) {
+				if (node->u.file.father == f->serial) {
 					f->work = node;
 					if (info) 
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
@@ -1876,7 +1908,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 
 	ret = U_FAIL;
 ext:
-	uffs_ObjectDevUnLock(f->obj);
+	uffs_DeviceUnLock(dev);
 
 	return ret;
 }
@@ -1887,7 +1919,7 @@ ext:
  */
 URET uffs_FindObjectRewind(uffs_FindInfo *f)
 {
-	if (f->obj == NULL || f->obj->open_succ != U_TRUE)
+	if (f == NULL)
 		return U_FAIL;
 
 	f->hash = 0;
