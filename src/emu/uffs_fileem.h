@@ -52,4 +52,4 @@ typedef struct uffs_FileEmuSt {
 void uffs_fileem_setup_device(uffs_Device *dev);
 
 #endif
- 
+
