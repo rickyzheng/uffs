@@ -166,7 +166,7 @@ static int init_uffs_fs(void)
 
 static int release_uffs_fs(void)
 {
-	return uffs_releaseMountTable();
+	return uffs_ReleaseMountTable();
 }
 
 int main(int argc, char *argv[])

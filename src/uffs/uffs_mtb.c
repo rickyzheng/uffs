@@ -87,18 +87,18 @@ URET uffs_InitMountTable(void)
 	struct uffs_MountTableSt *work;
 
 	for (work = tbl; work; work = work->next) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"init device for mount point %s ...\n", work->mountPoint);
+		uffs_Perror(UFFS_ERR_NOISY, PFX"init device for mount point %s ...\n", work->mount);
 		if (work->dev->Init(work->dev) == U_FAIL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"init device for mount point %s fail\n", work->mountPoint);
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"init device for mount point %s fail\n", work->mount);
 			return U_FAIL;
 		}
 
-		work->dev->par.start = work->startBlock;
-		if (work->endBlock < 0) {
-			work->dev->par.end = work->dev->attr->total_blocks + work->endBlock;
+		work->dev->par.start = work->start_block;
+		if (work->end_block < 0) {
+			work->dev->par.end = work->dev->attr->total_blocks + work->end_block;
 		}
 		else {
-			work->dev->par.end = work->endBlock;
+			work->dev->par.end = work->end_block;
 		}
 		uffs_Perror(UFFS_ERR_NOISY, PFX"mount partiton: %d,%d\n",
 			work->dev->par.start, work->dev->par.end);
@@ -112,7 +112,7 @@ URET uffs_InitMountTable(void)
 	return U_SUCC;
 }
 
-URET uffs_releaseMountTable(void)
+URET uffs_ReleaseMountTable(void)
 {
 	struct uffs_MountTableSt *tbl = uffs_GetMountTable();
 	struct uffs_MountTableSt *work;
@@ -137,7 +137,7 @@ uffs_Device * uffs_GetDeviceFromMountPoint(const char *mount)
 	struct uffs_MountTableSt *devTab = uffs_GetMountTable();
 
 	while (devTab) {
-		if (strcmp(mount, devTab->mountPoint) == 0) {
+		if (strcmp(mount, devTab->mount) == 0) {
 			devTab->dev->ref_count++;
 			return devTab->dev;
 		}
@@ -159,7 +159,7 @@ uffs_Device * uffs_GetDeviceFromMountPointEx(const char *mount, int len)
 	struct uffs_MountTableSt *devTab = uffs_GetMountTable();
 
 	while (devTab) {
-		if (strlen(devTab->mountPoint) == len && strncmp(mount, devTab->mountPoint, len) == 0) {
+		if (strlen(devTab->mount) == len && strncmp(mount, devTab->mount, len) == 0) {
 			devTab->dev->ref_count++;
 			return devTab->dev;
 		}
@@ -182,7 +182,7 @@ const char * uffs_GetDeviceMountPoint(uffs_Device *dev)
 
 	while (devTab) {
 		if (devTab->dev == dev) {
-			return devTab->mountPoint;
+			return devTab->mount;
 		}
 		devTab = devTab->next;
 	}

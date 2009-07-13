@@ -858,7 +858,7 @@ BOOL cmdMount(const char *tail)
 	tail = tail;
 
 	while (tab) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX" %s : (%d) ~ (%d)\n", tab->mountPoint, tab->startBlock, tab->endBlock);
+		uffs_Perror(UFFS_ERR_NORMAL, PFX" %s : (%d) ~ (%d)\n", tab->mount, tab->start_block, tab->end_block);
 		tab = tab->next;
 	}
 

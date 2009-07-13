@@ -196,7 +196,7 @@ static int init_uffs_fs(void)
 static int release_uffs_fs(void)
 {
 	int ret;
-	ret = uffs_releaseMountTable();
+	ret = uffs_ReleaseMountTable();
 #ifdef USE_NATIVE_MEMORY_ALLOCATOR
 	if (memory_pool) {
 		free(memory_pool);
@@ -219,9 +219,9 @@ static int parse_mount_point(char *arg, int m_idx)
 	if (*p == 0 || p == arg) 
 		return -1;
 
-	mtbl->mountPoint = &(mount_point_name[m_idx][0]);
-	memcpy((char *)mtbl->mountPoint, arg, p - arg);
-	((char *)(mtbl->mountPoint))[p - arg] = 0;
+	mtbl->mount = &(mount_point_name[m_idx][0]);
+	memcpy((char *)mtbl->mount, arg, p - arg);
+	((char *)(mtbl->mount))[p - arg] = 0;
 
 	p++;
 	arg = p;
@@ -242,8 +242,8 @@ static int parse_mount_point(char *arg, int m_idx)
 				return -1;
 		}
 	}
-	mtbl->startBlock = start;
-	mtbl->endBlock = end;
+	mtbl->start_block = start;
+	mtbl->end_block = end;
 	mtbl->dev = &(conf_devices[m_idx]);
 
 	return 0;
@@ -381,12 +381,12 @@ static int parse_options(int argc, char *argv[])
 
 static void print_mount_points(void)
 {
-	struct uffs_MountTableSt *mount;
+	struct uffs_MountTableSt *m;
 
-	mount = &(conf_mounts[0]);
-	while (mount->dev) {
-		printf ("Mount point: %s, start: %d, end: %d\n", mount->mountPoint, mount->startBlock, mount->endBlock);
-		mount++;
+	m = &(conf_mounts[0]);
+	while (m->dev) {
+		printf ("Mount point: %s, start: %d, end: %d\n", m->mount, m->start_block, m->end_block);
+		m++;
 	}
 }
 

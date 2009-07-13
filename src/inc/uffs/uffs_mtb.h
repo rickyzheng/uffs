@@ -51,15 +51,15 @@ extern "C"{
 
 typedef struct uffs_MountTableSt {
 	uffs_Device *dev;
-	int startBlock;
-	int endBlock;
-	const char *mountPoint;
+	int start_block;
+	int end_block;
+	const char *mount;
 	struct uffs_MountTableSt *next;
 } uffs_MountTable;
 
 
 URET uffs_InitMountTable(void);
-URET uffs_releaseMountTable(void);
+URET uffs_ReleaseMountTable(void);
 uffs_MountTable * uffs_GetMountTable(void);
 int uffs_RegisterMountTable(uffs_MountTable *mtab);
 
