@@ -314,11 +314,11 @@ BOOL cmdSt(const char *tail)
 	uffs_Perror(UFFS_ERR_NORMAL, "MaxObjectHandles:      %d\n", MAX_OBJECT_HANDLE);
 
 	uffs_Perror(UFFS_ERR_NORMAL, "----------- statistics for '%s' -----------\n", mount);
-	uffs_Perror(UFFS_ERR_NORMAL, "Block Erased: %d\n", s->blockEraseCount);
-	uffs_Perror(UFFS_ERR_NORMAL, "Write Page:   %d\n", s->pageWriteCount);
-	uffs_Perror(UFFS_ERR_NORMAL, "Write Spare:  %d\n", s->spareWriteCount);
-	uffs_Perror(UFFS_ERR_NORMAL, "Read Page:    %d\n", s->pageReadCount);
-	uffs_Perror(UFFS_ERR_NORMAL, "Read Spare:   %d\n", s->spareReadCount);
+	uffs_Perror(UFFS_ERR_NORMAL, "Block Erased: %d\n", s->block_erase_count);
+	uffs_Perror(UFFS_ERR_NORMAL, "Write Page:   %d\n", s->page_write_count);
+	uffs_Perror(UFFS_ERR_NORMAL, "Write Spare:  %d\n", s->spare_write_count);
+	uffs_Perror(UFFS_ERR_NORMAL, "Read Page:    %d\n", s->page_read_count);
+	uffs_Perror(UFFS_ERR_NORMAL, "Read Spare:   %d\n", s->spare_read_count);
 	uffs_Perror(UFFS_ERR_NORMAL, "Disk total:   %d\n", uffs_GetDeviceTotal(dev));
 	uffs_Perror(UFFS_ERR_NORMAL, "Disk Used:    %d\n", uffs_GetDeviceUsed(dev));
 	uffs_Perror(UFFS_ERR_NORMAL, "Disk Free:    %d\n", uffs_GetDeviceFree(dev));

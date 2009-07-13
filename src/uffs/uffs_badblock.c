@@ -184,9 +184,9 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 			break;
 		}
 		buf->data_len = tag->data_len;
-		if (buf->data_len > dev->com.pgDataSize) {
+		if (buf->data_len > dev->com.pg_data_size) {
 			uffs_Perror(UFFS_ERR_NOISY, PFX"data length over flow!!!\n");
-			buf->data_len = dev->com.pgDataSize;
+			buf->data_len = dev->com.pg_data_size;
 		}
 
 		buf->father = tag->father;

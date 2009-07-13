@@ -297,7 +297,7 @@ URET uffs_WriteDataToNewPage(uffs_Device *dev,
 	
 	//step 2: write page data
 	dev->flash->MakeEcc(dev, buf->data, buf->ecc);
-	ret = dev->ops->WritePageData(dev, block, page, buf->data, 0, dev->com.pgSize);
+	ret = dev->ops->WritePageData(dev, block, page, buf->data, 0, dev->com.pg_size);
 	if (ret != U_SUCC)
 		return ret;
 
@@ -463,15 +463,15 @@ int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type)
 
 	if (type == UFFS_TYPE_FILE) {
 		if(tag->page_id == (lastPage - 1) &&
-			tag->data_len == dev->com.pgDataSize) {
-			size = dev->com.pgDataSize * (dev->attr->pages_per_block - 1);
+			tag->data_len == dev->com.pg_data_size) {
+			size = dev->com.pg_data_size * (dev->attr->pages_per_block - 1);
 			return size;
 		}
 	}
 	if (type == UFFS_TYPE_DATA) {
 		if(tag->page_id == lastPage &&
-			tag->data_len == dev->com.pgDataSize) {
-			size = dev->com.pgDataSize * dev->attr->pages_per_block;
+			tag->data_len == dev->com.pg_data_size) {
+			size = dev->com.pg_data_size * dev->attr->pages_per_block;
 			return size;
 		}
 	}
@@ -554,7 +554,7 @@ UBOOL uffs_IsDataBlockReguFull(uffs_Device *dev, uffs_BlockInfo *bc)
 	uffs_LoadBlockInfo(dev, bc, dev->attr->pages_per_block - 1);
 
 	if (bc->spares[dev->attr->pages_per_block - 1].tag.page_id == (dev->attr->pages_per_block - 1) &&
-		bc->spares[dev->attr->pages_per_block - 1].tag.data_len == dev->com.pgDataSize) {
+		bc->spares[dev->attr->pages_per_block - 1].tag.data_len == dev->com.pg_data_size) {
 		return U_TRUE;
 	}
 	return U_FALSE;

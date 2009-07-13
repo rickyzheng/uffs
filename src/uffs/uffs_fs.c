@@ -714,12 +714,12 @@ static u16 _GetFdnByOfs(uffs_Object *obj, u32 ofs)
 {
 	uffs_Device *dev = obj->dev;
 
-	if (ofs < obj->head_pages * dev->com.pgDataSize) {
+	if (ofs < obj->head_pages * dev->com.pg_data_size) {
 		return 0;
 	}
 	else {
-		ofs -= obj->head_pages * dev->com.pgDataSize;
-		return (ofs / (dev->com.pgDataSize * dev->attr->pages_per_block)) + 1;
+		ofs -= obj->head_pages * dev->com.pg_data_size;
+		return (ofs / (dev->com.pg_data_size * dev->attr->pages_per_block)) + 1;
 	}
 }
 
@@ -730,8 +730,8 @@ static u32 _GetStartOfDataBlock(uffs_Object *obj, u16 fdn)
 		return 0;
 	}
 	else {
-		return (obj->head_pages * obj->dev->com.pgDataSize) +
-			(fdn - 1) * (obj->dev->com.pgDataSize * obj->dev->attr->pages_per_block);
+		return (obj->head_pages * obj->dev->com.pg_data_size) +
+			(fdn - 1) * (obj->dev->com.pg_data_size * obj->dev->attr->pages_per_block);
 	}
 }
 
@@ -749,8 +749,8 @@ static int _WriteNewBlock(uffs_Object *obj,
 	URET ret;
 
 	for (page_id = 0; page_id < dev->attr->pages_per_block; page_id++) {
-		size = (len - wroteSize) > dev->com.pgDataSize ?
-					dev->com.pgDataSize : len - wroteSize;
+		size = (len - wroteSize) > dev->com.pg_data_size ?
+					dev->com.pg_data_size : len - wroteSize;
 		if (size <= 0)
 			break;
 
@@ -812,17 +812,17 @@ static int _WriteInternalBlock(uffs_Object *obj,
 
 
 	while (wroteSize < len) {
-		page_id = blockOfs / dev->com.pgDataSize;
+		page_id = blockOfs / dev->com.pg_data_size;
 		if (fdn == 0)
 			page_id++; //in file header, page_id start from 1, not 0.
 		if (page_id > maxPageID) 
 			break;
 
-		pageOfs = blockOfs % dev->com.pgDataSize;
-		size = (len - wroteSize + pageOfs) > dev->com.pgDataSize ?
-					(dev->com.pgDataSize - pageOfs) : (len - wroteSize);
+		pageOfs = blockOfs % dev->com.pg_data_size;
+		size = (len - wroteSize + pageOfs) > dev->com.pg_data_size ?
+					(dev->com.pg_data_size - pageOfs) : (len - wroteSize);
 
-		if ((obj->node->u.file.len % dev->com.pgDataSize) == 0 &&
+		if ((obj->node->u.file.len % dev->com.pg_data_size) == 0 &&
 			(blockOfs + startOfBlock) == obj->node->u.file.len) {
 
 			buf = uffs_BufNew(dev, type, father, serial, page_id);
@@ -1027,7 +1027,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 		}
 
 		blockOfs = _GetStartOfDataBlock(obj, fdn);
-		page_id = (read_start - blockOfs) / dev->com.pgDataSize;
+		page_id = (read_start - blockOfs) / dev->com.pg_data_size;
 
 		if (fdn == 0) {
 			/**
@@ -1043,7 +1043,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 			break;
 		}
 
-		pageOfs = read_start % dev->com.pgDataSize;
+		pageOfs = read_start % dev->com.pg_data_size;
 		if (pageOfs >= buf->data_len) {
 			//uffs_Perror(UFFS_ERR_NOISY, PFX"read data out of page range ?\n");
 			uffs_BufPut(dev, buf);
@@ -1271,13 +1271,13 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 				break;
 		}
 		else {
-			end = ((fdn == 0) ? (page_id - 1) * dev->com.pgDataSize :
-					page_id * dev->com.pgDataSize);
+			end = ((fdn == 0) ? (page_id - 1) * dev->com.pg_data_size :
+					page_id * dev->com.pg_data_size);
 			end += tag->data_len;
 			end += startOfBlock;
 
 			if (remain > end) {
-				if (tag->data_len != dev->com.pgDataSize) {
+				if (tag->data_len != dev->com.pg_data_size) {
 					obj->err = UEIOERR;
 					uffs_Perror(UFFS_ERR_NOISY, PFX" ???? unknown error when truncate. \n");
 					break;
@@ -1297,7 +1297,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 					ret = U_SUCC;
 					break;
 				}
-				memset(buf->data + buf->data_len, 0, dev->com.pgDataSize - buf->data_len);
+				memset(buf->data + buf->data_len, 0, dev->com.pg_data_size - buf->data_len);
 				ret = _CoverOnePage(dev, tag, newTag, newBlock, page_id, timeStamp, buf, buf->data_len);
 				break;
 			}

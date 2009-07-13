@@ -88,8 +88,7 @@ URET uffs_InitBlockInfoCache(uffs_Device *dev, int maxCachedBlocks)
 
 	memset(buf, 0, size);
 
-	dev->bc.internalBufHead = buf;
-	dev->bc.maxBlockCached = maxCachedBlocks;
+	dev->bc.mem_pool = buf;
 
 	size = 0;
 	blockInfos = (uffs_BlockInfo *)buf;
@@ -150,12 +149,12 @@ URET uffs_ReleaseBlockInfoCache(uffs_Device *dev)
 			}
 		}
 		if (dev->mem.free) {
-			dev->mem.free(dev, dev->bc.internalBufHead);
+			dev->mem.free(dev, dev->bc.mem_pool);
 		}
 	}
 
 	dev->bc.head = dev->bc.tail = NULL;
-	dev->bc.internalBufHead = NULL;
+	dev->bc.mem_pool = NULL;
 
 	return U_SUCC;
 }

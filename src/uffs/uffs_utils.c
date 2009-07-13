@@ -127,7 +127,7 @@ URET uffs_FormatDevice(uffs_Device *dev)
 	}
 
 	for (slot = 0; slot < MAX_DIRTY_BUF_GROUPS; slot++) {
-		if (dev->buf.dirtyGroup[slot].dirtyCount > 0) {
+		if (dev->buf.dirtyGroup[slot].count > 0) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"there still have dirty pages!\n");
 			return U_FAIL;
 		}

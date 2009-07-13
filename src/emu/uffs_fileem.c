@@ -55,12 +55,12 @@ static u8 em_page_buf[4096];
 
 
 static URET CheckInit(uffs_Device *dev);
-static URET femu_WritePage(uffs_Device *dev, u32 block, u32 pageNum, const u8 *data, const u8 *spare);
-static URET femu_WritePageData(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int ofs, int len);
-static URET femu_WritePageSpare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len);
-static URET femu_ReadPage(uffs_Device *dev, u32 block, u32 pageNum, u8 *data, u8 *spare);
-static URET femu_ReadPageData(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int ofs, int len);
-static URET femu_ReadPageSpare(uffs_Device *dev, u32 block, u32 pageNum, u8 *spare, int ofs, int len);
+static URET femu_WritePage(uffs_Device *dev, u32 block, u32 page_num, const u8 *data, const u8 *spare);
+static URET femu_WritePageData(uffs_Device *dev, u32 block, u32 page_num, const u8 *page, int ofs, int len);
+static URET femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const u8 *spare, int ofs, int len);
+static URET femu_ReadPage(uffs_Device *dev, u32 block, u32 page_num, u8 *data, u8 *spare);
+static URET femu_ReadPageData(uffs_Device *dev, u32 block, u32 page_num, u8 *page, int ofs, int len);
+static URET femu_ReadPageSpare(uffs_Device *dev, u32 block, u32 page_num, u8 *spare, int ofs, int len);
 static URET femu_EraseBlock(uffs_Device *dev, u32 blockNumber);
 static URET femu_ResetFlash(uffs_Device *dev);
 static UBOOL femu_IsBlockBad(uffs_Device *dev, u32 block);
@@ -75,13 +75,13 @@ static URET CheckInit(uffs_Device *dev)
 	u8 * p = em_page_buf;
 	uffs_FileEmu *emu;
 	
-	int pgSize, pgdSize, spSize, blks, blkPgs, blkSize;
-	pgSize = dev->attr->page_data_size + dev->attr->spare_size;
-	pgdSize = dev->attr->page_data_size;
-	spSize = dev->attr->spare_size;
-	blkPgs = dev->attr->pages_per_block;
+	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
+	pg_size = dev->attr->page_data_size + dev->attr->spare_size;
+	pgd_size = dev->attr->page_data_size;
+	sp_size = dev->attr->spare_size;
+	blk_pgs = dev->attr->pages_per_block;
 	blks = dev->attr->total_blocks;
-	blkSize = dev->attr->block_data_size;
+	blk_size = dev->attr->block_data_size;
 	
 	emu = (uffs_FileEmu *)(dev->attr->private);
 
@@ -99,8 +99,8 @@ static URET CheckInit(uffs_Device *dev)
 
 
 	//clear monitor
-	memset(emu->em_monitor_page, 0, blks * blkPgs);
-	memset(emu->em_monitor_spare, 0, blks * blkPgs);
+	memset(emu->em_monitor_page, 0, blks * blk_pgs);
+	memset(emu->em_monitor_spare, 0, blks * blk_pgs);
 
 	emu->fp = fopen(emu->emu_filename, "rb");
 	if (emu->fp == NULL) {
@@ -113,13 +113,13 @@ static URET CheckInit(uffs_Device *dev)
 		fseek(emu->fp, 0, SEEK_END);
 		fSize = ftell(emu->fp);
 		
-		if (fSize < blkSize * blks)	{
+		if (fSize < blk_size * blks)	{
 			printf("Creating uffs emulation file\n");
 			fseek(emu->fp, 0, SEEK_SET);
-			memset(p, 0xff, pgdSize + spSize);
-			for (i = 0; i < blkPgs * blks; i++)	{
-				written = fwrite(p, 1, pgdSize + spSize, emu->fp);
-				if (written != pgdSize + spSize)	{
+			memset(p, 0xff, pgd_size + sp_size);
+			for (i = 0; i < blk_pgs * blks; i++)	{
+				written = fwrite(p, 1, pgd_size + sp_size, emu->fp);
+				if (written != pgd_size + sp_size)	{
 					printf("Write failed\n");
 					fclose(emu->fp);
 					emu->fp = NULL;
@@ -142,26 +142,26 @@ static URET CheckInit(uffs_Device *dev)
 	return U_SUCC;
 }
 
-static URET femu_WritePage(uffs_Device *dev, u32 block, u32 pageNum, const u8 *data, const u8 *spare)
+static URET femu_WritePage(uffs_Device *dev, u32 block, u32 page_num, const u8 *data, const u8 *spare)
 {
 	int ret;
-	int pgSize, pgdSize, spSize, blks, blkPgs, blkSize;
+	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
 
-	pgSize = dev->attr->page_data_size + dev->attr->spare_size;
-	pgdSize = dev->attr->page_data_size;
-	spSize = dev->attr->spare_size;
-	blkPgs = dev->attr->pages_per_block;
+	pg_size = dev->attr->page_data_size + dev->attr->spare_size;
+	pgd_size = dev->attr->page_data_size;
+	sp_size = dev->attr->spare_size;
+	blk_pgs = dev->attr->pages_per_block;
 	blks = dev->attr->total_blocks;
-	blkSize = dev->attr->block_data_size;
+	blk_size = dev->attr->block_data_size;
 
 	if (data) {
-		ret = femu_WritePageData(dev, block, pageNum, data, 0, pgdSize);
+		ret = femu_WritePageData(dev, block, page_num, data, 0, pgd_size);
 		if(ret == U_FAIL)
 			return ret;
 	}
 	
 	if (spare) {
-		ret = femu_WritePageSpare(dev, block, pageNum, spare, 0, spSize);
+		ret = femu_WritePageSpare(dev, block, page_num, spare, 0, sp_size);
 		if(ret == U_FAIL)
 			return ret;
 	}
@@ -170,38 +170,38 @@ static URET femu_WritePage(uffs_Device *dev, u32 block, u32 pageNum, const u8 *d
 
 }
 
-static URET femu_WritePageData(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int ofs, int len)
+static URET femu_WritePageData(uffs_Device *dev, u32 block, u32 page_num, const u8 *page, int ofs, int len)
 {
 	int written;
-	int pgSize, pgdSize, spSize, blks, blkPgs, blkSize;
+	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
 	uffs_FileEmu *emu;
 	emu = (uffs_FileEmu *)(dev->attr->private);
 
 	if (!emu || !(emu->fp))
 		return U_FAIL;
 
-	pgSize = dev->attr->page_data_size + dev->attr->spare_size;
-	pgdSize = dev->attr->page_data_size;
-	spSize = dev->attr->spare_size;
-	blkPgs = dev->attr->pages_per_block;
+	pg_size = dev->attr->page_data_size + dev->attr->spare_size;
+	pgd_size = dev->attr->page_data_size;
+	sp_size = dev->attr->spare_size;
+	blk_pgs = dev->attr->pages_per_block;
 	blks = dev->attr->total_blocks;
-	blkSize = dev->attr->block_data_size;
+	blk_size = dev->attr->block_data_size;
 
-	if (ofs + len > pgdSize) {
+	if (ofs + len > pgd_size) {
 		printf("femu: write page data out of range!\n");
 		return U_FAIL;
 	}
 
-	emu->em_monitor_page[block * blkPgs + pageNum]++;
-	if (emu->em_monitor_page[block * blkPgs + pageNum] > MAXWRITETIME_PAGE) {
-		printf("Warrning: block %d page %d exceed it's maximum write time!\r\n", block, pageNum);
+	emu->em_monitor_page[block * blk_pgs + page_num]++;
+	if (emu->em_monitor_page[block * blk_pgs + page_num] > MAXWRITETIME_PAGE) {
+		printf("Warrning: block %d page %d exceed it's maximum write time!\r\n", block, page_num);
 		return U_FAIL;
 	}
 	
 	if (page) {
 		fseek(emu->fp, 
-			(block * blkPgs + pageNum) * 
-			(pgdSize + spSize) 
+			(block * blk_pgs + page_num) * 
+			(pgd_size + sp_size) 
 			+ ofs, SEEK_SET);
 		written = fwrite(page, 1, len, emu->fp);
 		
@@ -211,44 +211,44 @@ static URET femu_WritePageData(uffs_Device *dev, u32 block, u32 pageNum, const u
 		}
 	}
 
-	dev->st.pageWriteCount++;
+	dev->st.page_write_count++;
 	fflush(emu->fp);
 	
 	return U_SUCC;
 }
 
-static URET femu_WritePageSpare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len)
+static URET femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const u8 *spare, int ofs, int len)
 {
 	int written;
-	int pgSize, pgdSize, spSize, blks, blkPgs, blkSize;
+	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
 	uffs_FileEmu *emu;
 
 	emu = (uffs_FileEmu *)(dev->attr->private);
 	if (!emu || !(emu->fp)) 
 		return U_FAIL;
 
-	pgSize = dev->attr->page_data_size + dev->attr->spare_size;
-	pgdSize = dev->attr->page_data_size;
-	spSize = dev->attr->spare_size;
-	blkPgs = dev->attr->pages_per_block;
+	pg_size = dev->attr->page_data_size + dev->attr->spare_size;
+	pgd_size = dev->attr->page_data_size;
+	sp_size = dev->attr->spare_size;
+	blk_pgs = dev->attr->pages_per_block;
 	blks = dev->attr->total_blocks;
-	blkSize = dev->attr->block_data_size;
+	blk_size = dev->attr->block_data_size;
 
-//	printf("WS: %d/%d, size %d\n", block, pageNum, len);
+//	printf("WS: %d/%d, size %d\n", block, page_num, len);
 	
-	if (ofs + len > spSize) {
+	if (ofs + len > sp_size) {
 		printf("femu: write page data out of range!\n");
 		return U_FAIL;
 	}
 
-	emu->em_monitor_spare[block*blkPgs + pageNum]++;
-	if (emu->em_monitor_spare[block*blkPgs + pageNum] > MAXWRITETIME_SPARE) {
-		printf("Warrning: block %d page %d (spare) exceed it's maximum write time!\r\n", block, pageNum);
+	emu->em_monitor_spare[block*blk_pgs + page_num]++;
+	if (emu->em_monitor_spare[block*blk_pgs + page_num] > MAXWRITETIME_SPARE) {
+		printf("Warrning: block %d page %d (spare) exceed it's maximum write time!\r\n", block, page_num);
 		return U_FAIL;
 	}
 	
 	if (spare) {
-		fseek(emu->fp, (block*blkPgs + pageNum) * (pgdSize + spSize) + dev->attr->page_data_size + ofs, SEEK_SET);
+		fseek(emu->fp, (block*blk_pgs + page_num) * (pgd_size + sp_size) + dev->attr->page_data_size + ofs, SEEK_SET);
 		written = fwrite(spare, 1, len, emu->fp);
 		if (written != len) {
 			printf("femu: write spare I/O error ?\n");
@@ -257,31 +257,31 @@ static URET femu_WritePageSpare(uffs_Device *dev, u32 block, u32 pageNum, const 
 	}
 
 	fflush(emu->fp);
-	dev->st.spareWriteCount++;
+	dev->st.spare_write_count++;
 
 	return U_SUCC;
 }
 
 
-static URET femu_ReadPage(uffs_Device *dev, u32 block, u32 pageNum, u8 *data, u8 *spare)
+static URET femu_ReadPage(uffs_Device *dev, u32 block, u32 page_num, u8 *data, u8 *spare)
 {
 	int ret;
-	int pgSize, pgdSize, spSize, blks, blkPgs, blkSize;
-	pgSize = dev->attr->page_data_size + dev->attr->spare_size;
-	pgdSize = dev->attr->page_data_size;
-	spSize = dev->attr->spare_size;
-	blkPgs = dev->attr->pages_per_block;
+	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
+	pg_size = dev->attr->page_data_size + dev->attr->spare_size;
+	pgd_size = dev->attr->page_data_size;
+	sp_size = dev->attr->spare_size;
+	blk_pgs = dev->attr->pages_per_block;
 	blks = dev->attr->total_blocks;
-	blkSize = dev->attr->block_data_size;
+	blk_size = dev->attr->block_data_size;
 
 	if (data) {
-		ret = femu_ReadPageData(dev, block, pageNum, data, 0, pgdSize);
+		ret = femu_ReadPageData(dev, block, page_num, data, 0, pgd_size);
 		if(ret == U_FAIL) 
 			return U_FAIL;
 	}
 	
 	if (spare) {
-		ret = femu_ReadPageSpare(dev, block, pageNum, spare, 0, spSize);
+		ret = femu_ReadPageSpare(dev, block, page_num, spare, 0, sp_size);
 		if(ret == U_FAIL)
 			return U_FAIL;
 	}
@@ -289,34 +289,34 @@ static URET femu_ReadPage(uffs_Device *dev, u32 block, u32 pageNum, u8 *data, u8
 	return U_SUCC;	
 }
 
-static URET femu_ReadPageData(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int ofs, int len)
+static URET femu_ReadPageData(uffs_Device *dev, u32 block, u32 page_num, u8 *page, int ofs, int len)
 {
 	int nread;
-	int pgSize, pgdSize, spSize, blks, blkPgs, blkSize;
+	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
 	uffs_FileEmu *emu;
 
 	emu = (uffs_FileEmu *)(dev->attr->private);
 	if (!emu || !(emu->fp))
 		return U_FAIL;
 
-	pgSize = dev->attr->page_data_size + dev->attr->spare_size;
-	pgdSize = dev->attr->page_data_size;
-	spSize = dev->attr->spare_size;
-	blkPgs = dev->attr->pages_per_block;
+	pg_size = dev->attr->page_data_size + dev->attr->spare_size;
+	pgd_size = dev->attr->page_data_size;
+	sp_size = dev->attr->spare_size;
+	blk_pgs = dev->attr->pages_per_block;
 	blks = dev->attr->total_blocks;
-	blkSize = dev->attr->block_data_size;
+	blk_size = dev->attr->block_data_size;
 
-	if(ofs + len > pgdSize) {
+	if(ofs + len > pgd_size) {
 		printf("femu: read page data out of range!\n");
 		return U_FAIL;
 	}
 	
 	if(page) {
-		fseek(emu->fp, (block*blkPgs + pageNum) * (pgdSize + spSize) + ofs, SEEK_SET);
+		fseek(emu->fp, (block*blk_pgs + page_num) * (pgd_size + sp_size) + ofs, SEEK_SET);
 		nread = fread(page, 1, len, emu->fp);
 
 		// for ECC testing.
-		if (0 && block == 100 && pageNum == 3) {
+		if (0 && block == 100 && page_num == 3) {
 			printf("--- ECC error inject to block 100 page 3 ---\n");
 			page[13] = (page[13] & ~0x40) | (~(page[13] & 0x40) & 0x40) ;
 		}
@@ -327,38 +327,38 @@ static URET femu_ReadPageData(uffs_Device *dev, u32 block, u32 pageNum, u8 *page
 		}
 	}
 
-	dev->st.pageReadCount++;
+	dev->st.page_read_count++;
 
 	return U_SUCC;
 }
 
-static URET femu_ReadPageSpare(uffs_Device *dev, u32 block, u32 pageNum, u8 *spare, int ofs, int len)
+static URET femu_ReadPageSpare(uffs_Device *dev, u32 block, u32 page_num, u8 *spare, int ofs, int len)
 {
 	int nread;
 	int pos;
-	int pgSize, pgdSize, spSize, blks, blkPgs, blkSize;
+	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
 	uffs_FileEmu *emu;
 
 	emu = (uffs_FileEmu *)(dev->attr->private);
 	if (!emu || !(emu->fp))
 		return U_FAIL;
 
-	pgSize = dev->attr->page_data_size + dev->attr->spare_size;
-	pgdSize = dev->attr->page_data_size;
-	spSize = dev->attr->spare_size;
-	blkPgs = dev->attr->pages_per_block;
+	pg_size = dev->attr->page_data_size + dev->attr->spare_size;
+	pgd_size = dev->attr->page_data_size;
+	sp_size = dev->attr->spare_size;
+	blk_pgs = dev->attr->pages_per_block;
 	blks = dev->attr->total_blocks;
-	blkSize = dev->attr->block_data_size;
+	blk_size = dev->attr->block_data_size;
 	
-//	printf("RS: %d/%d, size %d\n", block, pageNum, len);
+//	printf("RS: %d/%d, size %d\n", block, page_num, len);
 
-	if (ofs + len > spSize) {
+	if (ofs + len > sp_size) {
 		printf("femu: read page spare out of range!\n");
 		return U_FAIL;
 	}
 
 	if (spare) {
-		pos = (block*blkPgs + pageNum) * (pgdSize + spSize) + dev->attr->page_data_size + ofs;
+		pos = (block*blk_pgs + page_num) * (pgd_size + sp_size) + dev->attr->page_data_size + ofs;
 		if (fseek(emu->fp, pos, SEEK_SET) != 0) {
 			printf("femu: seek to %d fail!\n", pos);
 			return U_FAIL;
@@ -371,7 +371,7 @@ static URET femu_ReadPageSpare(uffs_Device *dev, u32 block, u32 pageNum, u8 *spa
 		}
 	}	
 
-	dev->st.spareReadCount++;
+	dev->st.spare_read_count++;
 		
 	return U_SUCC;
 }
@@ -383,19 +383,19 @@ static URET femu_EraseBlock(uffs_Device *dev, u32 blockNumber)
 
 	int i;
 	u8 * pg = em_page_buf;
-	int pgSize, pgdSize, spSize, blks, blkPgs, blkSize;
+	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
 	uffs_FileEmu *emu;
 
 	emu = (uffs_FileEmu *)(dev->attr->private);
 	if (!emu || !(emu->fp))
 		return U_FAIL;
 
-	pgSize = dev->attr->page_data_size + dev->attr->spare_size;
-	pgdSize = dev->attr->page_data_size;
-	spSize = dev->attr->spare_size;
-	blkPgs = dev->attr->pages_per_block;
+	pg_size = dev->attr->page_data_size + dev->attr->spare_size;
+	pgd_size = dev->attr->page_data_size;
+	sp_size = dev->attr->spare_size;
+	blk_pgs = dev->attr->pages_per_block;
 	blks = dev->attr->total_blocks;
-	blkSize = dev->attr->block_data_size;
+	blk_size = dev->attr->block_data_size;
 	
 	printf("femu: erase block %d\n", blockNumber);
 
@@ -405,23 +405,23 @@ static URET femu_EraseBlock(uffs_Device *dev, u32 blockNumber)
 	}
 	else {
 		//clear this block monitors
-		memset(emu->em_monitor_page + (blockNumber * blkPgs), 
+		memset(emu->em_monitor_page + (blockNumber * blk_pgs), 
 			0, 
-			blkPgs * sizeof(u8));
-		memset(emu->em_monitor_spare + (blockNumber * blkPgs),
+			blk_pgs * sizeof(u8));
+		memset(emu->em_monitor_spare + (blockNumber * blk_pgs),
 			0,
-			blkPgs * sizeof(u8));
+			blk_pgs * sizeof(u8));
 		
-		memset(pg, 0xff, (pgdSize + spSize));
+		memset(pg, 0xff, (pgd_size + sp_size));
 		
-		fseek(emu->fp, blockNumber * blkPgs * (pgdSize + spSize), SEEK_SET);
+		fseek(emu->fp, blockNumber * blk_pgs * (pgd_size + sp_size), SEEK_SET);
 		
-		for (i = 0; i < blkPgs; i++)	{
-			fwrite(pg, 1, (pgdSize + spSize), emu->fp);
+		for (i = 0; i < blk_pgs; i++)	{
+			fwrite(pg, 1, (pgd_size + sp_size), emu->fp);
 		}
 
 		fflush(emu->fp);
-		dev->st.blockEraseCount++;
+		dev->st.block_erase_count++;
 
 		return U_SUCC;
 	}
@@ -483,11 +483,11 @@ static void femu_printStatistic(uffs_Device *dev)
 	s = &(dev->st);
 	
 	printf("-----------statistics-----------\n");
-	printf("Block Erased: %d\n", s->blockEraseCount);
-	printf("Write Page:   %d\n", s->pageWriteCount);
-	printf("Write Spare:  %d\n", s->spareWriteCount);
-	printf("Read Page:    %d\n", s->pageReadCount);
-	printf("Read Spare:   %d\n", s->spareReadCount);
+	printf("Block Erased: %d\n", s->block_erase_count);
+	printf("Write Page:   %d\n", s->page_write_count);
+	printf("Write Spare:  %d\n", s->spare_write_count);
+	printf("Read Page:    %d\n", s->page_read_count);
+	printf("Read Spare:   %d\n", s->spare_read_count);
 	printf("Disk total:   %d\n", uffs_GetDeviceTotal(dev));
 	printf("Disk Used:    %d\n", uffs_GetDeviceUsed(dev));
 	printf("Disk Free:    %d\n", uffs_GetDeviceFree(dev));

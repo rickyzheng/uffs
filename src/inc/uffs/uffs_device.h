@@ -32,7 +32,7 @@
 
 /** 
  * \file uffs_device.h
- * \brief uffs file system device structures definition
+ * \brief uffs device structures definition
  * \author Ricky Zheng
  */
 
@@ -70,16 +70,16 @@ struct uffs_FlashOpsSt {
 	URET (*MakeBadBlockMark)(uffs_Device *dev, int block);
 };
 
-#define MAN_ID_SAMSUNG	0xEC	// manufacture ID of samsung
-#define MAN_ID_SIMRAM	0xFF	// manufacture ID when using RAM simulator
+#define MAN_ID_SAMSUNG	0xEC	//!< manufacture ID of samsung
+#define MAN_ID_SIMRAM	0xFF	//!< manufacture ID when using RAM simulator
 
 /**
  * \struct uffs_FlashClassSt
  * \brief Flash class descriptor
  */
 struct uffs_FlashClassSt {
-	const char *className;
-	int maker;					// manufacture ID
+	const char *class_name;
+	int maker;					//!< manufacture ID
 	int *id_list;
 	struct uffs_FlashOpsSt *flash;
 	URET (*InitClass)(uffs_Device *dev, int id);
@@ -87,19 +87,19 @@ struct uffs_FlashClassSt {
 
 /**
  * \struct uffs_DeviceOpsSt 
- * \brief flash physical operations, should be implement in each flash types
+ * \brief lower level flash operations, should be implement in flash driver
  */
 struct uffs_DeviceOpsSt {
 	URET (*Reset)(uffs_Device *dev);
 	UBOOL (*IsBlockBad)(uffs_Device *dev, u32 block);
 	URET (*MarkBadBlock)(uffs_Device *dev, u32 block);
 	URET (*EraseBlock)(uffs_Device *dev, u32 block);
-	URET (*WritePage)(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, const u8 *spare);
-	URET (*WritePageData)(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int ofs, int len);
-	URET (*WritePageSpare)(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len);
-	URET (*ReadPage)(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, u8 *spare);
-	URET (*ReadPageData)(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int ofs, int len);
-	URET (*ReadPageSpare)(uffs_Device *dev, u32 block, u32 pageNum, u8 *spare, int ofs, int len);
+	URET (*WritePage)(uffs_Device *dev, u32 block, u32 page_num, const u8 *page, const u8 *spare);
+	URET (*WritePageData)(uffs_Device *dev, u32 block, u32 page_num, const u8 *page, int ofs, int len);
+	URET (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page_num, const u8 *spare, int ofs, int len);
+	URET (*ReadPage)(uffs_Device *dev, u32 block, u32 page_num, u8 *page, u8 *spare);
+	URET (*ReadPageData)(uffs_Device *dev, u32 block, u32 page_num, u8 *page, int ofs, int len);
+	URET (*ReadPageSpare)(uffs_Device *dev, u32 block, u32 page_num, u8 *spare, int ofs, int len);
 };
 
 
@@ -132,76 +132,76 @@ struct uffs_storageAttrSt {
 
 
 /** 
- * \struct uffs_blockInfoCacheSt
+ * \struct uffs_BlockInfoCacheSt
  * \brief block information structure, used to manager block information caches
  */
-struct uffs_blockInfoCacheSt {
+struct uffs_BlockInfoCacheSt {
 	uffs_BlockInfo *head;			//!< buffer head of block info(spares)
-	uffs_BlockInfo *tail;
-	int maxBlockCached;				//!< maximun block info buffers
-	void *internalBufHead;			//!< internal buffer head, used for release whole buffer
+	uffs_BlockInfo *tail;			//!< buffer tail
+	void *mem_pool;					//!< internal memory pool, used for release whole buffer
 };
 
 /** 
- * \struct uffs_partitionSt
+ * \struct uffs_PartitionSt
  * \brief partition basic information
  */
-struct uffs_partitionSt {
+struct uffs_PartitionSt {
 	u16 start;		//!< start block number of partition
 	u16 end;		//!< end block number of partiton
 };
 
 /** 
- * \struct uffs_lockSt
+ * \struct uffs_LockSt
  * \brief lock stuffs
  */
-struct uffs_lockSt {
+struct uffs_LockSt {
 	u32 sem;
 	u32 task_id;
 	int counter;
 };
 
-struct uffs_dirtyGroupSt {
-	int dirtyCount;
-	uffs_Buf *dirty;
+struct uffs_DirtyGroupSt {
+	int count;					//!< dirty buffers count
+	uffs_Buf *dirty;			//!< dirty buffer list
 };
 
 /** 
- * \struct uffs_pageBufsSt
+ * \struct uffs_PageBufDescSt
+ * \brief uffs page buffers descriptor
  */
-struct uffs_pageBufsSt {
-	uffs_Buf *bufHead;
-	uffs_Buf *bufTail;
-	struct uffs_dirtyGroupSt dirtyGroup[MAX_DIRTY_BUF_GROUPS];
-	int buf_max;
-	int dirty_buf_max;
-	void *pool;
+struct uffs_PageBufDescSt {
+	uffs_Buf *head;			//!< head of buffers
+	uffs_Buf *tail;			//!< tail of buffers
+	struct uffs_DirtyGroupSt dirtyGroup[MAX_DIRTY_BUF_GROUPS];	//!< dirty buffer groups
+	int buf_max;			//!< maximum buffers
+	int dirty_buf_max;		//!< maximum dirty buffer allowed
+	void *pool;				//!< memory pool for buffers
 };
 
 
 /** 
- * \struct uffs_commInfoSt
+ * \struct uffs_PageCommInfoSt
  * \brief common data for device, should be initialized at early
- * \note it is possible that pgSize is smaller than physical page size, but normally they are the same
+ * \note it is possible that pg_size is smaller than physical page size, but normally they are the same
  */
-struct uffs_commInfoSt {
-	u32 pgDataSize;			//!< page data size
-	u32 eccSize;			//!< ecc size
-	u32 pgSize;				//!< page size = page data size + ecc size
+struct uffs_PageCommInfoSt {
+	u32 pg_data_size;			//!< page data size
+	u32 ecc_size;			//!< ecc size
+	u32 pg_size;				//!< page size = page data size + ecc size
 };
 
 
-struct uffs_newBadBlockSt {
+struct uffs_NewBadBlockSt {
 	u16 block;				//!< bad block, FIX ME to process more than one bad block
 };
 
 /** statistic of flash read/write/erase activities */
 typedef struct uffs_StatisticSt {
-	int blockEraseCount;
-	int pageWriteCount;
-	int pageReadCount;
-	int spareWriteCount;
-	int spareReadCount;
+	int block_erase_count;
+	int page_write_count;
+	int page_read_count;
+	int spare_write_count;
+	int spare_read_count;
 } uffs_stat;
 
 
@@ -215,18 +215,18 @@ struct uffs_DeviceSt {
 	URET (*Release)(uffs_Device *dev);			//!< low level release
 	void *private;								//!< private data for device
 
-	struct uffs_storageAttrSt *attr;			//!< storage attribute
-	struct uffs_partitionSt par;				//!< partition information
-	const struct uffs_FlashOpsSt *flash;		//!< flash specific operations
-	struct uffs_DeviceOpsSt *ops;				//!< NAND device operations
-	struct uffs_blockInfoCacheSt bc;			//!< block info cache
-	struct uffs_lockSt lock;					//!< lock data structure
-	struct uffs_pageBufsSt buf;					//!< page buffers
-	struct uffs_commInfoSt com;					//!< common information
-	struct uffs_TreeSt tree;					//!< tree list of block
-	struct uffs_newBadBlockSt bad;				//!< new bad block
-	struct uffs_StatisticSt st;					//!< statistic (counters)
-	struct uffs_memAllocatorSt mem;				//!< uffs native memory allocator
+	struct uffs_storageAttrSt		*attr;		//!< storage attribute
+	struct uffs_PartitionSt			par;		//!< partition information
+	const struct uffs_FlashOpsSt	*flash;		//!< flash specific operations
+	struct uffs_DeviceOpsSt			*ops;		//!< NAND device operations
+	struct uffs_BlockInfoCacheSt	bc;			//!< block info cache
+	struct uffs_LockSt				lock;		//!< lock data structure
+	struct uffs_PageBufDescSt		buf;		//!< page buffers
+	struct uffs_PageCommInfoSt		com;		//!< common information
+	struct uffs_TreeSt				tree;		//!< tree list of block
+	struct uffs_NewBadBlockSt		bad;		//!< new bad block
+	struct uffs_StatisticSt			st;			//!< statistic (counters)
+	struct uffs_memAllocatorSt		mem;		//!< uffs native memory allocator
 	u32 ref_count;								//!< device reference count
 };
 
