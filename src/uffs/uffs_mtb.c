@@ -31,9 +31,9 @@
 */
 
 /**
- * \file uffs_init.c
- * \brief initialize uffs file system device
- * \author Ricky Zheng, created 12th May, 2005
+ * \file uffs_mtb.c
+ * \brief mount table operations
+ * \author Ricky Zheng, created 11th July, 2009
  */
 
 #include "uffs/uffs_types.h"

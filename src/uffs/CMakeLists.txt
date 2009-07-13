@@ -17,6 +17,7 @@ SET (libuffs_SRCS
 		uffs_tree.c 
 		uffs_utils.c
 		uffs_mtb.c
+		uffs_find.c
 		uffs_version.c
 	 )
 
@@ -41,6 +42,7 @@ SET (libuffs_HEADS
 		${HDR}/uffs_types.h
 		${HDR}/uffs_utils.h
 		${HDR}/uffs_mtb.h
+		${HDR}/uffs_find.h
 		${HDR}/uffs_version.h
    )
 

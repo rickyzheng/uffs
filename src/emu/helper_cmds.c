@@ -44,6 +44,7 @@
 #include "uffs/uffs_utils.h"
 #include "uffs/uffs_core.h"
 #include "uffs/uffs_mtb.h"
+#include "uffs/uffs_find.h"
 #include "cmdline.h"
 
 #define PFX "cmd: "
