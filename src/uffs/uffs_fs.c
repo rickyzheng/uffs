@@ -48,27 +48,27 @@
 
 #define PFX "fs:"
 
-#define GET_SERIAL_FROM_NODE(obj) ((obj)->type == UFFS_TYPE_DIR ? \
+#define GET_OBJ_NODE_SERIAL(obj) ((obj)->type == UFFS_TYPE_DIR ? \
 									(obj)->node->u.dir.serial \
 										: \
 									(obj)->node->u.file.serial \
 								   )
 
-#define GET_FATHER_FROM_NODE(obj) ((obj)->type == UFFS_TYPE_DIR ? \
+#define GET_OBJ_NODE_FATHER(obj) ((obj)->type == UFFS_TYPE_DIR ? \
 									(obj)->node->u.dir.father \
 										: \
 									(obj)->node->u.file.father \
 								   )
 
-#define GET_SERIAL_FROM_OBJECT(obj) ((obj)->node ? GET_SERIAL_FROM_NODE(obj) : obj->serial)
-#define GET_FATHER_FROM_OBJECT(obj) ((obj)->node ? GET_FATHER_FROM_NODE(obj) : obj->father)
+#define GET_SERIAL_FROM_OBJECT(obj) ((obj)->node ? GET_OBJ_NODE_SERIAL(obj) : obj->serial)
+#define GET_FATHER_FROM_OBJECT(obj) ((obj)->node ? GET_OBJ_NODE_FATHER(obj) : obj->father)
 
 
 #define GET_BLOCK_FROM_NODE(obj) ((obj)->type == UFFS_TYPE_DIR ? \
 									(obj)->node->u.dir.block : (obj)->node->u.file.block)
 
 static void _ReleaseObjectResource(uffs_Object *obj);
-static URET _TruncateObject(uffs_Object *obj, u32 remain);
+static URET _TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run);
 
 
 static int _object_buf[sizeof(uffs_Object) * MAX_OBJECT_HANDLE / sizeof(int)];
@@ -289,9 +289,10 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 		obj->node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
 		if (obj->node) {
 			/* file already exist, truncate it to zero length */
-			obj->serial = GET_SERIAL_FROM_NODE(obj);
+			obj->serial = GET_OBJ_NODE_SERIAL(obj);
 			obj->open_succ = U_TRUE; // set open_succ to U_TRUE before call _TruncateObject()
-			_TruncateObject(obj, 0);
+			if (_TruncateObject(obj, 0, U_TRUE) == U_SUCC)
+				_TruncateObject(obj, 0, U_FALSE);
 			goto ext_1;
 		}
 	}
@@ -453,14 +454,15 @@ URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev,
 		goto ext_1;
 	}
 
-	obj->serial = GET_SERIAL_FROM_NODE(obj);
+	obj->serial = GET_OBJ_NODE_SERIAL(obj);
 	obj->open_succ = U_TRUE;
 
 	// this can be deferred ...
 	//uffs_LoadObjectAttr(obj);
 	
 	if (obj->oflag & UO_TRUNC)
-		_TruncateObject(obj, 0); //NOTE: obj->err will be set in _TruncateObject() if failed.
+		if (_TruncateObject(obj, 0, U_TRUE) == U_SUCC) //NOTE: obj->err will be set in _TruncateObject() if failed.
+			_TruncateObject(obj, 0, U_FALSE);
 
 ext_1:
 	uffs_ObjectDevUnLock(obj);
@@ -756,11 +758,11 @@ static int _WriteInternalBlock(uffs_Object *obj,
 	u32 wroteSize = 0;
 	URET ret;
 	uffs_Buf *buf;
-	u32 startOfBlock;
+	u32 block_start;
 	u8 type;
 	u16 father, serial;
 
-	startOfBlock = _GetStartOfDataBlock(obj, fdn);
+	block_start = _GetStartOfDataBlock(obj, fdn);
 
 	if (fdn == 0) {
 		type = UFFS_TYPE_FILE;
@@ -791,7 +793,7 @@ static int _WriteInternalBlock(uffs_Object *obj,
 					(dev->com.pg_data_size - pageOfs) : (len - wroteSize);
 
 		if ((obj->node->u.file.len % dev->com.pg_data_size) == 0 &&
-			(blockOfs + startOfBlock) == obj->node->u.file.len) {
+			(blockOfs + block_start) == obj->node->u.file.len) {
 
 			buf = uffs_BufNew(dev, type, father, serial, page_id);
 
@@ -819,8 +821,8 @@ static int _WriteInternalBlock(uffs_Object *obj,
 		wroteSize += size;
 		blockOfs += size;
 
-		if (startOfBlock + blockOfs > obj->node->u.file.len)
-			obj->node->u.file.len = startOfBlock + blockOfs;
+		if (block_start + blockOfs > obj->node->u.file.len)
+			obj->node->u.file.len = block_start + blockOfs;
 
 	}
 
@@ -1147,7 +1149,7 @@ static URET _CoverOnePage(uffs_Device *dev,
 	return uffs_WriteDataToNewPage(dev, newBlock, page, newTag, buf);
 }
 
-static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 remain)
+static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 remain, UBOOL dry_run)
 {
 	uffs_Device *dev = obj->dev;
 	TreeNode *fnode = obj->node;
@@ -1159,10 +1161,13 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 	uffs_Tags *tag, *newTag;
 	URET ret = U_FAIL;
 	u8 type = UFFS_TYPE_RESV;
-	u32 startOfBlock;
+	u32 block_start;
 	u32 end;
 	int timeStamp;
 	u16 page;
+
+	if (dry_run == U_FALSE)
+		uffs_BufFlushGroup(dev, obj->serial, fdn);	//!< need to flush buffer before block recovery
 
 	if (fdn == 0) {
 		node = fnode;
@@ -1190,6 +1195,20 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 		goto _err;
 	}
 
+	if (dry_run == U_TRUE) {
+		for (page_id = 0; page_id < maxPageID; page_id++) {
+			buf = uffs_BufFind(dev, fnode->u.file.serial, fdn, page_id);
+			if (buf) {								//!< ok, the buffer was loaded before ...
+				if (uffs_BufIsFree(buf) == U_FALSE) {
+					obj->err = UEEXIST;
+					break;						//!< and someone is still holding the buffer, can't truncate it !!!
+				}
+			}
+		}
+		buf = NULL;
+		goto ext;
+	}
+
 	newNode = uffs_GetErased(dev);
 	if (newNode == NULL) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"insufficient erased block, can't truncate obj.\n");
@@ -1204,7 +1223,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 		goto _err;
 	}
 
-	startOfBlock = _GetStartOfDataBlock(obj, fdn);
+	block_start = _GetStartOfDataBlock(obj, fdn);
 	timeStamp = uffs_GetBlockTimeStamp(dev, bc);
 	timeStamp = uffs_GetNextBlockTimeStamp(timeStamp);
 
@@ -1242,7 +1261,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 			end = ((fdn == 0) ? (page_id - 1) * dev->com.pg_data_size :
 					page_id * dev->com.pg_data_size);
 			end += tag->data_len;
-			end += startOfBlock;
+			end += block_start;
 
 			if (remain > end) {
 				if (tag->data_len != dev->com.pg_data_size) {
@@ -1294,7 +1313,7 @@ _err:
 		uffs_InsertToErasedListTail(dev, newNode);
 		obj->err = UEIOERR;
 	}
-
+ext:
 	if (bc) {
 		uffs_ExpireBlockInfo(dev, bc, UFFS_ALL_PAGES);
 		uffs_PutBlockInfo(dev, bc);
@@ -1319,86 +1338,104 @@ _err:
 URET uffs_TruncateObject(uffs_Object *obj, u32 remain)
 {
 	uffs_ObjectDevLock(obj);
-	_TruncateObject(obj, remain);
+	if (_TruncateObject(obj, remain, U_TRUE) == U_SUCC)
+		_TruncateObject(obj, remain, U_FALSE);
 	uffs_ObjectDevUnLock(obj);
 
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
+
 /** truncate obj without lock device */
-static URET _TruncateObject(uffs_Object *obj, u32 remain)
+static URET _TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run)
 {
 	uffs_Device *dev = obj->dev;
 	TreeNode *fnode = obj->node;
 	u16 fdn;
 	u32 flen;
-	u32 startOfBlock;
+	u32 block_start;
 	TreeNode *node;
 	uffs_BlockInfo *bc;
 	uffs_Buf *buf;
 	u16 page;
 
-	if (obj->dev == NULL || obj->open_succ == U_FALSE) {
+	if (obj->dev == NULL || obj->open_succ == U_FALSE || fnode == NULL) {
 		obj->err = UEBADF;
-		return U_FAIL;
+		goto ext;
 	}
 
-	/* do nothing if the obj is a dir */
+	/* can't truncate a dir */
 	/* TODO: delete files under dir ? */
 	if (obj->type == UFFS_TYPE_DIR) {
 		obj->err = UEEXIST;
-		return U_FAIL;
+		goto ext;
 	}
 
-	if (remain > fnode->u.file.len) {
-		obj->err = UEINVAL;
-		return U_FAIL;
+	if (remain >= fnode->u.file.len) {
+		goto ext;	//!< nothing to do ... 
 	}
 
-	uffs_BufFlushAll(dev); //flush dirty buffers first
+	flen = fnode->u.file.len;
 
-	while (fnode->u.file.len > remain) {
-		flen = fnode->u.file.len;
+	while (flen > remain) {
 		fdn = _GetFdnByOfs(obj, flen - 1);
 
-		startOfBlock = _GetStartOfDataBlock(obj, fdn);
-		if (remain <= startOfBlock && fdn > 0) {
-			node = uffs_FindDataNode(dev, fnode->u.file.serial, fdn);
+		//uffs_BufFlushGroup(dev, obj->serial, fdn);	//!< flush the buffer
+
+		block_start = _GetStartOfDataBlock(obj, fdn);
+		if (remain <= block_start && fdn > 0) {
+			node = uffs_FindDataNode(dev, obj->serial, fdn);
 			if (node == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node when trancate obj.\n");
 				obj->err = UEIOERR;
-				return U_FAIL;
+				goto ext;
 			}
 			bc = uffs_GetBlockInfo(dev, node->u.data.block);
 			if (bc == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get block info when trancate obj.\n");
 				obj->err = UEIOERR;
-				return U_FAIL;
+				goto ext;
 			}
+
 			for (page = 0; page < dev->attr->pages_per_block; page++) {
 				buf = uffs_BufFind(dev, fnode->u.file.serial, fdn, page);
-				if(buf)
-					uffs_BufSetMark(buf, UFFS_BUF_EMPTY);
+				if (buf) {								//!< ok, the buffer was loaded before ...
+					if (uffs_BufIsFree(buf) == U_FALSE) {
+						uffs_PutBlockInfo(dev, bc);
+						goto ext;						//!< and someone is still holding the buffer, can't truncate it !!!
+					}
+					else if (dry_run == U_FALSE)
+						uffs_BufMarkEmpty(dev, buf);	//!< discard the buffer
+				}
 			}
-			uffs_ExpireBlockInfo(dev, bc, UFFS_ALL_PAGES);
-			dev->ops->EraseBlock(dev, node->u.data.block);
-			uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, node);
-			node->u.list.block = bc->block;
-			uffs_PutBlockInfo(dev, bc);
-			uffs_InsertToErasedListTail(dev, node);
-			fnode->u.file.len = startOfBlock;
+
+			if (dry_run == U_FALSE) {
+				uffs_ExpireBlockInfo(dev, bc, UFFS_ALL_PAGES);
+				dev->ops->EraseBlock(dev, node->u.data.block);
+				uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, node);
+				node->u.list.block = bc->block;
+				uffs_PutBlockInfo(dev, bc);
+				uffs_InsertToErasedListTail(dev, node);
+				fnode->u.file.len = block_start;
+			}
+			else {
+				uffs_PutBlockInfo(dev, bc);
+			}
+			flen = block_start;
 		}
 		else {
-			if (_TruncateInternalWithBlockRecover(obj, fdn, remain) == U_SUCC) {
-				fnode->u.file.len = remain;
+			if (_TruncateInternalWithBlockRecover(obj, fdn, remain, dry_run) == U_SUCC) {
+				if (dry_run == U_FALSE)
+					fnode->u.file.len = remain;
+				flen = remain;
 			}
 		}
 	}
 
 	if (HAVE_BADBLOCK(dev)) 
 		uffs_RecoverBadBlock(dev);
-
-	return U_SUCC;
+ext:
+	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 
 }
 

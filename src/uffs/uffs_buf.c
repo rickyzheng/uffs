@@ -1411,9 +1411,16 @@ void uffs_BufDecRef(uffs_Buf *buf)
 		buf->ref_count--;
 }
 
-void uffs_BufSetMark(uffs_Buf *buf, int mark)
+/** mark buffer as #UFFS_BUF_EMPTY if ref_count == 0, and discard all data it holds */
+void uffs_BufMarkEmpty(uffs_Device *dev, uffs_Buf *buf)
 {
-	buf->mark = mark;
+	if (buf->mark != UFFS_BUF_EMPTY) {
+		if (buf->ref_count == 0) {
+			if (buf->mark == UFFS_BUF_DIRTY)
+				_BreakFromDirty(dev, buf);
+			buf->mark = UFFS_BUF_EMPTY;
+		}
+	}
 }
 
 #if 0

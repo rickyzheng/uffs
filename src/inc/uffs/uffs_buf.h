@@ -71,6 +71,8 @@ struct uffs_BufSt{
 	u8 * ecc;							//!< ecc buffer
 };
 
+#define uffs_BufIsFree(buf) (buf->ref_count == 0 ? U_TRUE : U_FALSE)
+
 /** initialize page buffers */
 URET uffs_BufInit(struct uffs_DeviceSt *dev, int buf_max, int dirty_buf_max);
 
@@ -102,8 +104,8 @@ URET uffs_BufWrite(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs
 /** read data from a page buffer */
 URET uffs_BufRead(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs, u32 len);
 
-/** mark buffer as #UFFS_BUF_EMPTY, #UFFS_BUF_VALID or #UFFS_BUF_DIRTY */
-void uffs_BufSetMark(uffs_Buf *buf, int mark);
+/** mark buffer as #UFFS_BUF_EMPTY if ref_count == 0, and discard all data it holds */
+void uffs_BufMarkEmpty(uffs_Device *dev, uffs_Buf *buf);
 
 /** if there is no free dirty group slot, flush the most dirty group */
 URET uffs_BufFlush(struct uffs_DeviceSt *dev);

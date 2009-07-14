@@ -86,6 +86,7 @@ typedef struct uffs_ObjectSt uffs_Object;
 
 
 #define uffs_GetObjectErr(obj) (obj->err)
+#define uffs_ClearObjectErr(obj) do { obj->err = UENOERR; } while (0)
 
 URET uffs_InitObjectBuf(void);
 URET uffs_ReleaseObjectBuf(void);
