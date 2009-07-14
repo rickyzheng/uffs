@@ -57,7 +57,7 @@ URET uffs_InitDevice(uffs_Device *dev)
 		}
 	}
 
-	memset(&(dev->st), 0, sizeof(uffs_stat));
+	memset(&(dev->st), 0, sizeof(uffs_FlashStat));
 
 	uffs_DeviceInitLock(dev);
 	uffs_InitBadBlock(dev);

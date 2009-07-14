@@ -44,9 +44,16 @@
 
 #define HAVE_BADBLOCK(dev) (dev->bad.block != UFFS_INVALID_BLOCK)
 
+/** initialize bad block management data structures for uffs device */
 void uffs_InitBadBlock(uffs_Device *dev);
+
+/** check bad block by verifying ECC in buf */
 URET uffs_CheckBadBlock(uffs_Device *dev, uffs_Buf *buf, int block);
+
+/** processing bad block: erase bad block, mark it as 'bad' and put it to bad block list */
 void uffs_ProcessBadBlock(uffs_Device *dev, TreeNode *node);
+
+/** try to recover data from a new discovered bad block */
 void uffs_RecoverBadBlock(uffs_Device *dev);
 
 #endif

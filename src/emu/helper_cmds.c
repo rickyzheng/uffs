@@ -50,6 +50,9 @@
 #define PFX "cmd: "
 
 
+#define MAX_PATH_LENGTH 128
+
+
 BOOL cmdFormat(const char *tail)
 {
 	URET ret;
@@ -290,7 +293,7 @@ BOOL cmdSt(const char *tail)
 {
 	uffs_Device *dev;
 	const char *mount = "/";
-	uffs_stat *s;
+	uffs_FlashStat *s;
 	TreeNode *node;
 
 	if (tail) {

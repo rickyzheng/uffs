@@ -45,25 +45,14 @@
 #ifdef __cplusplus
 extern "C"{
 #endif
-/*********************************************************************************************
-*	global referenced macro defines & type defines
-*********************************************************************************************/
 
 struct uffs_StaticBufSt {
-	void *node_pool;		/* data pool */
-	unsigned int node_size; /* data struct size */
-	unsigned int node_nums;	/* ubuf(data) num */
-	void *free_list;		/* free list, used by internal */
-	int lock;				/* buffer lock */
+	void *node_pool;		//!< data pool
+	unsigned int node_size; //!< data struct size
+	unsigned int node_nums;	//!< total nodes
+	void *free_list;		//!< free list, used by internal
+	int lock;				//!< buffer lock
 };
-
-/*********************************************************************************************
-*	global referenced variables
-*********************************************************************************************/
-
-/*********************************************************************************************
-*	global function prototype
-*********************************************************************************************/
 
 /** init ubuffer data structure with given discriptor */
 int uffs_StaticBufInit(struct uffs_StaticBufSt *dis); 

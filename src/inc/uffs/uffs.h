@@ -44,11 +44,6 @@
 extern "C"{
 #endif
 
-#if 0	// pmode is no longger needed.
-#define US_IWRITE		0x0000200
-#define US_IREAD		0x0000400
-#endif
-
 #define UO_RDONLY		0x0000		/** read only */
 #define UO_WRONLY		0x0001		/** write only */
 #define UO_RDWR			0x0002		/** read and write */
@@ -105,23 +100,29 @@ extern "C"{
 #define FILE_ATTR_WRITE		(1 << 0)	//!< writable
 
 
-/** file info in physical format */
+/**
+ * \structure uffs_FileInfoSt
+ * \brief file/dir entry info in physical storage format
+ */
 struct uffs_FileInfoSt {
-	u32 attr;
+	u32 attr;				//!< file/dir attribute
 	u32 create_time;
 	u32 last_modify;
 	u32 access;
 	u32 reserved;
-	u32 name_len;
+	u32 name_len;			//!< length of file/dir name
 	char name[MAX_FILENAME_LENGTH];
 };
-
 typedef struct uffs_FileInfoSt uffs_FileInfo;
 
+/**
+ * \struct uffs_ObjectInfoSt
+ * \brief object info
+ */
 typedef struct uffs_ObjectInfoSt {
 	uffs_FileInfo info;
-	u32 len;
-	u16 serial;
+	u32 len;				//!< length of file
+	u16 serial;				//!< object serial num
 } uffs_ObjectInfo;
 
 

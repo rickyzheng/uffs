@@ -39,6 +39,7 @@
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs_config.h"
 #include "uffs/uffs_ecc.h"
+#include "uffs/uffs_badblock.h"
 #include <string.h>
 
 #define PFX "bbl:  "
@@ -113,15 +114,17 @@ URET uffs_CheckBadBlock(uffs_Device *dev, uffs_Buf *buf, int block)
  */
 void uffs_ProcessBadBlock(uffs_Device *dev, TreeNode *node)
 {
-	// erase the bad block
-	dev->ops->EraseBlock(dev, dev->bad.block);
-	dev->flash->MakeBadBlockMark(dev, dev->bad.block);
+	if (HAVE_BADBLOCK(dev)) {
+		// erase the bad block
+		dev->ops->EraseBlock(dev, dev->bad.block);
+		dev->flash->MakeBadBlockMark(dev, dev->bad.block);
 
-	// and put it into bad block list
-	uffs_InsertToBadBlockList(dev, node);
+		// and put it into bad block list
+		uffs_InsertToBadBlockList(dev, node);
 
-	//clear bad block mark.
-	dev->bad.block = UFFS_INVALID_BLOCK;	
+		//clear bad block mark.
+		dev->bad.block = UFFS_INVALID_BLOCK;
+	}
 }
 
 /** 
@@ -176,7 +179,7 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 			break;
 		}
 		//NOTE: since this is a bad block, we can't guarantee the data is ECC ok, so just load data even ECC is not OK.
-		ret = uffs_LoadPhiDataToBufEccUnCare(dev, buf, bc->block, page);
+		ret = uffs_LoadPhyDataToBufEccUnCare(dev, buf, bc->block, page);
 		if (ret == U_FAIL) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"I/O error ?\n");
 			uffs_BufFreeClone(dev, buf);
@@ -236,12 +239,14 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 		}
 		else {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find the reported bad block(%d) in the tree???\n", dev->bad.block);
-			if (goodBlockIsDirty == U_TRUE) dev->ops->EraseBlock(dev, good->u.list.block);
+			if (goodBlockIsDirty == U_TRUE)
+				dev->ops->EraseBlock(dev, good->u.list.block);
 			uffs_InsertToErasedListTail(dev, good);
 		}
 	}
 	else {
-		if (goodBlockIsDirty == U_TRUE) dev->ops->EraseBlock(dev, good->u.list.block);
+		if (goodBlockIsDirty == U_TRUE)
+			dev->ops->EraseBlock(dev, good->u.list.block);
 		uffs_InsertToErasedListTail(dev, good); //put back to erased list
 	}
 

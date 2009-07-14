@@ -80,7 +80,7 @@ static struct uffs_MountTableSt demo_mount = {
 	NULL
 };
 
-static struct uffs_storageAttrSt emu_storage = {0};
+static struct uffs_StorageAttrSt emu_storage = {0};
 static struct uffs_FileEmuSt emu_private = {0};
 
 /* static alloc the memory */
@@ -119,7 +119,7 @@ static void * static_mem_alloc_malloc(struct uffs_DeviceSt *dev, unsigned int si
 }
 
 
-static void setup_emu_storage(struct uffs_storageAttrSt *attr)
+static void setup_emu_storage(struct uffs_StorageAttrSt *attr)
 {
 	attr->dev_type =	UFFS_DEV_EMU;			/* dev_type */
 	attr->maker = MAN_ID;			        	/* simulate manufacture ID */

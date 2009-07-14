@@ -340,7 +340,7 @@ static uffs_Buf * _FindFreeBuf(uffs_Device *dev)
  * \param[in] page psychical page number
  * \return return U_SUCC if no error, return U_FAIL if I/O error or ecc check fail
  */
-URET uffs_LoadPhiDataToBuf(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
+URET uffs_LoadPhyDataToBuf(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
 {
 	URET ret;
 
@@ -370,7 +370,7 @@ URET uffs_LoadPhiDataToBuf(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
  * \return return U_SUCC if no error, return U_FAIL if I/O error
  * \note this function should be only used when doing bad block recover.
  */
-URET uffs_LoadPhiDataToBufEccUnCare(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
+URET uffs_LoadPhyDataToBufEccUnCare(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
 {
 	URET ret;
 
@@ -782,7 +782,7 @@ static URET _BufFlush_Exist_With_BlockCover(
 				succRecover = U_FALSE;
 				break;
 			}
-			ret = uffs_LoadPhiDataToBuf(dev, buf, bc->block, page);
+			ret = uffs_LoadPhyDataToBuf(dev, buf, bc->block, page);
 			if (ret == U_FAIL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"I/O error ?\n");
 				uffs_BufFreeClone(dev, buf);
@@ -1262,7 +1262,7 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 
 	buf->serial = serial;
 	buf->page_id = page_id;
 
-	if (uffs_LoadPhiDataToBuf(dev, buf, block, page) == U_FAIL) {
+	if (uffs_LoadPhyDataToBuf(dev, buf, block, page) == U_FAIL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't load page from flash !\n");
 		return NULL;
 	}

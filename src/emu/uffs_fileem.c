@@ -479,7 +479,7 @@ static URET femu_initDevice(uffs_Device *dev)
 
 static void femu_printStatistic(uffs_Device *dev)
 {
-	uffs_stat *s;
+	uffs_FlashStat *s;
 	s = &(dev->st);
 	
 	printf("-----------statistics-----------\n");

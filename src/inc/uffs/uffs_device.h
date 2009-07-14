@@ -54,7 +54,6 @@ extern "C"{
 #endif
 
 
-/************************* uffs device *************************/
 /** 
  * \struct uffs_FlashOpsSt
  * \brief flash specific operations
@@ -70,8 +69,9 @@ struct uffs_FlashOpsSt {
 	URET (*MakeBadBlockMark)(uffs_Device *dev, int block);
 };
 
+/** Well known manufacture IDs */
 #define MAN_ID_SAMSUNG	0xEC	//!< manufacture ID of samsung
-#define MAN_ID_SIMRAM	0xFF	//!< manufacture ID when using RAM simulator
+#define MAN_ID_SIMRAM	0xFF	//!< manufacture ID of RAM simulator
 
 /**
  * \struct uffs_FlashClassSt
@@ -103,7 +103,6 @@ struct uffs_DeviceOpsSt {
 };
 
 
-
 /** UFFS device type: uffs_DeviceSt.dev_type */
 #define UFFS_DEV_NULL		0
 #define UFFS_DEV_NAND		1
@@ -114,10 +113,10 @@ struct uffs_DeviceOpsSt {
 
 
 /** 
- * \struct uffs_storageAttrSt
+ * \struct uffs_StorageAttrSt
  * \brief uffs device storage attribute, provide by nand specific file
  */
-struct uffs_storageAttrSt {
+struct uffs_StorageAttrSt {
 	u32 dev_type;			//!< device type
 	int maker;				//!< flash maker
 	int id;					//!< chip id, or device id
@@ -160,6 +159,10 @@ struct uffs_LockSt {
 	int counter;
 };
 
+/** 
+ * \struct uffs_DirtyGroupSt
+ * \brief manager dirty page buffers
+ */
 struct uffs_DirtyGroupSt {
 	int count;					//!< dirty buffers count
 	uffs_Buf *dirty;			//!< dirty buffer list
@@ -186,23 +189,30 @@ struct uffs_PageBufDescSt {
  */
 struct uffs_PageCommInfoSt {
 	u32 pg_data_size;			//!< page data size
-	u32 ecc_size;			//!< ecc size
+	u32 ecc_size;				//!< ecc size
 	u32 pg_size;				//!< page size = page data size + ecc size
 };
 
-
+/** 
+ * \struct uffs_NewBadBlockSt
+ * \brief holding new discovered bad block
+ */
 struct uffs_NewBadBlockSt {
 	u16 block;				//!< bad block, FIX ME to process more than one bad block
 };
 
-/** statistic of flash read/write/erase activities */
-typedef struct uffs_StatisticSt {
+/**
+ * \struct uffs_FlashStatSt
+ * \typedef uffs_FlashStat
+ * \brief statistic data of flash read/write/erase activities
+ */
+typedef struct uffs_FlashStatSt {
 	int block_erase_count;
 	int page_write_count;
 	int page_read_count;
 	int spare_write_count;
 	int spare_read_count;
-} uffs_stat;
+} uffs_FlashStat;
 
 
 /** 
@@ -215,7 +225,7 @@ struct uffs_DeviceSt {
 	URET (*Release)(uffs_Device *dev);			//!< low level release
 	void *private;								//!< private data for device
 
-	struct uffs_storageAttrSt		*attr;		//!< storage attribute
+	struct uffs_StorageAttrSt		*attr;		//!< storage attribute
 	struct uffs_PartitionSt			par;		//!< partition information
 	const struct uffs_FlashOpsSt	*flash;		//!< flash specific operations
 	struct uffs_DeviceOpsSt			*ops;		//!< NAND device operations
@@ -225,17 +235,22 @@ struct uffs_DeviceSt {
 	struct uffs_PageCommInfoSt		com;		//!< common information
 	struct uffs_TreeSt				tree;		//!< tree list of block
 	struct uffs_NewBadBlockSt		bad;		//!< new bad block
-	struct uffs_StatisticSt			st;			//!< statistic (counters)
+	struct uffs_FlashStatSt			st;			//!< statistic (counters)
 	struct uffs_memAllocatorSt		mem;		//!< uffs native memory allocator
 	u32 ref_count;								//!< device reference count
 };
 
+/** create the lock for uffs device */
 URET uffs_DeviceInitLock(uffs_Device *dev);
+
+/** delete the lock of uffs device */
 URET uffs_DeviceReleaseLock(uffs_Device *dev);
+
+/** lock uffs device */
 URET uffs_DeviceLock(uffs_Device *dev);
+
+/** unlock uffs device */
 URET uffs_DeviceUnLock(uffs_Device *dev);
-
-
 
 
 #ifdef __cplusplus

@@ -86,7 +86,7 @@ static struct uffs_MountTableSt conf_mounts[MAX_MOUNT_TABLES] = {0};
 static uffs_Device conf_devices[MAX_MOUNT_TABLES] = {0};
 static char mount_point_name[MAX_MOUNT_TABLES][MAX_MOUNT_POINT_NAME] = {0};
 
-static struct uffs_storageAttrSt emu_storage = {0};
+static struct uffs_StorageAttrSt emu_storage = {0};
 static struct uffs_FileEmuSt emu_private = {0};
 
 
@@ -139,7 +139,7 @@ static struct cli_commandset cmdset[] =
 };
 
 
-static void setup_emu_storage(struct uffs_storageAttrSt *attr)
+static void setup_emu_storage(struct uffs_StorageAttrSt *attr)
 {
 	attr->dev_type =	UFFS_DEV_EMU;			/* dev_type */
 	attr->maker = conf_sim_manid;				/* simulate manufacture ID */

@@ -57,17 +57,32 @@ typedef struct uffs_MountTableSt {
 	struct uffs_MountTableSt *next;
 } uffs_MountTable;
 
+/** initialize registered mount table */
+URET uffs_InitMountTable(void);									
 
-URET uffs_InitMountTable(void);
-URET uffs_ReleaseMountTable(void);
-uffs_MountTable * uffs_GetMountTable(void);
-int uffs_RegisterMountTable(uffs_MountTable *mtab);
+/** release registered mount table */
+URET uffs_ReleaseMountTable(void);								
 
-uffs_Device * uffs_GetDeviceFromMountPoint(const char *mount);
-uffs_Device * uffs_GetDeviceFromMountPointEx(const char *mount, int len);
-const char * uffs_GetDeviceMountPoint(uffs_Device *dev);
-void uffs_PutDevice(uffs_Device *dev);
+/** get registered mount table */
+uffs_MountTable * uffs_GetMountTable(void);						
 
+/** register mount table */
+int uffs_RegisterMountTable(uffs_MountTable *mtab);				
+
+/** get matched mount point from absolute path */
+int uffs_GetMatchedMountPointSize(const char *path);			
+
+/** get uffs device from mount point */
+uffs_Device * uffs_GetDeviceFromMountPoint(const char *mount);	
+
+/** get uffs device from mount point */
+uffs_Device * uffs_GetDeviceFromMountPointEx(const char *mount, int len);	
+
+/** get mount point name from uffs device */
+const char * uffs_GetDeviceMountPoint(uffs_Device *dev);		
+
+/** down crease uffs device references by uffs_GetDeviceXXX() */
+void uffs_PutDevice(uffs_Device *dev);							
 
 #ifdef __cplusplus
 }

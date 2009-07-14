@@ -200,40 +200,6 @@ URET uffs_CreateObject(uffs_Object *obj, const char *fullname, int oflag)
 }
 
 
-/**
- * find the matched mount point from a given full absolute path.
- *
- * \param[in] path full path
- * \return the length of mount point.
- */
-int uffs_GetMatchedMountPointSize(const char *path)
-{
-	int pos;
-	uffs_Device *dev;
-
-	if (path[0] != '/')
-		return 0;
-
-	pos = strlen(path);
-
-	while (pos > 0) {
-		if ((dev = uffs_GetDeviceFromMountPointEx(path, pos)) != NULL ) {
-			uffs_PutDevice(dev);
-			return pos;
-		}
-		else {
-			if (path[pos-1] == '/') 
-				pos--;
-			//back forward search the next '/'
-			for (; pos > 0 && path[pos-1] != '/'; pos--)
-				;
-		}
-	}
-
-	return pos;
-}
-
-
 
 /**
  * return the dir length from a path.
@@ -620,8 +586,10 @@ static URET _FlushObject(uffs_Object *obj)
 		if (obj->type == UFFS_TYPE_DIR)
 			return uffs_BufFlushGroup(dev, obj->node->u.dir.father, obj->node->u.dir.serial);
 		else {
-			return (uffs_BufFlushGroupMatchFather(dev, obj->node->u.file.serial) == U_SUCC &&
-				uffs_BufFlushGroup(dev, obj->node->u.file.father, obj->node->u.file.serial) == U_SUCC) ? U_SUCC : U_FAIL;
+			return (
+				uffs_BufFlushGroupMatchFather(dev, obj->node->u.file.serial) == U_SUCC &&
+				uffs_BufFlushGroup(dev, obj->node->u.file.father, obj->node->u.file.serial) == U_SUCC
+				) ? U_SUCC : U_FAIL;
 		}
 	}
 
@@ -1255,7 +1223,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 			goto _err;
 		}
 		tag = &(bc->spares[page].tag);
-		uffs_LoadPhiDataToBuf(dev, buf, bc->block, page);
+		uffs_LoadPhyDataToBuf(dev, buf, bc->block, page);
 
 		buf->father = tag->father;
 		buf->serial = tag->serial;

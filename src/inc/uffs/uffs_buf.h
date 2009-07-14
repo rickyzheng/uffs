@@ -48,68 +48,108 @@
 extern "C"{
 #endif
 	
-#define CLONE_BUF_MARK		0xffff
+#define CLONE_BUF_MARK		0xffff		//!< set uffs_BufSt.ref_count to this for a 'cloned' buffer
 
-#define UFFS_BUF_EMPTY		0
-#define UFFS_BUF_VALID		1
-#define UFFS_BUF_DIRTY		2
+#define UFFS_BUF_EMPTY		0			//!< buffer is empty
+#define UFFS_BUF_VALID		1			//!< buffer is holding valid data
+#define UFFS_BUF_DIRTY		2			//!< buffer data is modified
 
 /** uffs page buffer */
 struct uffs_BufSt{
-	struct uffs_BufSt *next;	//!< link to next buffer
-	struct uffs_BufSt *prev;	//!< link to previous buffer
-	struct uffs_BufSt *next_dirty;
-	struct uffs_BufSt *prev_dirty;
-	u8 type;					//!< file, dir, or data
-	u16 father;					//!< father serial
-	u16 serial;					//!< serial 
-	u16 page_id;					//!< page id 
-	u16 mark;					//!< #UFFS_BUF_EMPTY, #UFFS_BUF_VALID, or #UFFS_BUF_DIRTY ?
-	u16 ref_count;				//!< reference counter
-	u16 data_len;				//!< length of data
-	u8 * data;					//!< data buffer
-	u8 * ecc;					//!< ecc buffer
+	struct uffs_BufSt *next;			//!< link to next buffer
+	struct uffs_BufSt *prev;			//!< link to previous buffer
+	struct uffs_BufSt *next_dirty;		//!< link to next dirty buffer
+	struct uffs_BufSt *prev_dirty;		//!< link to previous dirty buffer
+	u8 type;							//!< #UFFS_TYPE_DIR or #UFFS_TYPE_FILE or #UFFS_TYPE_DATA
+	u16 father;							//!< father serial
+	u16 serial;							//!< serial 
+	u16 page_id;						//!< page id 
+	u16 mark;							//!< #UFFS_BUF_EMPTY or #UFFS_BUF_VALID, or #UFFS_BUF_DIRTY ?
+	u16 ref_count;						//!< reference counter, or #CLONE_BUF_MARK for a cloned buffer
+	u16 data_len;						//!< length of data
+	u8 * data;							//!< data buffer
+	u8 * ecc;							//!< ecc buffer
 };
 
-
+/** initialize page buffers */
 URET uffs_BufInit(struct uffs_DeviceSt *dev, int buf_max, int dirty_buf_max);
+
+/** release page buffers */
 URET uffs_BufReleaseAll(struct uffs_DeviceSt *dev);
 
+/** find the page buffer, move to link list head if found */
 uffs_Buf * uffs_BufGet(struct uffs_DeviceSt *dev, u16 father, u16 serial, u16 page_id);
-uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 father, u16 serial, u16 page_id);
 uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 page_id);
+
+/** alloc a new page buffer */
+uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 father, u16 serial, u16 page_id);
+
+/** find the page buffer (not affect the reference counter) */
 uffs_Buf * uffs_BufFind(uffs_Device *dev, u16 father, u16 serial, u16 page_id);
 
+/** put page buffer back to pool, called in pair with #uffs_Get,#uffs_GetEx or #uffs_BufNew */
 URET uffs_BufPut(uffs_Device *dev, uffs_Buf *buf);
 
+/** increase buffer references */
 void uffs_BufIncRef(uffs_Buf *buf);
+
+/** decrease buffer references */
 void uffs_BufDecRef(uffs_Buf *buf);
+
+/** write data to a page buffer */
 URET uffs_BufWrite(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs, u32 len);
+
+/** read data from a page buffer */
 URET uffs_BufRead(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs, u32 len);
+
+/** mark buffer as #UFFS_BUF_EMPTY, #UFFS_BUF_VALID or #UFFS_BUF_DIRTY */
 void uffs_BufSetMark(uffs_Buf *buf, int mark);
 
+/** if there is no free dirty group slot, flush the most dirty group */
 URET uffs_BufFlush(struct uffs_DeviceSt *dev);
 URET uffs_BufFlushEx(struct uffs_DeviceSt *dev, UBOOL force_block_recover);
 
+/** flush dirty group */
 URET uffs_BufFlushGroup(struct uffs_DeviceSt *dev, u16 father, u16 serial);
 URET uffs_BufFlushGroupEx(struct uffs_DeviceSt *dev, u16 father, u16 serial, UBOOL force_block_recover);
+
+/** find free dirty group slot */
 int uffs_BufFindFreeGroupSlot(struct uffs_DeviceSt *dev);
+
+/** find the dirty group slot */
 int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, u16 father, u16 serial);
+
+/** flush most dirty group */
 URET uffs_BufFlushMostDirtyGroup(struct uffs_DeviceSt *dev);
+
+/** flush all groups under the same father number */
 URET uffs_BufFlushGroupMatchFather(struct uffs_DeviceSt *dev, u16 father);
 
+/** flush all page buffers */
 URET uffs_BufFlushAll(struct uffs_DeviceSt *dev);
 
+/** no one holding any page buffer ? safe to release page buffers */
 UBOOL uffs_BufIsAllFree(struct uffs_DeviceSt *dev);
+
+/** are all page buffer marked with #UFFS_BUF_EMPTY ? */
 UBOOL uffs_BufIsAllEmpty(struct uffs_DeviceSt *dev);
+
+/** mark all page buffer as #UFFS_BUF_EMPTY */
 URET uffs_BufSetAllEmpty(struct uffs_DeviceSt *dev);
 
+/** clone a page buffer */
 uffs_Buf * uffs_BufClone(struct uffs_DeviceSt *dev, uffs_Buf *buf);
+
+/** release a cloned page buffer, call in pair with #uffs_BufClone */
 void uffs_BufFreeClone(uffs_Device *dev, uffs_Buf *buf);
 
-URET uffs_LoadPhiDataToBuf(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page);
-URET uffs_LoadPhiDataToBufEccUnCare(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page);
+/** load physical storage data to page buffer */
+URET uffs_LoadPhyDataToBuf(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page);
 
+/** load physical storage data to page buffer withouth checking ECC */
+URET uffs_LoadPhyDataToBufEccUnCare(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page);
+
+/** showing page buffers info, for debug only */
 void uffs_BufInspect(uffs_Device *dev);
 
 #ifdef __cplusplus

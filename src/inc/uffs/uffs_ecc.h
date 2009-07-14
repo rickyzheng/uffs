@@ -41,7 +41,7 @@
 #include "uffs/uffs_config.h"
 #include "uffs/uffs_core.h"
 
-#define MAX_ECC_LENGTH	24	//2K page ecc length is 24 bytes.
+#define MAX_ECC_LENGTH	24	//!< 2K page ecc length is 24 bytes.
 
 int uffs_GetEccSize256(uffs_Device *dev);
 void uffs_MakeEcc256(uffs_Device *dev, void *data, void *ecc);

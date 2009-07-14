@@ -36,16 +36,16 @@
 
 
 /** \typedef uffs_Device */
-typedef struct uffs_DeviceSt		uffs_Device;	//NAND flash device
+typedef struct uffs_DeviceSt		uffs_Device;
 /** \typedef uffs_DevOps */
-typedef struct uffs_DeviceOpsSt		uffs_DevOps;	//NAND flash operations
+typedef struct uffs_DeviceOpsSt		uffs_DevOps;
 
 typedef struct uffs_BlockInfoSt uffs_BlockInfo;
 typedef struct uffs_PageSpareSt uffs_PageSpare;
-typedef struct uffs_TagsSt			uffs_Tags;		//UFFS page tags
-typedef struct uffs_TagsSt_8		uffs_Tags_8;	//UFFS page tags, fit for 8 bytes spare space
+typedef struct uffs_TagsSt			uffs_Tags;		//!< UFFS page tags
+typedef struct uffs_TagsSt_8		uffs_Tags_8;	//!< UFFS page tags for 8 bytes spare space
 
-typedef struct uffs_BufSt uffs_Buf;			//page buffer
+typedef struct uffs_BufSt uffs_Buf;
 
 
 

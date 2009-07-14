@@ -68,9 +68,6 @@
 #define MAX_DIRTY_BUF_GROUPS	3
 
 
-/** \def MAX_PATH_LENGTH */
-#define MAX_PATH_LENGTH 128
-
 /**
  * \def USE_STATIC_MEMORY_ALLOCATOR
  * \note uffs will use static memory allocator if this is defined.
@@ -95,8 +92,9 @@
  * \def FLUSH_BUF_AFTER_WRITE
  * \note UFFS will write all data directly into flash in 
  *       each 'write' call if you enable this option.
- *       (which means lesser data lost when power failue but lower writing performance)
- *       we recomment not open this define for normal applications.
+ *       (which means lesser data lost when power failue but
+ *		 pooer writing performance).
+ *		 It's not recommented to open this define for normal applications.
  */
 //#define FLUSH_BUF_AFTER_WRITE
 
@@ -129,16 +127,54 @@
 
 /**
  * \def ENABLE_TAG_CHECKSUM 
+ * \note do not set it to 1 if your NAND flash only have 8 bytes spare !
  */
-#define ENABLE_TAG_CHECKSUM 0		// do not set it to 1 if your NAND flash only have 8 bytes spare !
+#define ENABLE_TAG_CHECKSUM 0
 
 
-/* micros for calculating buffer sizes */
-#define UFFS_BLOCK_INFO_BUFFER_SIZE(n_pages_per_block) ((sizeof(uffs_BlockInfo) + sizeof(uffs_PageSpare) * n_pages_per_block) * MAX_CACHED_BLOCK_INFO)
-#define UFFS_PAGE_BUFFER_SIZE(n_page_size) ((sizeof(uffs_Buf) + n_page_size) * MAX_PAGE_BUFFERS)
+/** micros for calculating buffer sizes */
+
+/**
+ *	\def UFFS_BLOCK_INFO_BUFFER_SIZE
+ *	\brief calculate memory bytes for block info caches
+ */
+#define UFFS_BLOCK_INFO_BUFFER_SIZE(n_pages_per_block)	\
+			(											\
+				(										\
+					sizeof(uffs_BlockInfo) +			\
+					sizeof(uffs_PageSpare) * n_pages_per_block \
+				 ) * MAX_CACHED_BLOCK_INFO				\
+			)
+
+/**
+ *	\def UFFS_PAGE_BUFFER_SIZE
+ *	\brief calculate memory bytes for page buffers
+ */
+#define UFFS_PAGE_BUFFER_SIZE(n_page_size)	\
+			(								\
+				(							\
+					sizeof(uffs_Buf) + n_page_size	\
+				) * MAX_PAGE_BUFFERS		\
+			)
+
+/**
+ *	\def UFFS_TREE_BUFFER_SIZE
+ *	\brief calculate memory bytes for tree nodes
+ */
 #define UFFS_TREE_BUFFER_SIZE(n_blocks) (sizeof(TreeNode) * n_blocks)
 
-#define UFFS_STATIC_BUFF_SIZE(n_pages_per_block, n_page_size, n_blocks) (UFFS_BLOCK_INFO_BUFFER_SIZE(n_pages_per_block) + UFFS_PAGE_BUFFER_SIZE(n_page_size) + UFFS_TREE_BUFFER_SIZE(n_blocks) + n_page_size)
+/**
+ *	\def UFFS_STATIC_BUFF_SIZE
+ *	\brief calculate total memory usage of uffs system
+ */
+#define UFFS_STATIC_BUFF_SIZE(n_pages_per_block, n_page_size, n_blocks) \
+			(		\
+				UFFS_BLOCK_INFO_BUFFER_SIZE(n_pages_per_block) + \
+				UFFS_PAGE_BUFFER_SIZE(n_page_size) + \
+				UFFS_TREE_BUFFER_SIZE(n_blocks) + \
+				n_page_size \
+			 )
+
 
 #ifdef WIN32
 # pragma warning(disable : 4996)
