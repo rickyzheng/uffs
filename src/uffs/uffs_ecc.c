@@ -89,39 +89,12 @@ static const u8 column_parity_tbl[256] = {
 };
 
 
-int uffs_GetEccSize256(uffs_Device *dev)
-{
-	dev = dev;
-	return 3;
-}
-
-int uffs_GetEccSize512(uffs_Device *dev)
-{
-	dev = dev;
-	return 6;
-}
-
-int uffs_GetEccSize1K(uffs_Device *dev)
-{
-	dev = dev;
-	return 12;
-}
-
-int uffs_GetEccSize2K(uffs_Device *dev)
-{
-	dev = dev;
-	return 24;
-}
-
-
-static void uffs_MakeEccChunk256(uffs_Device *dev, void *data, void *ecc, u16 len)
+static void uffs_MakeEccChunk256(void *data, void *ecc, u16 len)
 {
 	u8 *pecc = (u8 *)ecc;
 	u8 *p = (u8 *)data;
 	u8 b, col_parity = 0, line_parity = 0, line_parity_prime = 0;
 	u16 i;
-
-	dev = dev;
 
 	for (i = 0; i < len; i++) {
 		b = column_parity_tbl[*p++];
@@ -151,44 +124,28 @@ static void uffs_MakeEccChunk256(uffs_Device *dev, void *data, void *ecc, u16 le
 
 }
 
-void uffs_MakeEcc256(uffs_Device *dev, void *data, void *ecc)
+/**
+ * calculate ECC
+ * \return length of generated ECC. (3 bytes ECC per 256 data) 
+ */
+int uffs_MakeEcc(void *data, int data_len, void *ecc)
 {
-	uffs_MakeEccChunk256(dev, data, ecc, 256 - 3);
-}
+	u8 *p_data = (u8 *)data, *p_ecc = (u8 *)ecc;
 
-void uffs_MakeEcc512(uffs_Device *dev, void *data, void *ecc)
-{
-	uffs_MakeEccChunk256(dev, data, ecc, 256);
-	uffs_MakeEccChunk256(dev, (char *)data + 256, (char *)ecc + 3, 256 - 6);
-}
+	if (data == NULL || ecc == NULL)
+		return 0;
 
-void uffs_MakeEcc1K(uffs_Device *dev, void *data, void *ecc)
-{
-	int i;
-	char *p = (char *)data;
-	char *pecc = (char *)ecc;
-
-	for (i = 0; i < 3; i++) {
-		uffs_MakeEccChunk256(dev, p, pecc, 256);
-		p += 256; pecc += 3;
+	while (data_len > 0) {
+		uffs_MakeEccChunk256(p_data, p_ecc, data_len > 256 ? 256 : data_len);
+		data_len -= 256;
+		p_ecc += 3;
 	}
-	uffs_MakeEccChunk256(dev, p, pecc, 256 - 12);
+
+	return p_ecc - (u8 *)ecc;
 }
 
-void uffs_MakeEcc2K(uffs_Device *dev, void *data, void *ecc)
-{
-	int i;
-	char *p = (char *)data;
-	char *pecc = (char *)ecc;
 
-	for (i = 0; i < 7; i++) {
-		uffs_MakeEccChunk256(dev, p, pecc, 256);
-		p += 256; pecc += 3;
-	}
-	uffs_MakeEccChunk256(dev, p, pecc, 256 - 24);
-}
-
-static int uffs_EccCorrectChunk256(uffs_Device *dev, void *data, void *read_ecc, const void *test_ecc, int errtop)
+static int uffs_EccCorrectChunk256(void *data, void *read_ecc, const void *test_ecc, int errtop)
 {
 	u8 d0, d1, d2;		/* deltas */
 	u8 *p = (u8 *)data;
@@ -244,87 +201,37 @@ static int uffs_EccCorrectChunk256(uffs_Device *dev, void *data, void *read_ecc,
 }
 
 /** 
+ * correct data by ECC.
+ *
  * return:   0 -- no error
  *			-1 -- can not be correct
  *			>0 -- how many bits corrected
  */
-int uffs_EccCorrect256(uffs_Device *dev, void *data, void *read_ecc, const void *test_ecc)
+int uffs_EccCorrect(void *data, int data_len, void *read_ecc, const void *test_ecc)
 {
-	return uffs_EccCorrectChunk256(dev, data, read_ecc, test_ecc, 256 - 3);
-}
+	u8 *p_data = (u8 *)data, *p_read_ecc = (u8 *)read_ecc, *p_test_ecc = (u8 *)test_ecc;
+	int total = 0, ret;
 
-/** 
- * return:   0 -- no error
- *			-1 -- can not be correct
- *			>0 -- how many bits corrected
- */
-int uffs_EccCorrect512(uffs_Device *dev, void *data, void *read_ecc, const void *test_ecc)
-{
-	int ret1, ret2;
+	if (data == NULL || read_ecc == NULL || test_ecc == NULL)
+		return -1;
 
-	ret1 = uffs_EccCorrectChunk256(dev, data, read_ecc, test_ecc, 256);
-	if (ret1 < 0)
-		return ret1;
+	if (data_len & 0xFF)
+		return -1;	//!< data length must be n * 256
 
-	ret2 = uffs_EccCorrectChunk256(dev, (char *)data + 256, (char *)read_ecc + 3, (const char *)test_ecc + 3, 250);
-
-	if (ret2 < 0)
-		return ret2;
-
-	return ret1 + ret2;
-}
-
-/** 
- * return:   0 -- no error
- *			-1 -- can not be correct
- *			>0 -- how many bits corrected
- */
-int uffs_EccCorrect1K(uffs_Device *dev, void *data, void *read_ecc, const void *test_ecc)
-{
-	int ret[4];
-	int i;
-	char *p = (char *)data;
-	char *pecc = (char *)read_ecc;
-	const char *ptecc = (const char *)test_ecc;
-
-	for (i = 0; i < 3; i++) {
-		ret[i] = uffs_EccCorrectChunk256(dev, p, pecc, ptecc, 256);
-		if (ret[i] < 0) return ret[i];
-		p += 256; pecc += 3; ptecc += 3;
-	}
-	ret[i] = uffs_EccCorrectChunk256(dev, p, pecc, ptecc, 256 - 12); //last chunk
-
-	if (ret[i] < 0)
-		return ret[i];
-
-	return ret[0] + ret[1] + ret[2] + ret[3];
-}
-
-/** 
- * return:   0 -- no error
- *			-1 -- can not be correct
- *			>0 -- how many bits corrected
- */
-int uffs_EccCorrect2K(uffs_Device *dev, void *data, void *read_ecc, const void *test_ecc)
-{
-	int ret[8];
-	int i;
-	char *p = (char *)data;
-	char *pecc = (char *)read_ecc;
-	const char *ptecc = (const char *)test_ecc;
-
-	for (i = 0; i < 7; i++) {
-		ret[i] = uffs_EccCorrectChunk256(dev, p, pecc, ptecc, 256);
-		if (ret[i] < 0) return ret[i];
-		p += 256; pecc += 3; ptecc += 3;
+	while (data_len > 0) {
+		ret = uffs_EccCorrectChunk256(p_data, p_read_ecc, p_test_ecc, 256);
+		if (ret < 0) {
+			total = ret;
+			break;
+		}
+		else
+			total += ret;
+		p_data += 256;
+		p_read_ecc += 3;
+		p_test_ecc += 3;
+		data_len -= 256;
 	}
 
-	ret[i] = uffs_EccCorrectChunk256(dev, p, pecc, ptecc, 256 - 24); //last chunk
+	return total;
 
-	if (ret[i] < 0)
-		return ret[i];
-
-	return ret[0] + ret[1] + ret[2] + ret[3] + ret[4] + ret[5] + ret[6] + ret[7];
 }
-
-

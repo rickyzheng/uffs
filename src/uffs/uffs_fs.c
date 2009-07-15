@@ -1142,7 +1142,7 @@ static URET _CoverOnePage(uffs_Device *dev,
 	newTag->type = buf->type;
 	newTag->block_ts = newTimeStamp;
 	newTag->data_len = length;
-	newTag->dataSum = old->dataSum;
+	newTag->data_sum = old->data_sum;
 	newTag->page_id = (u8)(buf->page_id);
 
 
@@ -1160,7 +1160,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 	uffs_Buf *buf = NULL;
 	uffs_Tags *tag, *newTag;
 	URET ret = U_FAIL;
-	u8 type = UFFS_TYPE_RESV;
+	u8 type;
 	u32 block_start;
 	u32 end;
 	int timeStamp;

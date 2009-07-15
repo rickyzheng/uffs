@@ -51,79 +51,64 @@ extern "C"{
 
 /** 
  * \struct uffs_TagsSt
- * \note size: 12 bytes, small enough to be embedded into the 'spare' of NAND flash page.
- *			Although this struct is designed as close as the NAND flash spare, it is *NOT*
- *          the physical map of NAND flash page's 'spare'!! It's "Logical Spare".
- *	\see Logic Spare <--> Physical Spare : uffs_FlashOps->LoadPageSpare,->WritePageSpare
+ * \brief this data structure describes the page status.
+ *			the first 6(or 7) bytes along with ECC will be stored in page spare area,
+ *			'data_len' and 'data_sum' are stored in page data area.
+ *
  */
 struct uffs_TagsSt {
+
+	/** the following 6(0r 7) bytes are stored in page spare area */
+
 	u8 dirty:1;				//!< 0: dirty, 1: clear
 	u8 valid:1;				//!< 0: valid, 1: invalid
-	u8 type:4;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA or #UFFS_TYPE_RESV
-	u8 block_ts:2;	//!< time stamp of block;
+	u8 type:2;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
+	u8 block_ts:2;			//!< time stamp of block;
+	u8 page_full:1;			//!< 0: not full, 1: full
 
 	u8 page_id;				//!< page id
 	u16 parent;				//!< parent's serial number
 	u16 serial;				//!< serial number
-
-	u16 data_len;			//!< length of page data length
-	u16 dataSum;			//!< sum of file name or directory name
 #if defined(ENABLE_TAG_CHECKSUM) && ENABLE_TAG_CHECKSUM == 1
 	u8 checksum;			//!< checksum of above, or ecc of tag...
 #endif
-	u8 block_status;			//!< block status, this byte is loaded from flash, but not write to flash directly
 
+	/** the following 4 bytes are stored in page data area */
+	u16 data_len;			//!< length of page data length
+	u16 data_sum;			//!< sum of file name or directory name, not used if it's file data.
+
+	/** block status: this byte is loaded from flash, but not write to flash directly */
+	u8 block_status;		
 };
 
 /**
  * \struct uffs_TagsSt_8
- * \brief special version for 8 bytes spare (not fit for 12 bytes uffs_Tags)
+ * \brief this data structure describes the page status, for 8 bytes page spare.
+ *			the first 4(or 5) bytes along with ECC will be stored in page spare area,
+ *			'data_len' and 'data_sum' are stored in page data area.
+ */
  */
 struct uffs_TagsSt_8 {
+	/** the following 4(or 5) bytes are stored in page spare area */
 	u8 dirty:1;				//!< 0: dirty, 1: clear
 	u8 valid:1;				//!< 0: valid, 1: invalid
-	u8 type:4;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA or #UFFS_TYPE_RESV
+	u8 type:2;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
 	u8 block_ts:2;			//!< time stamp of block;
+	u8 page_full:1;			//!< 0: not full, 1: full
 
 	u8 page_id;				//!< page id
 	u8 parent;				//!< parent's serial number, warning: using 8-bit, blocks should not > 254
 	u8 serial;				//!< serial number, warning: using 8-bit, blocks should not > 254
-
-	u16 dataSum;			//!< sum of file name or directory name
-	u8 data_len;			//!< length of page data length, warning: using 8-bit
-	u8 block_status;			//!< block status, this byte is loaded from flash, but not write to flash directly
-};
-
-/*
-New tag: ecc embedded
-struct uffs_TagsSt {
-//0:
-	u8 dirty:1;				//!< 0: dirty, 1: clear
-	u8 valid:1;				//!< 0: valid, 1: invalid
-	u8 type:4;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA or #UFFS_TYPE_RESV
-	u8 block_ts:2;	//!< time stamp of block;
-//1:
-	u8 dataSum;				//!< sum of file name or directory name, or ... ?
-//2:
-	u16 parent;				//!< parent's serial number
-	u16 serial;				//!< serial number
-//6:	
-	u16 data_len;			//!< length of page data: maximum 64K bytes
-//8:
-#if NAND_PAGE_DATASIZE == 512
-	u8 ecc[6];				//!< ecc for 512 page size
-#elseif NAND_PAGE_DATASIZE == 1024
-	u8 ecc[12];				//!< ecc for 1K page size
-#elseif NAND_PAGE_DATASIZE == 2048
-	u8 ecc[24];				//!< ecc for 2K page size
+#if defined(ENABLE_TAG_CHECKSUM) && ENABLE_TAG_CHECKSUM == 1
+	u8 checksum;			//!< checksum of above, or ecc of tag...
 #endif
-	u8 page_id;				//!< maximum 256 pages in a block
 
-	u8 block_status;			//!< block status, this byte is loaded from flash, but not write to flash directly !
+	u16 data_len;			//!< length of page data length
+	u16 data_sum;			//!< sum of file name or directory name
 
-}
-
-*/
+	/** block status: this byte is loaded from flash, but not write to flash directly */
+	u8 block_status;		
+};
 
 
 
@@ -146,41 +131,6 @@ void uffs_TransferFromTag8(uffs_Tags *tag, uffs_Tags_8 *tag_8);
 
 #include "uffs_device.h"
 
-/********************* uffs disk and partition ***************************/
-
-#define UFFS_DISK_MARK				0x53464655	//'UFFS'
-#define UFFS_DISK_INFO_SIZE			64
-#define UFFS_PARTITION_INFO_SIZE	32
-
-//PHICICAL storage
-//uffs disk information residents on first block of NAND flash
-//Assume that NAND flash's first block is always good.
-struct uffs_DiskInfoSt {
-	u32 uffs_mark;		//!< will be 'UFFS', value: 0x53464655
-	u32 version;		//!< uffs version
-	u32 reserved[16];	//!< reserved
-	u32 status;			//!< uffs status
-	u32 partitions;		//!< partition nums
-	u32 alternate;		//!< diskinfo alternate block
-};
-
-struct uffs_PartitionInfoSt {
-	u32 status;				//partition status
-	u32 create_time;			//create time
-	u32 lastModified;		//last modified time
-	u32 block_begin;		//partition begin block
-	u32 block_end;			//partition end block
-	u32 access;				//access mask
-};
-
-
-struct uffs_StorageSt {
-	int mainBlock;
-	struct uffs_DiskInfoSt main;
-	int partsNum;
-	struct uffs_PartitionInfoSt *parts;
-};
-
 
 
 /********************************** debug & error *************************************/
@@ -193,6 +143,7 @@ struct uffs_StorageSt {
 #define UFFS_DBG_LEVEL	UFFS_ERR_NOISY	
 
 void uffs_Perror( int level, const char *errFmt, ... );
+
 
 /********************************** NAND **********************************************/
 //NAND flash specific file must implement these interface

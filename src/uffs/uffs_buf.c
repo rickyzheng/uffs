@@ -465,7 +465,7 @@ static URET _BreakFromDirty(uffs_Device *dev, uffs_Buf *dirtyBuf)
 
 static u16 _GetDataSum(uffs_Device *dev, uffs_Buf *buf)
 {
-	u16 dataSum = 0; //default: 0
+	u16 data_sum = 0; //default: 0
 	uffs_FileInfo *fi;
 	
 	dev = dev;
@@ -473,11 +473,11 @@ static u16 _GetDataSum(uffs_Device *dev, uffs_Buf *buf)
 	if (buf->type == UFFS_TYPE_FILE || buf->type == UFFS_TYPE_DIR) {
 		if (buf->page_id == 0) {
 			fi = (uffs_FileInfo *)(buf->data);
-			dataSum = uffs_MakeSum16(fi->name, fi->name_len);
+			data_sum = uffs_MakeSum16(fi->name, fi->name_len);
 		}
 	}
 
-	return dataSum;
+	return data_sum;
 }
 
 
@@ -562,7 +562,7 @@ URET
 		tag->block_ts = uffs_GetBlockTimeStamp(dev, bc);
 		tag->data_len = buf->data_len;
 		tag->type = buf->type;
-		tag->dataSum = _GetDataSum(dev, buf);
+		tag->data_sum = _GetDataSum(dev, buf);
 		tag->parent = buf->parent;
 		tag->serial = buf->serial;
 		tag->page_id = (u8)(buf->page_id);  //FIX ME!! if more than 256 pages in a block
@@ -634,7 +634,7 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 		tag = &(bc->spares[i].tag);
 		tag->block_ts = uffs_GetFirstBlockTimeStamp();
 		tag->data_len = buf->data_len;
-		tag->dataSum = _GetDataSum(dev, buf);
+		tag->data_sum = _GetDataSum(dev, buf);
 		tag->type = type;
 		tag->parent = buf->parent;
 		tag->serial = buf->serial;
@@ -661,14 +661,14 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 		node->u.dir.serial = serial;
 		//node->u.dir.pagID = 0;		//dir stored in page 0,  ??
 		//node->u.dir.ofs = 0;		//TODO!!, for dir, the ofs should be ... ?
-		node->u.dir.checksum = bc->spares[0].tag.dataSum; //for dir, the checksum should be the same as file
+		node->u.dir.checksum = bc->spares[0].tag.data_sum; //for dir, the checksum should be the same as file
 								//FIXME: if we support more than one dir in one block
 		break;
 	case UFFS_TYPE_FILE:
 		node->u.file.block = bc->block;
 		node->u.file.parent = parent;
 		node->u.file.serial = serial;
-		node->u.file.checksum = bc->spares[0].tag.dataSum; //for file, the page0 is where fileinfo ...
+		node->u.file.checksum = bc->spares[0].tag.data_sum; //for file, the page0 is where fileinfo ...
 		break;
 	case UFFS_TYPE_DATA:
 		node->u.data.block = bc->block;
@@ -751,7 +751,7 @@ static URET _BufFlush_Exist_With_BlockCover(
 		buf = _FindBufInDirtyList(dev->buf.dirtyGroup[slot].dirty, i);
 		if (buf != NULL) {
 			tag->data_len = buf->data_len;
-			tag->dataSum = _GetDataSum(dev, buf);
+			tag->data_sum = _GetDataSum(dev, buf);
 			ret = uffs_WriteDataToNewPage(dev, newBlock, i, tag, buf);
 			if (ret == U_SUCC) {
 				if (_BreakFromDirty(dev, buf) == U_SUCC) {
@@ -800,7 +800,7 @@ static URET _BufFlush_Exist_With_BlockCover(
 			buf->page_id = oldTag->page_id; 
 
 			tag->data_len = buf->data_len;
-			tag->dataSum = _GetDataSum(dev, buf);
+			tag->data_sum = _GetDataSum(dev, buf);
 
 			ret = uffs_WriteDataToNewPage(dev, newBlock, i, tag, buf);
 			uffs_BufFreeClone(dev, buf);
@@ -817,13 +817,13 @@ static URET _BufFlush_Exist_With_BlockCover(
 		switch (type) {
 		case UFFS_TYPE_DIR:
 			node->u.dir.block = newBlock;
-			node->u.dir.checksum = newBc->spares[0].tag.dataSum;
+			node->u.dir.checksum = newBc->spares[0].tag.data_sum;
 			//node->u.dir.ofs = 0; //TODO!! fix me!
 			//node->u.dir.pagID = 0; //TODO!! fix me!
 			break;
 		case UFFS_TYPE_FILE:
 			node->u.file.block = newBlock;
-			node->u.file.checksum = newBc->spares[0].tag.dataSum;
+			node->u.file.checksum = newBc->spares[0].tag.data_sum;
 			break;
 		case UFFS_TYPE_DATA:
 			node->u.data.block = newBlock;

@@ -35,28 +35,41 @@
  * \brief file handle operations
  * \author Ricky Zheng, created 8th Jun, 2005
  */
+
+#ifndef _UFFS_ECC_H_
+#define _UFFS_ECC_H_
+
 #include <string.h>
 
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs_config.h"
 #include "uffs/uffs_core.h"
 
+#ifdef __cplusplus
+extern "C"{
+#endif
+
+
+
 #define MAX_ECC_LENGTH	24	//!< 2K page ecc length is 24 bytes.
 
-int uffs_GetEccSize256(uffs_Device *dev);
-void uffs_MakeEcc256(uffs_Device *dev, void *data, void *ecc);
-int uffs_EccCorrect256(uffs_Device *dev, void *data, void *read_ecc, const void *test_ecc);
+/**
+ * calculate ECC
+ * \return length of generated ECC. (3 bytes ECC per 256 data) 
+ */
+int uffs_MakeEcc(void *data, int data_len, void *ecc);
 
-int uffs_GetEccSize512(uffs_Device *dev);
-void uffs_MakeEcc512(uffs_Device *dev, void *data, void *ecc);
-int uffs_EccCorrect512(uffs_Device *dev, void *data, void *read_ecc, const void *test_ecc);
-
-int uffs_GetEccSize1K(uffs_Device *dev);
-void uffs_MakeEcc1K(uffs_Device *dev, void *data, void *ecc);
-int uffs_EccCorrect1K(uffs_Device *dev, void *data, void *read_ecc, const void *test_ecc);
-
-int uffs_GetEccSize2K(uffs_Device *dev);
-void uffs_MakeEcc2K(uffs_Device *dev, void *data, void *ecc);
-int uffs_EccCorrect2K(uffs_Device *dev, void *data, void *read_ecc, const void *test_ecc);
+/** 
+ * correct data by ECC.
+ *
+ * return:   0 -- no error
+ *			-1 -- can not be correct
+ *			>0 -- how many bits corrected
+ */
+int uffs_EccCorrect(void *data, int data_len, void *read_ecc, const void *test_ecc);
 
 
+#ifdef __cplusplus
+}
+#endif
+#endif

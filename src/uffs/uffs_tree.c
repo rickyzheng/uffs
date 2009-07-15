@@ -329,7 +329,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 	switch (type) {
 	case UFFS_TYPE_DIR:
 		node->u.dir.block = bc->block;
-		node->u.dir.checksum = tag->dataSum;
+		node->u.dir.checksum = tag->data_sum;
 		node->u.dir.parent = tag->parent;
 		node->u.dir.serial = tag->serial;
 		//node->u.dir.pagID = tag->page_id;
@@ -337,7 +337,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 		break;
 	case UFFS_TYPE_FILE:
 		node->u.file.block = bc->block;
-		node->u.file.checksum = tag->dataSum;
+		node->u.file.checksum = tag->data_sum;
 		node->u.file.parent = tag->parent;
 		node->u.file.serial = tag->serial;
 		node->u.file.len = uffs_GetBlockFileDataLength(dev, bc, UFFS_TYPE_FILE);  
@@ -773,7 +773,7 @@ UBOOL uffs_CompareFileNameWithTreeNode(uffs_Device *dev, const char *name, u32 l
 	page = uffs_FindBestPageInBlock(dev, bc, 0);
 
 	tag = &(bc->spares[page].tag);
-	if (tag->dataSum != sum) {
+	if (tag->data_sum != sum) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"the obj's sum in tag is different with given sum!\n");
 		uffs_PutBlockInfo(dev, bc);
 		return U_FALSE;

@@ -382,7 +382,7 @@ URET uffs_CreateNewFile(uffs_Device *dev, u16 parent, u16 serial, uffs_BlockInfo
 	tag->parent = parent;
 	tag->serial = serial;
 	tag->data_len = sizeof(uffs_FileInfo);
-	tag->dataSum = uffs_MakeSum16(fi->name, fi->name_len);
+	tag->data_sum = uffs_MakeSum16(fi->name, fi->name_len);
 
 	buf = uffs_BufGet(dev, parent, serial, 0);
 	if (buf == NULL) {
@@ -554,7 +554,7 @@ void uffs_TransferToTag8(uffs_Tags *tag, uffs_Tags_8 *tag_8)
 	tag_8->parent = tag->parent & 0xFF;
 	tag_8->serial = tag->serial & 0xFF;
 	tag_8->data_len = tag->data_len & 0xFF;
-	tag_8->dataSum = tag->dataSum;
+	tag_8->data_sum = tag->data_sum;
 	tag_8->block_status = tag->block_status;
 }
 
@@ -572,6 +572,6 @@ void uffs_TransferFromTag8(uffs_Tags *tag, uffs_Tags_8 *tag_8)
 	tag->parent = tag_8->parent;
 	tag->serial = tag_8->serial;
 	tag->data_len = tag_8->data_len;
-	tag->dataSum = tag_8->dataSum;
+	tag->data_sum = tag_8->data_sum;
 	tag->block_status = tag_8->block_status;
 }
