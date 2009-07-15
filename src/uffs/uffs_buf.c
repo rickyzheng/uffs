@@ -66,7 +66,7 @@ void uffs_BufInspect(uffs_Device *dev)
 	for (buf = pb->head; buf; buf = buf->next) {
 		if (buf->mark != 0) {
 			uffs_Perror(UFFS_ERR_NORMAL, "\tF:%04x S:%04x P:%02d R:%02d D:%03d M:%d\n", 
-				buf->father, buf->serial, buf->page_id, buf->ref_count, buf->data_len, buf->mark);
+				buf->parent, buf->serial, buf->page_id, buf->ref_count, buf->data_len, buf->mark);
 		}
 	}
 	uffs_Perror(UFFS_ERR_NORMAL, "--------------------------------------------\n");
@@ -187,7 +187,7 @@ URET uffs_BufReleaseAll(uffs_Device *dev)
 		if (p->ref_count != 0) {
 			uffs_Perror(UFFS_ERR_NORMAL, 
 				PFX "can't release buffers, \
-					father:%d, serial:%d, page_id:%d still in used.\n", p->father, p->serial, p->page_id);
+					parent:%d, serial:%d, page_id:%d still in used.\n", p->parent, p->serial, p->page_id);
 			return U_FAIL;
 		}
 		p = p->next;
@@ -393,17 +393,17 @@ URET uffs_LoadPhyDataToBufEccUnCare(uffs_Device *dev, uffs_Buf *buf, u32 block, 
 /** 
  * find a buffer in the pool
  * \param[in] dev uffs device
- * \param[in] father father serial num
+ * \param[in] parent parent serial num
  * \param[in] serial serial num
  * \param[in] page_id page_id
  * \return return found buffer, return NULL if buffer not found
  */
-uffs_Buf * uffs_BufFind(uffs_Device *dev, u16 father, u16 serial, u16 page_id)
+uffs_Buf * uffs_BufFind(uffs_Device *dev, u16 parent, u16 serial, u16 page_id)
 {
 	uffs_Buf *p = dev->buf.head;
 
 	while (p) {
-		if(	p->father == father &&
+		if(	p->parent == parent &&
 			p->serial == serial &&
 			p->page_id == page_id &&
 			p->mark != UFFS_BUF_EMPTY) 
@@ -436,7 +436,7 @@ static URET _BreakFromDirty(uffs_Device *dev, uffs_Buf *dirtyBuf)
 		return U_FAIL;
 	}
 
-	slot = uffs_BufFindGroupSlot(dev, dirtyBuf->father, dirtyBuf->serial);
+	slot = uffs_BufFindGroupSlot(dev, dirtyBuf->parent, dirtyBuf->serial);
 	if (slot < 0) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"no dirty list exit ?\n");
 		return U_FAIL;
@@ -483,21 +483,21 @@ static u16 _GetDataSum(uffs_Device *dev, uffs_Buf *buf)
 
 static URET _CheckDirtyList(uffs_Buf *dirty)
 {
-	u16 father;
+	u16 parent;
 	u16 serial;
 
 	if (dirty == NULL) {
 		return U_SUCC;
 	}
 
-	father = dirty->father;
+	parent = dirty->parent;
 	serial = dirty->serial;
 	dirty = dirty->next_dirty;
 
 	while (dirty) {
-		if (father != dirty->father ||
+		if (parent != dirty->parent ||
 			serial != dirty->serial) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"father or serial in dirty pages buffer are not the same ?\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"parent or serial in dirty pages buffer are not the same ?\n");
 			return U_FAIL;
 		}
 		if (dirty->mark != UFFS_BUF_DIRTY) {
@@ -563,7 +563,7 @@ URET
 		tag->data_len = buf->data_len;
 		tag->type = buf->type;
 		tag->dataSum = _GetDataSum(dev, buf);
-		tag->father = buf->father;
+		tag->parent = buf->parent;
 		tag->serial = buf->serial;
 		tag->page_id = (u8)(buf->page_id);  //FIX ME!! if more than 256 pages in a block
 		ret = uffs_WriteDataToNewPage(dev, bc->block, page, tag, buf);
@@ -598,7 +598,7 @@ URET
 static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 {
 	u8 type;
-	u16 father, serial;
+	u16 parent, serial;
 	uffs_Buf *dirty, *buf;
 	TreeNode *node;
 	u16 i;
@@ -608,7 +608,7 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 
 	dirty = dev->buf.dirtyGroup[slot].dirty;
 	type = dirty->type;
-	father = dirty->father;		//all pages in dirty list have the same type, father and serial
+	parent = dirty->parent;		//all pages in dirty list have the same type, parent and serial
 	serial = dirty->serial;
 
 	node = uffs_GetErased(dev);
@@ -636,7 +636,7 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 		tag->data_len = buf->data_len;
 		tag->dataSum = _GetDataSum(dev, buf);
 		tag->type = type;
-		tag->father = buf->father;
+		tag->parent = buf->parent;
 		tag->serial = buf->serial;
 		tag->page_id = (u8)(buf->page_id);	//FIX ME!! if page more than 256 in a block
 		ret = uffs_WriteDataToNewPage(dev, node->u.list.block, i, tag, buf);
@@ -657,7 +657,7 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 	switch (type) {
 	case UFFS_TYPE_DIR:
 		node->u.dir.block = bc->block;
-		node->u.dir.father = father;
+		node->u.dir.parent = parent;
 		node->u.dir.serial = serial;
 		//node->u.dir.pagID = 0;		//dir stored in page 0,  ??
 		//node->u.dir.ofs = 0;		//TODO!!, for dir, the ofs should be ... ?
@@ -666,13 +666,13 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 		break;
 	case UFFS_TYPE_FILE:
 		node->u.file.block = bc->block;
-		node->u.file.father = father;
+		node->u.file.parent = parent;
 		node->u.file.serial = serial;
 		node->u.file.checksum = bc->spares[0].tag.dataSum; //for file, the page0 is where fileinfo ...
 		break;
 	case UFFS_TYPE_DATA:
 		node->u.data.block = bc->block;
-		node->u.data.father = father;
+		node->u.data.parent = parent;
 		node->u.data.serial = serial;
 		break;
 	default:
@@ -706,7 +706,7 @@ static URET _BufFlush_Exist_With_BlockCover(
 {
 	u16 i;
 	u8 type, timeStamp;
-	u16 page, father, serial;
+	u16 page, parent, serial;
 	uffs_Buf *buf;
 	TreeNode *newNode;
 	uffs_BlockInfo *newBc;
@@ -717,7 +717,7 @@ static URET _BufFlush_Exist_With_BlockCover(
 								//FALSE: fail to recover, erase new block
 
 	type = dev->buf.dirtyGroup[slot].dirty->type;
-	father = dev->buf.dirtyGroup[slot].dirty->father;
+	parent = dev->buf.dirtyGroup[slot].dirty->parent;
 	serial = dev->buf.dirtyGroup[slot].dirty->serial;
 
 	newNode = uffs_GetErased(dev);
@@ -743,7 +743,7 @@ static URET _BufFlush_Exist_With_BlockCover(
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		tag = &(newBc->spares[i].tag);
 		tag->block_ts = timeStamp;
-		tag->father = father;
+		tag->parent = parent;
 		tag->serial = serial;
 		tag->type = type;
 		tag->page_id = (u8)i; //now, page_id = page, FIX ME!! if more than 256 pages in a block
@@ -794,7 +794,7 @@ static URET _BufFlush_Exist_With_BlockCover(
 			}
 
 			buf->type = type;
-			buf->father = father;
+			buf->parent = parent;
 			buf->serial = serial;
 			buf->data_len = oldTag->data_len;
 			buf->page_id = oldTag->page_id; 
@@ -869,7 +869,7 @@ URET _BufFlush(struct uffs_DeviceSt *dev, UBOOL force_block_recover, int slot)
 	u16 n;
 	URET ret;
 	u8 type;
-	u16 father;
+	u16 parent;
 	u16 serial;
 	int block;
 	
@@ -883,7 +883,7 @@ URET _BufFlush(struct uffs_DeviceSt *dev, UBOOL force_block_recover, int slot)
 		return U_FAIL;
 
 	type = dirty->type;
-	father = dirty->father;
+	parent = dirty->parent;
 	serial = dirty->serial;
 
 	switch (type) {
@@ -894,7 +894,7 @@ URET _BufFlush(struct uffs_DeviceSt *dev, UBOOL force_block_recover, int slot)
 		node = uffs_FindFileNodeFromTree(dev, serial);
 		break;
 	case UFFS_TYPE_DATA:
-		node = uffs_FindDataNode(dev, father, serial);
+		node = uffs_FindDataNode(dev, parent, serial);
 		break;
 	default:
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"unknown type\n");
@@ -1010,17 +1010,17 @@ URET uffs_BufFlushEx(struct uffs_DeviceSt *dev, UBOOL force_block_recover)
 }
 
 /**
- * flush buffer group with given father/serial num.
+ * flush buffer group with given parent/serial num.
  *
  * \param[in] dev uffs device
- * \param[in] father father num of the group
+ * \param[in] parent parent num of the group
  * \param[in] serial serial num of the group
  */
-URET uffs_BufFlushGroup(struct uffs_DeviceSt *dev, u16 father, u16 serial)
+URET uffs_BufFlushGroup(struct uffs_DeviceSt *dev, u16 parent, u16 serial)
 {
 	int slot;
 
-	slot = uffs_BufFindGroupSlot(dev, father, serial);
+	slot = uffs_BufFindGroupSlot(dev, parent, serial);
 	if (slot >= 0) {
 		return _BufFlush(dev, U_FALSE, slot);
 	}
@@ -1029,18 +1029,18 @@ URET uffs_BufFlushGroup(struct uffs_DeviceSt *dev, u16 father, u16 serial)
 }
 
 /**
- * flush buffer group with given father/serial num and force_block_recover indicator.
+ * flush buffer group with given parent/serial num and force_block_recover indicator.
  *
  * \param[in] dev uffs device
- * \param[in] father father num of the group
+ * \param[in] parent parent num of the group
  * \param[in] serial serial num of group
  * \param[in] force_block_recover indicator
  */
-URET uffs_BufFlushGroupEx(struct uffs_DeviceSt *dev, u16 father, u16 serial, UBOOL force_block_recover)
+URET uffs_BufFlushGroupEx(struct uffs_DeviceSt *dev, u16 parent, u16 serial, UBOOL force_block_recover)
 {
 	int slot;
 
-	slot = uffs_BufFindGroupSlot(dev, father, serial);
+	slot = uffs_BufFindGroupSlot(dev, parent, serial);
 	if (slot >= 0) {
 		return _BufFlush(dev, force_block_recover, slot);
 	}
@@ -1050,14 +1050,14 @@ URET uffs_BufFlushGroupEx(struct uffs_DeviceSt *dev, u16 father, u16 serial, UBO
 
 
 /**
- * flush buffer group/groups which match given father num.
+ * flush buffer group/groups which match given parent num.
  *
  * \param[in] dev uffs device
- * \param[in] father father num of the group
+ * \param[in] parent parent num of the group
  * \param[in] serial serial num of group
  * \param[in] force_block_recover indicator
  */
-URET uffs_BufFlushGroupMatchFather(struct uffs_DeviceSt *dev, u16 father)
+URET uffs_BufFlushGroupMatchParent(struct uffs_DeviceSt *dev, u16 parent)
 {
 	int slot;
 	uffs_Buf *buf;
@@ -1066,7 +1066,7 @@ URET uffs_BufFlushGroupMatchFather(struct uffs_DeviceSt *dev, u16 father)
 	for (slot = 0; slot < MAX_DIRTY_BUF_GROUPS && ret == U_SUCC; slot++) {
 		if (dev->buf.dirtyGroup[slot].dirty) {
 			buf = dev->buf.dirtyGroup[slot].dirty;
-			if (buf->father == father) {
+			if (buf->parent == parent) {
 				ret = _BufFlush(dev, U_FALSE, slot);
 			}
 		}
@@ -1095,14 +1095,14 @@ int uffs_BufFindFreeGroupSlot(struct uffs_DeviceSt *dev)
 }
 
 /**
- * find a dirty group slot with given father/serial num.
+ * find a dirty group slot with given parent/serial num.
  *
  * \param[in] dev uffs device
- * \param[in] father father num of the group
+ * \param[in] parent parent num of the group
  * \param[in] serial serial num of group
  * \return slot index (0 to MAX_DIRTY_BUF_GROUPS - 1) if found one, otherwise return -1.
  */
-int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, u16 father, u16 serial)
+int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, u16 parent, u16 serial)
 {
 	uffs_Buf *buf;
 	int i, slot = -1;
@@ -1110,7 +1110,7 @@ int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, u16 father, u16 serial)
 	for (i = 0; i < MAX_DIRTY_BUF_GROUPS; i++) {
 		if (dev->buf.dirtyGroup[i].dirty) {
 			buf = dev->buf.dirtyGroup[i].dirty;
-			if (buf->father == father && buf->serial == serial) {
+			if (buf->parent == parent && buf->serial == serial) {
 				slot = i;
 				break;
 			}
@@ -1122,17 +1122,17 @@ int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, u16 father, u16 serial)
 /** 
  * \brief get a page buffer
  * \param[in] dev uffs device
- * \param[in] father father serial num
+ * \param[in] parent parent serial num
  * \param[in] serial serial num
  * \param[in] page_id page_id
  * \return return the buffer found in buffer list, if not found, return NULL.
  */
-uffs_Buf * uffs_BufGet(struct uffs_DeviceSt *dev, u16 father, u16 serial, u16 page_id)
+uffs_Buf * uffs_BufGet(struct uffs_DeviceSt *dev, u16 parent, u16 serial, u16 page_id)
 {
 	uffs_Buf *p;
 
 	//first, check whether the buffer exist in buf list ?
-	p = uffs_BufFind(dev, father, serial, page_id);
+	p = uffs_BufFind(dev, parent, serial, page_id);
 
 	if (p) {
 		p->ref_count++;
@@ -1145,11 +1145,11 @@ uffs_Buf * uffs_BufGet(struct uffs_DeviceSt *dev, u16 father, u16 serial, u16 pa
 /** 
  * New generate a buffer
  */
-uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 father, u16 serial, u16 page_id)
+uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 parent, u16 serial, u16 page_id)
 {
 	uffs_Buf *buf;
 
-	buf = uffs_BufGet(dev, father, serial, page_id);
+	buf = uffs_BufGet(dev, parent, serial, page_id);
 	if (buf) {
 		if (buf->ref_count > 1) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"When create new buf, an exist buffer has ref count %d, possibly bug!\n", buf->ref_count);
@@ -1173,7 +1173,7 @@ uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 father, u16 serial
 
 	buf->mark = UFFS_BUF_EMPTY;
 	buf->type = type;
-	buf->father = father;
+	buf->parent = parent;
 	buf->serial = serial;
 	buf->page_id = page_id;
 	buf->data_len = 0;
@@ -1200,22 +1200,22 @@ uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 father, u16 serial
 uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 page_id)
 {
 	uffs_Buf *buf;
-	u16 father, serial, block, page;
+	u16 parent, serial, block, page;
 	uffs_BlockInfo *bc;
 
 	switch (type) {
 	case UFFS_TYPE_DIR:
-		father = node->u.dir.father;
+		parent = node->u.dir.parent;
 		serial = node->u.dir.serial;
 		block = node->u.dir.block;
 		break;
 	case UFFS_TYPE_FILE:
-		father = node->u.file.father;
+		parent = node->u.file.parent;
 		serial = node->u.file.serial;
 		block = node->u.file.block;
 		break;
 	case UFFS_TYPE_DATA:
-		father = node->u.data.father;
+		parent = node->u.data.parent;
 		serial = node->u.data.serial;
 		block = node->u.data.block;
 		break;
@@ -1224,7 +1224,7 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 
 		return NULL;
 	}
 
-	buf = uffs_BufFind(dev, father, serial, page_id);
+	buf = uffs_BufFind(dev, parent, serial, page_id);
 	if (buf) {
 		buf->ref_count++;
 		return buf;
@@ -1257,7 +1257,7 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 
 
 	buf->mark = UFFS_BUF_EMPTY;
 	buf->type = type;
-	buf->father = father;
+	buf->parent = parent;
 	buf->serial = serial;
 	buf->page_id = page_id;
 
@@ -1321,7 +1321,7 @@ uffs_Buf * uffs_BufClone(uffs_Device *dev, uffs_Buf *buf)
 	_BreakFromBufList(dev, p);
 
 	if (buf) {
-		p->father = buf->father;
+		p->parent = buf->parent;
 		p->type = buf->type;
 		p->serial = buf->serial;
 		p->page_id = buf->page_id;
@@ -1445,7 +1445,7 @@ URET uffs_BufWrite(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs
 		return U_FAIL;
 	}
 
-	slot = uffs_BufFindGroupSlot(dev, buf->father, buf->serial);
+	slot = uffs_BufFindGroupSlot(dev, buf->parent, buf->serial);
 
 	if (slot < 0) {
 		// need to take a free slot
@@ -1474,7 +1474,7 @@ URET uffs_BufWrite(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs
 	}
 
 	if (dev->buf.dirtyGroup[slot].count >= dev->buf.dirty_buf_max) {
-		if (uffs_BufFlushGroup(dev, buf->father, buf->serial) != U_SUCC) {
+		if (uffs_BufFlushGroup(dev, buf->parent, buf->serial) != U_SUCC) {
 			return U_FAIL;
 		}
 	}

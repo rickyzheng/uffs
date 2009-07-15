@@ -192,7 +192,7 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 			buf->data_len = dev->com.pg_data_size;
 		}
 
-		buf->father = tag->father;
+		buf->parent = tag->parent;
 		buf->serial = tag->serial;
 		buf->type = tag->type;
 		buf->page_id = tag->page_id;

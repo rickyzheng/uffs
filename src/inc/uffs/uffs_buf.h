@@ -61,7 +61,7 @@ struct uffs_BufSt{
 	struct uffs_BufSt *next_dirty;		//!< link to next dirty buffer
 	struct uffs_BufSt *prev_dirty;		//!< link to previous dirty buffer
 	u8 type;							//!< #UFFS_TYPE_DIR or #UFFS_TYPE_FILE or #UFFS_TYPE_DATA
-	u16 father;							//!< father serial
+	u16 parent;							//!< parent serial
 	u16 serial;							//!< serial 
 	u16 page_id;						//!< page id 
 	u16 mark;							//!< #UFFS_BUF_EMPTY or #UFFS_BUF_VALID, or #UFFS_BUF_DIRTY ?
@@ -80,14 +80,14 @@ URET uffs_BufInit(struct uffs_DeviceSt *dev, int buf_max, int dirty_buf_max);
 URET uffs_BufReleaseAll(struct uffs_DeviceSt *dev);
 
 /** find the page buffer, move to link list head if found */
-uffs_Buf * uffs_BufGet(struct uffs_DeviceSt *dev, u16 father, u16 serial, u16 page_id);
+uffs_Buf * uffs_BufGet(struct uffs_DeviceSt *dev, u16 parent, u16 serial, u16 page_id);
 uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 page_id);
 
 /** alloc a new page buffer */
-uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 father, u16 serial, u16 page_id);
+uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 parent, u16 serial, u16 page_id);
 
 /** find the page buffer (not affect the reference counter) */
-uffs_Buf * uffs_BufFind(uffs_Device *dev, u16 father, u16 serial, u16 page_id);
+uffs_Buf * uffs_BufFind(uffs_Device *dev, u16 parent, u16 serial, u16 page_id);
 
 /** put page buffer back to pool, called in pair with #uffs_Get,#uffs_GetEx or #uffs_BufNew */
 URET uffs_BufPut(uffs_Device *dev, uffs_Buf *buf);
@@ -112,20 +112,20 @@ URET uffs_BufFlush(struct uffs_DeviceSt *dev);
 URET uffs_BufFlushEx(struct uffs_DeviceSt *dev, UBOOL force_block_recover);
 
 /** flush dirty group */
-URET uffs_BufFlushGroup(struct uffs_DeviceSt *dev, u16 father, u16 serial);
-URET uffs_BufFlushGroupEx(struct uffs_DeviceSt *dev, u16 father, u16 serial, UBOOL force_block_recover);
+URET uffs_BufFlushGroup(struct uffs_DeviceSt *dev, u16 parent, u16 serial);
+URET uffs_BufFlushGroupEx(struct uffs_DeviceSt *dev, u16 parent, u16 serial, UBOOL force_block_recover);
 
 /** find free dirty group slot */
 int uffs_BufFindFreeGroupSlot(struct uffs_DeviceSt *dev);
 
 /** find the dirty group slot */
-int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, u16 father, u16 serial);
+int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, u16 parent, u16 serial);
 
 /** flush most dirty group */
 URET uffs_BufFlushMostDirtyGroup(struct uffs_DeviceSt *dev);
 
-/** flush all groups under the same father number */
-URET uffs_BufFlushGroupMatchFather(struct uffs_DeviceSt *dev, u16 father);
+/** flush all groups under the same parent number */
+URET uffs_BufFlushGroupMatchParent(struct uffs_DeviceSt *dev, u16 parent);
 
 /** flush all page buffers */
 URET uffs_BufFlushAll(struct uffs_DeviceSt *dev);

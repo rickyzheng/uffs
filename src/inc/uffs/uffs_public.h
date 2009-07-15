@@ -63,7 +63,7 @@ struct uffs_TagsSt {
 	u8 block_ts:2;	//!< time stamp of block;
 
 	u8 page_id;				//!< page id
-	u16 father;				//!< father's serial number
+	u16 parent;				//!< parent's serial number
 	u16 serial;				//!< serial number
 
 	u16 data_len;			//!< length of page data length
@@ -86,7 +86,7 @@ struct uffs_TagsSt_8 {
 	u8 block_ts:2;			//!< time stamp of block;
 
 	u8 page_id;				//!< page id
-	u8 father;				//!< father's serial number, warning: using 8-bit, blocks should not > 254
+	u8 parent;				//!< parent's serial number, warning: using 8-bit, blocks should not > 254
 	u8 serial;				//!< serial number, warning: using 8-bit, blocks should not > 254
 
 	u16 dataSum;			//!< sum of file name or directory name
@@ -105,7 +105,7 @@ struct uffs_TagsSt {
 //1:
 	u8 dataSum;				//!< sum of file name or directory name, or ... ?
 //2:
-	u16 father;				//!< father's serial number
+	u16 parent;				//!< parent's serial number
 	u16 serial;				//!< serial number
 //6:	
 	u16 data_len;			//!< length of page data: maximum 64K bytes
@@ -232,7 +232,7 @@ u16 uffs_FindPageInBlockWithPageId(uffs_Device *dev, uffs_BlockInfo *bc, u16 pag
 
 u8 uffs_MakeSum8(const void *p, int len);
 u16 uffs_MakeSum16(const void *p, int len);
-URET uffs_CreateNewFile(uffs_Device *dev, u16 father, u16 serial, uffs_BlockInfo *bc, uffs_FileInfo *fi);
+URET uffs_CreateNewFile(uffs_Device *dev, u16 parent, u16 serial, uffs_BlockInfo *bc, uffs_FileInfo *fi);
 
 int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type);
 UBOOL uffs_IsPageErased(uffs_Device *dev, uffs_BlockInfo *bc, u16 page);

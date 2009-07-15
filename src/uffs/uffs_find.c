@@ -176,7 +176,7 @@ URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 
 			while (x != EMPTY_NODE) {
 				node = FROM_IDX(x, &(dev->tree.dis));
-				if(node->u.dir.father == f->serial) {
+				if(node->u.dir.parent == f->serial) {
 					f->work = node;
 					if (info) 
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
@@ -199,7 +199,7 @@ URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 
 			while (x != EMPTY_NODE) {
 				node = FROM_IDX(x, &(dev->tree.dis));
-				if (node->u.file.father == f->serial) {
+				if (node->u.file.parent == f->serial) {
 					f->work = node;
 					if (info)
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
@@ -248,7 +248,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 	if (f->step == 0) { //!< working on dirs
 		while (x != EMPTY_NODE) {
 			node = FROM_IDX(x, &(dev->tree.dis));
-			if (node->u.dir.father == f->serial) {
+			if (node->u.dir.parent == f->serial) {
 				f->work = node;
 				if (info)
 					ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
@@ -263,7 +263,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 			x = dev->tree.dir_entry[f->hash];
 			while (x != EMPTY_NODE) {
 				node = FROM_IDX(x, &(dev->tree.dis));
-				if (node->u.dir.father == f->serial) {
+				if (node->u.dir.parent == f->serial) {
 					f->work = node;
 					if (info)
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
@@ -283,7 +283,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 
 		while (x != EMPTY_NODE) {
 			node = FROM_IDX(x, &(dev->tree.dis));
-			if (node->u.file.father == f->serial) {
+			if (node->u.file.parent == f->serial) {
 				f->work = node;
 				if (info)
 					ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
@@ -298,7 +298,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 			x = dev->tree.file_entry[f->hash];
 			while (x != EMPTY_NODE) {
 				node = FROM_IDX(x, &(dev->tree.dis));
-				if (node->u.file.father == f->serial) {
+				if (node->u.file.parent == f->serial) {
 					f->work = node;
 					if (info) 
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);

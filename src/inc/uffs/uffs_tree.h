@@ -58,7 +58,7 @@ struct BlockListSt {	/* 10 bytes */
 struct DirhSt {		/* 8 bytes */
 	u16 checksum;	/* check sum of dir name */
 	u16 block;
-	u16 father;
+	u16 parent;
 	u16 serial;
 };
 
@@ -66,14 +66,14 @@ struct DirhSt {		/* 8 bytes */
 struct FilehSt {	/* 12 bytes */
 	u16 block;
 	u16 checksum;	/* check sum of file name */
-	u16 father;
+	u16 parent;
 	u16 serial;
 	u32 len;		/* file length total */
 };
 
 struct FdataSt {	/* 10 bytes */
 	u16 block;
-	u16 father;
+	u16 parent;
 	u32 len;		/* file data length on this block */
 	u16 serial;
 };
@@ -114,7 +114,7 @@ struct FilehSt {
 typedef struct uffs_TreeNodeSt {
 	u16 nextIdx;
 	u16 block;
-	u16 father;
+	u16 parent;
 	u16 serial;
 	union {
 		struct FilehSt h;
@@ -147,7 +147,7 @@ typedef struct uffs_TreeNodeSt {
 
 #define GET_FILE_HASH(serial)			(serial & FILE_NODE_HASH_MASK)
 #define GET_DIR_HASH(serial)			(serial & DIR_NODE_HASH_MASK)
-#define GET_DATA_HASH(father, serial)	((father + serial) & DATA_NODE_HASH_MASK)
+#define GET_DATA_HASH(parent, serial)	((parent + serial) & DATA_NODE_HASH_MASK)
 
 
 struct uffs_TreeSt {
@@ -169,12 +169,12 @@ URET uffs_ReleaseTreeBuf(uffs_Device *dev);
 URET uffs_BuildTree(uffs_Device *dev);
 u16 uffs_FindFreeFsnSerial(uffs_Device *dev);
 TreeNode * uffs_FindFileNodeFromTree(uffs_Device *dev, u16 serial);
-TreeNode * uffs_FindFileNodeFromTreeWithFather(uffs_Device *dev, u16 father);
+TreeNode * uffs_FindFileNodeFromTreeWithParent(uffs_Device *dev, u16 parent);
 TreeNode * uffs_FindDirNodeFromTree(uffs_Device *dev, u16 serial);
-TreeNode * uffs_FindDirNodeFromTreeWithFather(uffs_Device *dev, u16 father);
-TreeNode * uffs_FindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 father);
-TreeNode * uffs_FindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 father);
-TreeNode * uffs_FindDataNode(uffs_Device *dev, u16 father, u16 serial);
+TreeNode * uffs_FindDirNodeFromTreeWithParent(uffs_Device *dev, u16 parent);
+TreeNode * uffs_FindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
+TreeNode * uffs_FindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
+TreeNode * uffs_FindDataNode(uffs_Device *dev, u16 parent, u16 serial);
 
 
 TreeNode * uffs_FindDirNodeByBlock(uffs_Device *dev, u16 block);

@@ -55,13 +55,13 @@
 								   )
 
 #define GET_OBJ_NODE_FATHER(obj) ((obj)->type == UFFS_TYPE_DIR ? \
-									(obj)->node->u.dir.father \
+									(obj)->node->u.dir.parent \
 										: \
-									(obj)->node->u.file.father \
+									(obj)->node->u.file.parent \
 								   )
 
 #define GET_SERIAL_FROM_OBJECT(obj) ((obj)->node ? GET_OBJ_NODE_SERIAL(obj) : obj->serial)
-#define GET_FATHER_FROM_OBJECT(obj) ((obj)->node ? GET_OBJ_NODE_FATHER(obj) : obj->father)
+#define GET_FATHER_FROM_OBJECT(obj) ((obj)->node ? GET_OBJ_NODE_FATHER(obj) : obj->parent)
 
 
 #define GET_BLOCK_FROM_NODE(obj) ((obj)->type == UFFS_TYPE_DIR ? \
@@ -194,7 +194,7 @@ URET uffs_CreateObject(uffs_Object *obj, const char *fullname, int oflag)
 	oflag |= UO_CREATE;
 
 	if (uffs_ParseObject(obj, fullname) == U_SUCC)
-		uffs_CreateObjectEx(obj, obj->dev, obj->father, obj->name, obj->name_len, oflag);
+		uffs_CreateObjectEx(obj, obj->dev, obj->parent, obj->name, obj->name_len, oflag);
 
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
@@ -241,7 +241,7 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 	TreeNode *node;
 
 	obj->dev = dev;
-	obj->father = dir;
+	obj->parent = dir;
 	obj->type = (oflag & UO_DIR ? UFFS_TYPE_DIR : UFFS_TYPE_FILE);
 	obj->name = name;
 	obj->name_len = name_len;
@@ -268,12 +268,12 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 
 	if (obj->type == UFFS_TYPE_DIR) {
 		//find out whether have file with the same name
-		node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
+		node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
 		if (node != NULL) {
 			obj->err = UEEXIST;	// we can't create a dir has the same name with exist file.
 			goto ext_1;
 		}
-		obj->node = uffs_FindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
+		obj->node = uffs_FindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
 		if (obj->node != NULL) {
 			obj->err = UEEXIST; // we can't create a dir already exist.
 			goto ext_1;
@@ -281,12 +281,12 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 	}
 	else {
 		//find out whether have dir with the same name
-		node = uffs_FindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
+		node = uffs_FindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
 		if (node != NULL) {
 			obj->err = UEEXIST;
 			goto ext_1;
 		}
-		obj->node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
+		obj->node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
 		if (obj->node) {
 			/* file already exist, truncate it to zero length */
 			obj->serial = GET_OBJ_NODE_SERIAL(obj);
@@ -311,7 +311,7 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 		goto ext_1;
 	}
 
-	buf = uffs_BufNew(obj->dev, obj->type, obj->father, obj->serial, 0);
+	buf = uffs_BufNew(obj->dev, obj->type, obj->parent, obj->serial, 0);
 	if (buf == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't create new buffer when create obj!\n");
 		goto ext_1;
@@ -333,7 +333,7 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 	uffs_BufPut(obj->dev, buf);
 
 	//flush buffer immediately, so that the new node will be inserted into the tree
-	uffs_BufFlushGroup(obj->dev, obj->father, obj->serial);
+	uffs_BufFlushGroup(obj->dev, obj->parent, obj->serial);
 
 	//update obj->node: after buf flushed, the NEW node can be found in the tree
 	if (obj->type == UFFS_TYPE_DIR)
@@ -392,7 +392,7 @@ URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev,
 	}
 
 	obj->oflag = oflag;
-	obj->father = dir;
+	obj->parent = dir;
 	obj->type = (oflag & UO_DIR ? UFFS_TYPE_DIR : UFFS_TYPE_FILE);
 	obj->pos = 0;
 	obj->dev = dev;
@@ -431,10 +431,10 @@ URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev,
 	uffs_ObjectDevLock(obj);
 
 	if (obj->type == UFFS_TYPE_DIR) {
-		obj->node = uffs_FindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
+		obj->node = uffs_FindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
 	}
 	else {
-		obj->node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->father);
+		obj->node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
 	}
 
 	if (obj->node == NULL) {			// dir or file not exist
@@ -484,7 +484,7 @@ ext:
  *
  *	\note the following fields in obj will be initialized:
  *			obj->dev
- *			obj->father
+ *			obj->parent
  *			obj->name
  *			obj->name_len
  */
@@ -507,7 +507,7 @@ static URET uffs_ParseObject(uffs_Object *obj, const char *name)
 		p = start;
 		obj->dev = dev;
 		if (m_len == len) {
-			obj->father = PARENT_OF_ROOT;
+			obj->parent = PARENT_OF_ROOT;
 			obj->name = NULL;
 			obj->name_len = 0;
 		}
@@ -528,7 +528,7 @@ static URET uffs_ParseObject(uffs_Object *obj, const char *name)
 					dname = p;
 				}
 			}
-			obj->father = dir;
+			obj->parent = dir;
 			obj->name = start + (d_len > 0 ? d_len + 1 : 0);
 			obj->name_len = len - (d_len > 0 ? d_len + 1 : 0) - m_len;
 		}
@@ -556,7 +556,7 @@ URET uffs_OpenObject(uffs_Object *obj, const char *name, int oflag)
 		return U_FAIL;
 
  	if (uffs_ParseObject(obj, name) == U_SUCC)
-		uffs_OpenObjectEx(obj, obj->dev, obj->father, obj->name, obj->name_len, oflag);
+		uffs_OpenObjectEx(obj, obj->dev, obj->parent, obj->name, obj->name_len, oflag);
 
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
@@ -586,11 +586,11 @@ static URET _FlushObject(uffs_Object *obj)
 	dev = obj->dev;
 	if (obj->node) {
 		if (obj->type == UFFS_TYPE_DIR)
-			return uffs_BufFlushGroup(dev, obj->node->u.dir.father, obj->node->u.dir.serial);
+			return uffs_BufFlushGroup(dev, obj->node->u.dir.parent, obj->node->u.dir.serial);
 		else {
 			return (
-				uffs_BufFlushGroupMatchFather(dev, obj->node->u.file.serial) == U_SUCC &&
-				uffs_BufFlushGroup(dev, obj->node->u.file.father, obj->node->u.file.serial) == U_SUCC
+				uffs_BufFlushGroupMatchParent(dev, obj->node->u.file.serial) == U_SUCC &&
+				uffs_BufFlushGroup(dev, obj->node->u.file.parent, obj->node->u.file.serial) == U_SUCC
 				) ? U_SUCC : U_FAIL;
 		}
 	}
@@ -708,7 +708,7 @@ static u32 _GetStartOfDataBlock(uffs_Object *obj, u16 fdn)
 
 static int _WriteNewBlock(uffs_Object *obj,
 						  const void *data, u32 len,
-						  u16 father,
+						  u16 parent,
 						  u16 serial)
 {
 	uffs_Device *dev = obj->dev;
@@ -724,7 +724,7 @@ static int _WriteNewBlock(uffs_Object *obj,
 		if (size <= 0)
 			break;
 
-		buf = uffs_BufNew(dev, UFFS_TYPE_DATA, father, serial, page_id);
+		buf = uffs_BufNew(dev, UFFS_TYPE_DATA, parent, serial, page_id);
 		if (buf == NULL) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't create a new page ?\n");
 			break;
@@ -760,18 +760,18 @@ static int _WriteInternalBlock(uffs_Object *obj,
 	uffs_Buf *buf;
 	u32 block_start;
 	u8 type;
-	u16 father, serial;
+	u16 parent, serial;
 
 	block_start = _GetStartOfDataBlock(obj, fdn);
 
 	if (fdn == 0) {
 		type = UFFS_TYPE_FILE;
-		father = node->u.file.father;
+		parent = node->u.file.parent;
 		serial = node->u.file.serial;
 	}
 	else {
 		type = UFFS_TYPE_DATA;
-		father = node->u.data.father;
+		parent = node->u.data.parent;
 		serial = fdn;
 	}
 
@@ -795,7 +795,7 @@ static int _WriteInternalBlock(uffs_Object *obj,
 		if ((obj->node->u.file.len % dev->com.pg_data_size) == 0 &&
 			(blockOfs + block_start) == obj->node->u.file.len) {
 
-			buf = uffs_BufNew(dev, type, father, serial, page_id);
+			buf = uffs_BufNew(dev, type, parent, serial, page_id);
 
 			if(buf == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can create a new buf!\n");
@@ -1137,7 +1137,7 @@ static URET _CoverOnePage(uffs_Device *dev,
 						  uffs_Buf *buf,
 						  u32 length)
 {
-	newTag->father = buf->father;
+	newTag->parent = buf->parent;
 	newTag->serial = buf->serial;
 	newTag->type = buf->type;
 	newTag->block_ts = newTimeStamp;
@@ -1244,7 +1244,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 		tag = &(bc->spares[page].tag);
 		uffs_LoadPhyDataToBuf(dev, buf, bc->block, page);
 
-		buf->father = tag->father;
+		buf->parent = tag->parent;
 		buf->serial = tag->serial;
 		buf->type = tag->type;
 		buf->page_id = tag->page_id;
@@ -1467,10 +1467,10 @@ URET uffs_DeleteObject(const char * name)
 
 	if (obj->type == UFFS_TYPE_DIR) {
 		// if the dir is not empty, can't delete it.
-		node = uffs_FindDirNodeFromTreeWithFather(dev, obj->serial);
+		node = uffs_FindDirNodeFromTreeWithParent(dev, obj->serial);
 		if (node != NULL) goto err;  //have sub dirs ?
 
-		node = uffs_FindFileNodeFromTreeWithFather(dev, obj->serial);
+		node = uffs_FindFileNodeFromTreeWithParent(dev, obj->serial);
 		if (node != NULL) goto err;  //have sub files ?
 	}
 
@@ -1483,7 +1483,7 @@ URET uffs_DeleteObject(const char * name)
 	if (HAVE_BADBLOCK(dev))
 		uffs_RecoverBadBlock(dev);
 
-	buf = uffs_BufFind(dev, obj->father, obj->serial, 0);
+	buf = uffs_BufFind(dev, obj->parent, obj->serial, 0);
 
 	if (buf) {
 		//need to expire this buffer ...
@@ -1536,7 +1536,7 @@ URET uffs_MoveObjectEx(uffs_Object *obj, int new_parent, const char *new_name, i
 
 	uffs_ObjectDevLock(obj);
 
-	obj->father = new_parent;
+	obj->parent = new_parent;
 
 	if (name_len > 0) {
 
@@ -1557,13 +1557,13 @@ URET uffs_MoveObjectEx(uffs_Object *obj, int new_parent, const char *new_name, i
 		fi.name_len = name_len;
 		fi.last_modify = uffs_GetCurDateTime();
 
-		buf->father = new_parent;	// !! need to manually change the 'father' !!
+		buf->parent = new_parent;	// !! need to manually change the 'parent' !!
 		uffs_BufWrite(dev, buf, &fi, 0, sizeof(uffs_FileInfo));
 		uffs_BufPut(dev, buf);
 
 		// !! force a block recover so that all old tag will be expired !!
 		// This is important so we only need to check the first spare when mount UFFS :)
-		uffs_BufFlushGroupEx(dev, obj->father, obj->serial, U_TRUE);
+		uffs_BufFlushGroupEx(dev, obj->parent, obj->serial, U_TRUE);
 
 		obj->name = new_name;
 		obj->name_len = name_len;
@@ -1573,11 +1573,11 @@ URET uffs_MoveObjectEx(uffs_Object *obj, int new_parent, const char *new_name, i
 	//update the check sum and new parent of tree node
 	if (obj->type == UFFS_TYPE_DIR) {
 		obj->node->u.dir.checksum = obj->sum;
-		obj->node->u.dir.father = new_parent;
+		obj->node->u.dir.parent = new_parent;
 	}
 	else {
 		obj->node->u.file.checksum = obj->sum;
-		obj->node->u.file.father = new_parent;
+		obj->node->u.file.parent = new_parent;
 	}
 
 ext_1:
@@ -1639,7 +1639,7 @@ URET uffs_RenameObject(const char *old_name, const char *new_name)
 		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't moving object between different mount point\n");
 	}
 	else {
-		ret = uffs_MoveObjectEx(obj, new_obj->father, new_obj->name, new_obj->name_len);
+		ret = uffs_MoveObjectEx(obj, new_obj->parent, new_obj->name, new_obj->name_len);
 	}
 
 	uffs_CloseObject(obj);

@@ -63,7 +63,7 @@ struct uffs_ObjectSt {
 	u32 oflag;
 	u8 type;
 	int head_pages;						//!< data pages on file head block
-	u16 father;
+	u16 parent;
 
 	/******* init level 1 ********/
 	TreeNode *node;						//!< file entry node in tree

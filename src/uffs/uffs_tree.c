@@ -140,17 +140,17 @@ static u16 _GetBlockFromNode(u8 type, TreeNode *node)
 }
 
 #if 0
-static u16 _GetFatherFromNode(u8 type, TreeNode *node)
+static u16 _GetParentFromNode(u8 type, TreeNode *node)
 {
 	switch (type) {
 	case UFFS_TYPE_DIR:
-		return node->u.dir.father;
+		return node->u.dir.parent;
 	case UFFS_TYPE_FILE:
-		return node->u.file.father;
+		return node->u.file.parent;
 	case UFFS_TYPE_DATA:
-		return node->u.data.father;
+		return node->u.data.parent;
 	}
-	uffs_Perror(UFFS_ERR_SERIOUS, PFX"unkown type, X-father\n");
+	uffs_Perror(UFFS_ERR_SERIOUS, PFX"unkown type, X-parent\n");
 	return INVALID_UFFS_SERIAL;
 }
 
@@ -198,10 +198,10 @@ void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node)
  * find a node from tree
  * \param[in] dev uffs device
  * \param[in] type type of node
- * \param[in] father father serial num
+ * \param[in] parent parent serial num
  * \param[in] serial serial num
  */
-TreeNode * uffs_FindFromTree(uffs_Device *dev, u8 type, u16 father, u16 serial)
+TreeNode * uffs_FindFromTree(uffs_Device *dev, u8 type, u16 parent, u16 serial)
 {
 	switch (type) {
 	case UFFS_TYPE_DIR:
@@ -209,7 +209,7 @@ TreeNode * uffs_FindFromTree(uffs_Device *dev, u8 type, u16 father, u16 serial)
 	case UFFS_TYPE_FILE:
 		return uffs_FindFileNodeFromTree(dev, serial);
 	case UFFS_TYPE_DATA:
-		return uffs_FindDataNode(dev, father, serial);
+		return uffs_FindDataNode(dev, parent, serial);
 	}
 	uffs_Perror(UFFS_ERR_SERIOUS, PFX"unkown type, can't find node\n");
 	return NULL;
@@ -221,7 +221,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 {
 	uffs_Tags *tag;
 	TreeNode *node_alt;
-	u16 block, father, serial, block_alt, block_save;
+	u16 block, parent, serial, block_alt, block_save;
 	uffs_BlockInfo *bc_alt;
 	u8 type;
 	UBOOL needToInsertToTree = U_FALSE;
@@ -267,14 +267,14 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 
 	//tag = &(bc->spares[page].tag);  //get first page's tag
 	block = bc->block;
-	father = tag->father;
+	parent = tag->parent;
 	serial = tag->serial;
 	type = tag->type;
 
 	//@ FIX ME! too heavy! especially when disk full...
 	//@ To avoid to search the alternate node, a safe-power-off mark should be set when unmount uffs
 	//@ It need to search the alternate node only when safe-power-off mark is not set.
-	node_alt = uffs_FindFromTree(dev, type, father, serial); 
+	node_alt = uffs_FindFromTree(dev, type, parent, serial); 
 
 	if (node_alt != NULL) {
 		//find a alternate node !
@@ -330,7 +330,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 	case UFFS_TYPE_DIR:
 		node->u.dir.block = bc->block;
 		node->u.dir.checksum = tag->dataSum;
-		node->u.dir.father = tag->father;
+		node->u.dir.parent = tag->parent;
 		node->u.dir.serial = tag->serial;
 		//node->u.dir.pagID = tag->page_id;
 		//node->u.dir.ofs = (u8)page;
@@ -338,13 +338,13 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 	case UFFS_TYPE_FILE:
 		node->u.file.block = bc->block;
 		node->u.file.checksum = tag->dataSum;
-		node->u.file.father = tag->father;
+		node->u.file.parent = tag->parent;
 		node->u.file.serial = tag->serial;
 		node->u.file.len = uffs_GetBlockFileDataLength(dev, bc, UFFS_TYPE_FILE);  
 		break;
 	case UFFS_TYPE_DATA:
 		node->u.data.block = bc->block;
-		node->u.data.father = tag->father;
+		node->u.data.parent = tag->parent;
 		node->u.data.serial = tag->serial;
 		if(tag->serial == 1) {
 			tag->serial = tag->serial;
@@ -466,7 +466,7 @@ TreeNode * uffs_FindFileNodeFromTree(uffs_Device *dev, u16 serial)
 	return NULL;
 }
 
-TreeNode * uffs_FindFileNodeFromTreeWithFather(uffs_Device *dev, u16 father)
+TreeNode * uffs_FindFileNodeFromTreeWithParent(uffs_Device *dev, u16 parent)
 {
 	int hash;
 	u16 x;
@@ -477,7 +477,7 @@ TreeNode * uffs_FindFileNodeFromTreeWithFather(uffs_Device *dev, u16 father)
 		x = tree->file_entry[hash];
 		while (x != EMPTY_NODE) {
 			node = FROM_IDX(x, &(tree->dis));
-			if (node->u.file.father == father) {
+			if (node->u.file.parent == parent) {
 				return node;
 			}
 			else {
@@ -510,7 +510,7 @@ TreeNode * uffs_FindDirNodeFromTree(uffs_Device *dev, u16 serial)
 	return NULL;
 }
 
-TreeNode * uffs_FindDirNodeFromTreeWithFather(uffs_Device *dev, u16 father)
+TreeNode * uffs_FindDirNodeFromTreeWithParent(uffs_Device *dev, u16 parent)
 {
 	int hash;
 	u16 x;
@@ -521,7 +521,7 @@ TreeNode * uffs_FindDirNodeFromTreeWithFather(uffs_Device *dev, u16 father)
 		x = tree->dir_entry[hash];
 		while (x != EMPTY_NODE) {
 			node = FROM_IDX(x, &(tree->dis));
-			if (node->u.dir.father == father) {
+			if (node->u.dir.parent == parent) {
 				return node;
 			}
 			else {
@@ -533,7 +533,7 @@ TreeNode * uffs_FindDirNodeFromTreeWithFather(uffs_Device *dev, u16 father)
 	return NULL;
 }
 
-TreeNode * uffs_FindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 father)
+TreeNode * uffs_FindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent)
 {
 	int i;
 	u16 x;
@@ -544,7 +544,7 @@ TreeNode * uffs_FindFileNodeByName(uffs_Device *dev, const char *name, u32 len, 
 		x = tree->file_entry[i];
 		while (x != EMPTY_NODE) {
 			node = FROM_IDX(x, &(tree->dis));
-			if (node->u.file.checksum == sum && node->u.file.father == father) {
+			if (node->u.file.checksum == sum && node->u.file.parent == parent) {
 				//read file name from flash, and compare...
 				if (uffs_CompareFileNameWithTreeNode(dev, name, len, sum, node, UFFS_TYPE_FILE) == U_TRUE) {
 					//Got it!
@@ -558,19 +558,19 @@ TreeNode * uffs_FindFileNodeByName(uffs_Device *dev, const char *name, u32 len, 
 	return NULL;
 }
 
-TreeNode * uffs_FindDataNode(uffs_Device *dev, u16 father, u16 serial)
+TreeNode * uffs_FindDataNode(uffs_Device *dev, u16 parent, u16 serial)
 {
 	int hash;
 	TreeNode *node;
 	struct uffs_TreeSt *tree = &(dev->tree);
 	u16 x;
 
-	hash = GET_DATA_HASH(father, serial);
+	hash = GET_DATA_HASH(parent, serial);
 	x = tree->data_entry[hash];
 	while(x != EMPTY_NODE) {
 		node = FROM_IDX(x, &(tree->dis));
 
-		if(node->u.data.father == father &&
+		if(node->u.data.parent == parent &&
 			node->u.data.serial == serial)
 				return node;
 
@@ -711,7 +711,7 @@ TreeNode * uffs_FindNodeByBlock(uffs_Device *dev, u16 block, int *region)
 	return node;
 }
 
-TreeNode * uffs_FindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 father)
+TreeNode * uffs_FindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent)
 {
 	int i;
 	u16 x;
@@ -722,7 +722,7 @@ TreeNode * uffs_FindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u
 		x = tree->dir_entry[i];
 		while (x != EMPTY_NODE) {
 			node = FROM_IDX(x, &(tree->dis));
-			if (node->u.dir.checksum == sum && node->u.dir.father == father) {
+			if (node->u.dir.checksum == sum && node->u.dir.parent == parent) {
 				//read file name from flash, and compare...
 				if (uffs_CompareFileNameWithTreeNode(dev, name, len, sum, node, UFFS_TYPE_DIR) == U_TRUE) {
 					//Got it!
@@ -825,20 +825,20 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 		x = tree->data_entry[i];
 		while (x != EMPTY_NODE) {
 			work = FROM_IDX(x, dis);
-			if (work->u.data.father == cacheSerial) {
+			if (work->u.data.parent == cacheSerial) {
 				node = cache;
 			}
 			else {
-				node = uffs_FindFileNodeFromTree(dev, work->u.data.father);
+				node = uffs_FindFileNodeFromTree(dev, work->u.data.parent);
 				cache = node;
-				cacheSerial = work->u.data.father;
+				cacheSerial = work->u.data.parent;
 			}
 			if (node == NULL) {
 				x = work->hash_next;
 				//this data block do not belong any file ?
 				//should be erased.
-				uffs_Perror(UFFS_ERR_NORMAL, PFX"find a orphan data block:%d, father:%d, serial:%d, will be erased!\n", 
-					work->u.data.block, work->u.data.father, work->u.data.serial);
+				uffs_Perror(UFFS_ERR_NORMAL, PFX"find a orphan data block:%d, parent:%d, serial:%d, will be erased!\n", 
+					work->u.data.block, work->u.data.parent, work->u.data.serial);
 				uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, work);
 				blockSave = work->u.data.block;
 				work->u.list.block = blockSave;
@@ -996,7 +996,7 @@ void uffs_BreakFromEntry(uffs_Device *dev, u8 type, TreeNode *node)
 		entry = &(dev->tree.file_entry[hash]);
 		break;
 	case UFFS_TYPE_DATA:
-		hash = GET_DATA_HASH(node->u.data.father, node->u.data.serial);
+		hash = GET_DATA_HASH(node->u.data.parent, node->u.data.serial);
 		entry = &(dev->tree.data_entry[hash]);
 		break;
 	default:
@@ -1035,7 +1035,7 @@ static void uffs_InsertToDirEntry(uffs_Device *dev, TreeNode *node)
 
 static void uffs_InsertToDataEntry(uffs_Device *dev, TreeNode *node)
 {
-	_InsertToEntry(dev, dev->tree.data_entry, GET_DATA_HASH(node->u.data.father, node->u.data.serial), node);
+	_InsertToEntry(dev, dev->tree.data_entry, GET_DATA_HASH(node->u.data.parent, node->u.data.serial), node);
 }
 
 void uffs_InsertToErasedListHead(uffs_Device *dev, TreeNode *node)

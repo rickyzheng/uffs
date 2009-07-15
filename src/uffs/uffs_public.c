@@ -143,7 +143,7 @@ u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 	for (i = page + 1; i < dev->attr->pages_per_block; i++) {
 		spare = &(bc->spares[i]);
 		if (spare->tag.page_id == spare_old->tag.page_id) {
-			if (spare->tag.father == spare_old->tag.father &&
+			if (spare->tag.parent == spare_old->tag.parent &&
 				spare->tag.serial == spare_old->tag.serial &&
 				spare->tag.dirty == TAG_DIRTY && //0: dirty, 1:clear
 				spare->tag.valid == TAG_VALID) { //0: valid, 1:invalid
@@ -288,7 +288,7 @@ URET uffs_WriteDataToNewPage(uffs_Device *dev,
 #endif
 
 //	uffs_Perror(UFFS_ERR_NOISY, PFX"write b:%d p:%d t:%d f:%d s:%d id:%d L:%d\n",
-//				block, page, buf->type, buf->father, buf->serial, buf->page_id, buf->data_len);
+//				block, page, buf->type, buf->parent, buf->serial, buf->page_id, buf->data_len);
 
 	//step 1: write spare
 	ret = dev->flash->WritePageSpare(dev, block, page, tag);
@@ -365,13 +365,13 @@ u16 uffs_MakeSum16(const void *p, int len)
 /** 
  * create a new file on a free block
  * \param[in] dev uffs device
- * \param[in] father father dir serial num
+ * \param[in] parent parent dir serial num
  * \param[in] serial serial num of this new file
  * \param[in] bc block information
  * \param[in] fi file information
- * \note father, serial, bc must be provided before, and all information in fi should be filled well before.
+ * \note parent, serial, bc must be provided before, and all information in fi should be filled well before.
  */
-URET uffs_CreateNewFile(uffs_Device *dev, u16 father, u16 serial, uffs_BlockInfo *bc, uffs_FileInfo *fi)
+URET uffs_CreateNewFile(uffs_Device *dev, u16 parent, u16 serial, uffs_BlockInfo *bc, uffs_FileInfo *fi)
 {
 	uffs_Tags *tag;
 	uffs_Buf *buf;
@@ -379,12 +379,12 @@ URET uffs_CreateNewFile(uffs_Device *dev, u16 father, u16 serial, uffs_BlockInfo
 	uffs_LoadBlockInfo(dev, bc, 0);
 
 	tag = &(bc->spares[0].tag);
-	tag->father = father;
+	tag->parent = parent;
 	tag->serial = serial;
 	tag->data_len = sizeof(uffs_FileInfo);
 	tag->dataSum = uffs_MakeSum16(fi->name, fi->name_len);
 
-	buf = uffs_BufGet(dev, father, serial, 0);
+	buf = uffs_BufGet(dev, parent, serial, 0);
 	if (buf == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"get buf fail.\n");
 		return U_FAIL;
@@ -551,7 +551,7 @@ void uffs_TransferToTag8(uffs_Tags *tag, uffs_Tags_8 *tag_8)
 	tag_8->type = tag->type;
 	tag_8->block_ts = tag->block_ts;
 	tag_8->page_id = tag->page_id;
-	tag_8->father = tag->father & 0xFF;
+	tag_8->parent = tag->parent & 0xFF;
 	tag_8->serial = tag->serial & 0xFF;
 	tag_8->data_len = tag->data_len & 0xFF;
 	tag_8->dataSum = tag->dataSum;
@@ -569,7 +569,7 @@ void uffs_TransferFromTag8(uffs_Tags *tag, uffs_Tags_8 *tag_8)
 	tag->type = tag_8->type;
 	tag->block_ts = tag_8->block_ts;
 	tag->page_id = tag_8->page_id;
-	tag->father = tag_8->father;
+	tag->parent = tag_8->parent;
 	tag->serial = tag_8->serial;
 	tag->data_len = tag_8->data_len;
 	tag->dataSum = tag_8->dataSum;
