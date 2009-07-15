@@ -83,7 +83,7 @@ struct uffs_TagsSt_8 {
 	u8 dirty:1;				//!< 0: dirty, 1: clear
 	u8 valid:1;				//!< 0: valid, 1: invalid
 	u8 type:4;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA or #UFFS_TYPE_RESV
-	u8 block_ts:2;	//!< time stamp of block;
+	u8 block_ts:2;			//!< time stamp of block;
 
 	u8 page_id;				//!< page id
 	u8 father;				//!< father's serial number, warning: using 8-bit, blocks should not > 254

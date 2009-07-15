@@ -547,7 +547,7 @@ URET
 //							bc->block);
 
 	for (page = dev->attr->pages_per_block - freePages;	//page: free page num
-			dev->buf.dirtyGroup[slot].count > 0;						//still has dirty pages?
+			dev->buf.dirtyGroup[slot].count > 0;		//still has dirty pages?
 			page++) {
 
 		buf = _FindMinimunPageIdFromDirtyList(dev->buf.dirtyGroup[slot].dirty);
@@ -556,8 +556,7 @@ URET
 			return U_FAIL;
 		}
 
-		//now a dirty page which has page_id(id) been found
-		//write to page i
+		//writre the dirty page (id: buf->page_id) to page i (free page)
 		uffs_LoadBlockInfo(dev, bc, page);
 		tag = &(bc->spares[page].tag);
 		tag->block_ts = uffs_GetBlockTimeStamp(dev, bc);
@@ -566,7 +565,7 @@ URET
 		tag->dataSum = _GetDataSum(dev, buf);
 		tag->father = buf->father;
 		tag->serial = buf->serial;
-		tag->page_id = (u8)(buf->page_id);  //FIX ME!! if page more than 256 in a block
+		tag->page_id = (u8)(buf->page_id);  //FIX ME!! if more than 256 pages in a block
 		ret = uffs_WriteDataToNewPage(dev, bc->block, page, tag, buf);
 		if (ret == U_SUCC) {
 			if(_BreakFromDirty(dev, buf) == U_SUCC) {

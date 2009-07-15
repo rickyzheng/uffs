@@ -313,52 +313,7 @@ URET uffs_WriteDataToNewPage(uffs_Device *dev,
 	return U_SUCC;
 }
 
-///** 
-// * \brief recover a page in block
-// * \param[in] dev uffs device
-// * \parma[in] bc block information buffer
-// * \param[in] oldPage old page number
-// * \param[in] newPage new page number
-// * \param[in] buf new page data buffer
-// * \note the new data and length should be set to buf before this function invoked
-// */
-//URET uffs_PageRecover(uffs_Device *dev, 
-//					  uffs_BlockInfo *bc, 
-//					  int oldPage, 
-//					  int newPage, 
-//					  uffs_Buf *buf)
-//{
-//	uffs_Tags *oldTag, *newTag;
-//	uffs_PageSpare *newSpare;
-//
-//	if(newPage < 0 || newPage >= dev->attr->pages_per_block) {
-//		uffs_Perror(UFFS_ERR_SERIOUS, PFX "new page number outof range!\n");
-//		return U_FAIL;
-//	}
-//
-//	uffs_LoadBlockInfo(dev, bc, oldPage);
-//	uffs_LoadBlockInfo(dev, bc, newPage);
-//
-//	oldTag = &(bc->spares[oldPage].tag);	
-//	newTag = &(bc->spares[newPage].tag);	
-//
-//	newSpare = &(bc->spares[newPage]);
-//
-//	newSpare->expired = 1; // make it expired firstly
-//
-//	newTag->fdn = oldTag->fdn;
-//	newTag->block_ts = oldTag->block_ts;
-//	newTag->fsn = oldTag->fsn;
-//	newTag->page_id = oldTag->page_id;
-//	newTag->dirty = 0;
-//	newTag->data_len = buf->data_len;
-//	newTag->checksum = 0xff; //set check sum with 0xff first.
-//	newTag->valid = 1;
-//
-//	uffs_WriteDataToNewPage(dev, bc->block, newPage, newTag, buf);
-//
-//	return U_SUCC;
-//}
+
 
 /** 
  * calculate sum of data, 8bit version

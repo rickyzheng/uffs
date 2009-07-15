@@ -60,7 +60,7 @@ extern struct cli_commandset * get_helper_cmds(void);
 #define PAGES_PER_BLOCK   32
 #define TOTAL_BLOCKS      128
 
-#define MAN_ID          MAN_ID_SAMSUNG  // simulate Samsung's NAND flash
+#define MAN_ID						MAN_ID_SAMSUNG  // simulate Samsung's NAND flash
 
 #define PAGE_SIZE					(PAGE_DATA_SIZE + PAGE_SPARE_SIZE)
 #define BLOCK_DATA_SIZE				(PAGES_PER_BLOCK * PAGE_DATA_SIZE)
