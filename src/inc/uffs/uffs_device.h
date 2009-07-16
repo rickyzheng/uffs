@@ -48,30 +48,12 @@
 #include "uffs/uffs_tree.h"
 #include "uffs/uffs_mem.h"
 #include "uffs/uffs_core.h"
+#include "uffs/uffs_flash.h"
 
 #ifdef __cplusplus
 extern "C"{
 #endif
 
-
-/** 
- * \struct uffs_FlashOpsSt
- * \brief flash specific operations
- */
-struct uffs_FlashOpsSt {
-	URET (*LoadPageSpare)(uffs_Device *dev, int block, int page, uffs_Tags *tag);
-	URET (*WritePageSpare)(uffs_Device *dev, int block, int page, uffs_Tags *tag);
-	URET (*MakePageValid)(uffs_Device *dev, int block, int page, uffs_Tags *tag);
-	int  (*GetEccSize)(uffs_Device *dev);
-	void (*MakeEcc)(uffs_Device *dev, void *data, void *ecc);
-	int (*EccCollect)(uffs_Device *dev, void *data, void *read_ecc, const void *test_ecc);
-	UBOOL (*IsBlockBad)(uffs_Device *dev, uffs_BlockInfo *bc);
-	URET (*MakeBadBlockMark)(uffs_Device *dev, int block);
-};
-
-/** Well known manufacture IDs */
-#define MAN_ID_SAMSUNG	0xEC	//!< manufacture ID of samsung
-#define MAN_ID_SIMRAM	0xFF	//!< manufacture ID of RAM simulator
 
 /**
  * \struct uffs_FlashClassSt
@@ -85,23 +67,6 @@ struct uffs_FlashClassSt {
 	URET (*InitClass)(uffs_Device *dev, int id);
 };
 
-/**
- * \struct uffs_DeviceOpsSt 
- * \brief lower level flash operations, should be implement in flash driver
- */
-struct uffs_DeviceOpsSt {
-	URET (*Reset)(uffs_Device *dev);
-	UBOOL (*IsBlockBad)(uffs_Device *dev, u32 block);
-	URET (*MarkBadBlock)(uffs_Device *dev, u32 block);
-	URET (*EraseBlock)(uffs_Device *dev, u32 block);
-	URET (*WritePage)(uffs_Device *dev, u32 block, u32 page_num, const u8 *page, const u8 *spare);
-	URET (*WritePageData)(uffs_Device *dev, u32 block, u32 page_num, const u8 *page, int ofs, int len);
-	URET (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page_num, const u8 *spare, int ofs, int len);
-	URET (*ReadPage)(uffs_Device *dev, u32 block, u32 page_num, u8 *page, u8 *spare);
-	URET (*ReadPageData)(uffs_Device *dev, u32 block, u32 page_num, u8 *page, int ofs, int len);
-	URET (*ReadPageSpare)(uffs_Device *dev, u32 block, u32 page_num, u8 *spare, int ofs, int len);
-};
-
 
 /** UFFS device type: uffs_DeviceSt.dev_type */
 #define UFFS_DEV_NULL		0
@@ -111,23 +76,6 @@ struct uffs_DeviceOpsSt {
 #define UFFS_DEV_ROM		4
 #define UFFS_DEV_EMU		5
 
-
-/** 
- * \struct uffs_StorageAttrSt
- * \brief uffs device storage attribute, provide by nand specific file
- */
-struct uffs_StorageAttrSt {
-	u32 dev_type;			//!< device type
-	int maker;				//!< flash maker
-	int id;					//!< chip id, or device id
-	u32 total_blocks;		//!< total blocks in this chip
-	u32 block_data_size;	//!< block data size (= page_data_size * pages_per_block)
-	u16 page_data_size;		//!< page data size (physical page data size, e.g. 512)
-	u16 spare_size;			//!< page spare size (physical page spare size, e.g. 16)
-	u16 pages_per_block;	//!< pages per block
-	u16 block_status_offs;	//!< block status byte in spare
-	void *private;			//!< private data for storage attribute
-};
 
 
 /** 

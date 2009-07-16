@@ -11,13 +11,12 @@ SET (libuffs_SRCS
 		uffs_fs.c 
 		uffs_init.c 
 		uffs_mem.c 
-		uffs_nand_samsung.c 
-		uffs_nand_simram.c 
 		uffs_public.c 
 		uffs_tree.c 
 		uffs_utils.c
 		uffs_mtb.c
 		uffs_find.c
+		uffs_flash.c
 		uffs_version.c
 	 )
 
@@ -43,6 +42,7 @@ SET (libuffs_HEADS
 		${HDR}/uffs_utils.h
 		${HDR}/uffs_mtb.h
 		${HDR}/uffs_find.h
+		${HDR}/uffs_flash.h
 		${HDR}/uffs_version.h
    )
 
