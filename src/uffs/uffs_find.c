@@ -175,7 +175,7 @@ URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 			x = dev->tree.dir_entry[f->hash];
 
 			while (x != EMPTY_NODE) {
-				node = FROM_IDX(x, &(dev->tree.dis));
+				node = FROM_IDX(x, &(dev->tree.pool));
 				if(node->u.dir.parent == f->serial) {
 					f->work = node;
 					if (info) 
@@ -198,7 +198,7 @@ URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
 			x = dev->tree.file_entry[f->hash];
 
 			while (x != EMPTY_NODE) {
-				node = FROM_IDX(x, &(dev->tree.dis));
+				node = FROM_IDX(x, &(dev->tree.pool));
 				if (node->u.file.parent == f->serial) {
 					f->work = node;
 					if (info)
@@ -247,7 +247,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 
 	if (f->step == 0) { //!< working on dirs
 		while (x != EMPTY_NODE) {
-			node = FROM_IDX(x, &(dev->tree.dis));
+			node = FROM_IDX(x, &(dev->tree.pool));
 			if (node->u.dir.parent == f->serial) {
 				f->work = node;
 				if (info)
@@ -262,7 +262,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 		for (; f->hash < DIR_NODE_ENTRY_LEN; f->hash++) {
 			x = dev->tree.dir_entry[f->hash];
 			while (x != EMPTY_NODE) {
-				node = FROM_IDX(x, &(dev->tree.dis));
+				node = FROM_IDX(x, &(dev->tree.pool));
 				if (node->u.dir.parent == f->serial) {
 					f->work = node;
 					if (info)
@@ -282,7 +282,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 	if (f->step == 1) {
 
 		while (x != EMPTY_NODE) {
-			node = FROM_IDX(x, &(dev->tree.dis));
+			node = FROM_IDX(x, &(dev->tree.pool));
 			if (node->u.file.parent == f->serial) {
 				f->work = node;
 				if (info)
@@ -297,7 +297,7 @@ URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
 		for (; f->hash < FILE_NODE_ENTRY_LEN; f->hash++) {
 			x = dev->tree.file_entry[f->hash];
 			while (x != EMPTY_NODE) {
-				node = FROM_IDX(x, &(dev->tree.dis));
+				node = FROM_IDX(x, &(dev->tree.pool));
 				if (node->u.file.parent == f->serial) {
 					f->work = node;
 					if (info) 

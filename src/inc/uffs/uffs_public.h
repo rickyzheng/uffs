@@ -194,6 +194,14 @@ struct uffs_StorageSt {
 
 void uffs_Perror( int level, const char *errFmt, ... );
 
+void uffs_AssertCall(const char *file, int line, const char *msg);
+
+#define uffs_Assert(expr, msg)												\
+	do {																	\
+		if (!(expr))														\
+			uffs_AssertCall(__FILE__, __LINE__, msg);						\
+	} while(0)
+
 /********************************** NAND **********************************************/
 //NAND flash specific file must implement these interface
 URET uffs_LoadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag);
