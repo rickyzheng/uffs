@@ -37,7 +37,7 @@
  */
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_os.h"
-#include "uffs/ubuffer.h"
+#include "uffs/uffs_pool.h"
 #include "uffs/uffs_config.h"
 
 #include <string.h>
@@ -56,33 +56,31 @@ static void uffs_InsertToDataEntry(uffs_Device *dev, TreeNode *node);
 URET uffs_InitTreeBuf(uffs_Device *dev)
 {
 	int size;
-	int nums;
-	struct uffs_StaticBufSt *dis;
+	int num;
+	uffs_Pool *pool;
 	int i;
 
 	size = sizeof(TreeNode);
-	nums = dev->par.end - dev->par.start + 1;
-	dis = &(dev->tree.dis);
-
-	dis->node_size = size;
-	dis->node_nums = nums;
+	num = dev->par.end - dev->par.start + 1;
+	
+	pool = &(dev->tree.pool);
 
 	if (dev->mem.tree_buffer_size == 0) {
 		if (dev->mem.malloc) {
-			dev->mem.tree_buffer = dev->mem.malloc(dev, size * nums);
+			dev->mem.tree_buffer = dev->mem.malloc(dev, size * num);
 			if (dev->mem.tree_buffer)
-				dev->mem.tree_buffer_size = size * nums;
+				dev->mem.tree_buffer_size = size * num;
 		}
 	}
-	if (size * nums > dev->mem.tree_buffer_size) {
-		uffs_Perror(UFFS_ERR_DEAD, PFX"Tree buffer require %d but only %d available.\n", size * nums, dev->mem.tree_buffer_size);
-		memset(dis, 0, sizeof(struct uffs_StaticBufSt));
+	if (size * num > dev->mem.tree_buffer_size) {
+		uffs_Perror(UFFS_ERR_DEAD, PFX"Tree buffer require %d but only %d available.\n", size * num, dev->mem.tree_buffer_size);
+		memset(pool, 0, sizeof(uffs_Pool));
 		return U_FAIL;
 	}
-	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc tree nodes %d bytes.\n", size * nums);
-	dis->node_pool = dev->mem.tree_buffer;
+	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc tree nodes %d bytes.\n", size * num);
 	
-	uffs_StaticBufInit(dis);
+	uffs_PoolInit(pool, dev->mem.tree_buffer, dev->mem.tree_buffer_size, size, num);
+
 	dev->tree.erased = NULL;
 	dev->tree.erased_tail = NULL;
 	dev->tree.erased_count = 0;
@@ -111,16 +109,16 @@ URET uffs_InitTreeBuf(uffs_Device *dev)
  */
 URET uffs_ReleaseTreeBuf(uffs_Device *dev)
 {
-	struct uffs_StaticBufSt *dis;
+	uffs_Pool *pool;
 	
-	dis = &(dev->tree.dis);
-	if (dis->node_pool && dev->mem.free) {
-		dev->mem.free(dev, dis->node_pool);
-		dis->node_pool = NULL;
+	pool = &(dev->tree.pool);
+	if (pool->mem && dev->mem.free) {
+		dev->mem.free(dev, pool->mem);
+		pool->mem = NULL;
 		dev->mem.tree_buffer_size = 0;
 	}
-	uffs_StaticBufRelease(dis);
-	memset(dis, 0, sizeof(struct uffs_StaticBufSt));
+	uffs_PoolRelease(pool);
+	memset(pool, 0, sizeof(uffs_Pool));
 
 	return U_SUCC;
 }
@@ -366,11 +364,11 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 	uffs_BlockInfo *bc;
 	TreeNode *node;
 	struct uffs_TreeSt *tree;
-	struct uffs_StaticBufSt *dis;
+	uffs_Pool *pool;
 	URET ret = U_SUCC;
 	
 	tree = &(dev->tree);
-	dis = &(tree->dis);
+	pool = &(tree->pool);
 
 	tree->bad = NULL;
 	tree->bad_count = 0;
@@ -389,7 +387,7 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 			ret = U_FAIL;
 			break;
 		}
-		node = (TreeNode *)uffs_StaticBufGet(dis);
+		node = (TreeNode *)uffs_PoolGet(pool);
 		if (node == NULL) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"insufficient tree node!\n");
 			ret = U_FAIL;
@@ -455,7 +453,7 @@ TreeNode * uffs_FindFileNodeFromTree(uffs_Device *dev, u16 serial)
 	hash = serial & FILE_NODE_HASH_MASK;
 	x = tree->file_entry[hash];
 	while (x != EMPTY_NODE) {
-		node = FROM_IDX(x, &(tree->dis));
+		node = FROM_IDX(x, &(tree->pool));
 		if (node->u.file.serial == serial) {
 			return node;
 		}
@@ -476,7 +474,7 @@ TreeNode * uffs_FindFileNodeFromTreeWithParent(uffs_Device *dev, u16 parent)
 	for (hash = 0; hash < FILE_NODE_ENTRY_LEN; hash++) {
 		x = tree->file_entry[hash];
 		while (x != EMPTY_NODE) {
-			node = FROM_IDX(x, &(tree->dis));
+			node = FROM_IDX(x, &(tree->pool));
 			if (node->u.file.parent == parent) {
 				return node;
 			}
@@ -499,7 +497,7 @@ TreeNode * uffs_FindDirNodeFromTree(uffs_Device *dev, u16 serial)
 	hash = serial & DIR_NODE_HASH_MASK;
 	x = tree->dir_entry[hash];
 	while (x != EMPTY_NODE) {
-		node = FROM_IDX(x, &(tree->dis));
+		node = FROM_IDX(x, &(tree->pool));
 		if (node->u.dir.serial == serial) {
 			return node;
 		}
@@ -520,7 +518,7 @@ TreeNode * uffs_FindDirNodeFromTreeWithParent(uffs_Device *dev, u16 parent)
 	for (hash = 0; hash < DIR_NODE_ENTRY_LEN; hash++) {
 		x = tree->dir_entry[hash];
 		while (x != EMPTY_NODE) {
-			node = FROM_IDX(x, &(tree->dis));
+			node = FROM_IDX(x, &(tree->pool));
 			if (node->u.dir.parent == parent) {
 				return node;
 			}
@@ -543,7 +541,7 @@ TreeNode * uffs_FindFileNodeByName(uffs_Device *dev, const char *name, u32 len, 
 	for (i = 0; i < FILE_NODE_ENTRY_LEN; i++) {
 		x = tree->file_entry[i];
 		while (x != EMPTY_NODE) {
-			node = FROM_IDX(x, &(tree->dis));
+			node = FROM_IDX(x, &(tree->pool));
 			if (node->u.file.checksum == sum && node->u.file.parent == parent) {
 				//read file name from flash, and compare...
 				if (uffs_CompareFileNameWithTreeNode(dev, name, len, sum, node, UFFS_TYPE_FILE) == U_TRUE) {
@@ -568,7 +566,7 @@ TreeNode * uffs_FindDataNode(uffs_Device *dev, u16 parent, u16 serial)
 	hash = GET_DATA_HASH(parent, serial);
 	x = tree->data_entry[hash];
 	while(x != EMPTY_NODE) {
-		node = FROM_IDX(x, &(tree->dis));
+		node = FROM_IDX(x, &(tree->pool));
 
 		if(node->u.data.parent == parent &&
 			node->u.data.serial == serial)
@@ -590,7 +588,7 @@ TreeNode * uffs_FindDirNodeByBlock(uffs_Device *dev, u16 block)
 	for (hash = 0; hash < DIR_NODE_ENTRY_LEN; hash++) {
 		x = tree->dir_entry[hash];
 		while (x != EMPTY_NODE) {
-			node = FROM_IDX(x, &(tree->dis));
+			node = FROM_IDX(x, &(tree->pool));
 			if (node->u.dir.block == block)
 				return node;
 			x = node->hash_next;
@@ -638,7 +636,7 @@ TreeNode * uffs_FindFileNodeByBlock(uffs_Device *dev, u16 block)
 	for (hash = 0; hash < FILE_NODE_ENTRY_LEN; hash++) {
 		x = tree->file_entry[hash];
 		while (x != EMPTY_NODE) {
-			node = FROM_IDX(x, &(tree->dis));
+			node = FROM_IDX(x, &(tree->pool));
 			if (node->u.file.block == block)
 				return node;
 			x = node->hash_next;
@@ -658,7 +656,7 @@ TreeNode * uffs_FindDataNodeByBlock(uffs_Device *dev, u16 block)
 	for (hash = 0; hash < DATA_NODE_ENTRY_LEN; hash++) {
 		x = tree->data_entry[hash];
 		while (x != EMPTY_NODE) {
-			node = FROM_IDX(x, &(tree->dis));
+			node = FROM_IDX(x, &(tree->pool));
 			if (node->u.data.block == block)
 				return node;
 			x = node->hash_next;
@@ -721,7 +719,7 @@ TreeNode * uffs_FindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u
 	for (i = 0; i < DIR_NODE_ENTRY_LEN; i++) {
 		x = tree->dir_entry[i];
 		while (x != EMPTY_NODE) {
-			node = FROM_IDX(x, &(tree->dis));
+			node = FROM_IDX(x, &(tree->pool));
 			if (node->u.dir.checksum == sum && node->u.dir.parent == parent) {
 				//read file name from flash, and compare...
 				if (uffs_CompareFileNameWithTreeNode(dev, name, len, sum, node, UFFS_TYPE_DIR) == U_TRUE) {
@@ -806,7 +804,7 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 	TreeNode *work;
 	TreeNode *node;
 	struct uffs_TreeSt *tree;
-	struct uffs_StaticBufSt *dis;
+	uffs_Pool *pool;
 	u16 blockSave;
 
 	TreeNode *cache = NULL;
@@ -817,14 +815,14 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 	//FIX ME!! otherwise a huge file nodes or data nodes would drag system from fast booting
 
 	tree = &(dev->tree);
-	dis = &(tree->dis);
+	pool = &(tree->pool);
 
 	uffs_Perror(UFFS_ERR_NOISY, PFX"build tree step three\n");
 
 	for (i = 0; i < DATA_NODE_ENTRY_LEN; i++) {
 		x = tree->data_entry[i];
 		while (x != EMPTY_NODE) {
-			work = FROM_IDX(x, dis);
+			work = FROM_IDX(x, pool);
 			if (work->u.data.parent == cacheSerial) {
 				node = cache;
 			}
@@ -938,27 +936,27 @@ static void _InsertToEntry(uffs_Device *dev, u16 *entry, int hash, TreeNode *nod
 #ifdef TREE_NODE_USE_DOUBLE_LINK
 	node->hash_prev = EMPTY_NODE;
 	if (entry[hash] != EMPTY_NODE) {
-		FROM_IDX(entry[hash], &(tree->dis))->hash_prev = TO_IDX(node, &(tree->dis));
+		FROM_IDX(entry[hash], &(tree->pool))->hash_prev = TO_IDX(node, &(tree->pool));
 	}
 #endif
-	entry[hash] = TO_IDX(node, &(tree->dis));
+	entry[hash] = TO_IDX(node, &(tree->pool));
 }
 
 //static void _BreakFromEntry(uffs_Device *dev, u16 *entry, int hash, TreeNode *node)
 //{
 //	TreeNode *work;
 //	struct uffs_TreeSt *tree = &(dev->tree);
-//	struct uffs_StaticBufSt *dis = &(tree->dis);
+//	uffs_Pool *pool = &(tree->pool);
 //	
 //	if(node->hash_prev != EMPTY_NODE) {
-//		work = FROM_IDX(node->hash_prev, dis);
+//		work = FROM_IDX(node->hash_prev, pool);
 //		work->hash_next = node->hash_next;
 //	}
 //	if(node->hash_next != EMPTY_NODE) {
-//		work = FROM_IDX(node->hash_next, dis);
+//		work = FROM_IDX(node->hash_next, pool);
 //		work->hash_prev = node->hash_prev;
 //	}
-//	if(entry[hash] == TO_IDX(node, dis)) {
+//	if(entry[hash] == TO_IDX(node, pool)) {
 //		entry[hash] = node->hash_next;
 //	}
 //}
@@ -968,7 +966,7 @@ TreeNode * _FindPrevNodeFromEntry(uffs_Device *dev, u16 start, u16 find)
 {
 	TreeNode *work;
 	while (start != EMPTY_NODE) {
-		work = FROM_IDX(start, &(dev->tree.dis));
+		work = FROM_IDX(start, &(dev->tree.pool));
 		if (work->hash_next == find) {
 			return work;
 		}
@@ -1005,20 +1003,20 @@ void uffs_BreakFromEntry(uffs_Device *dev, u8 type, TreeNode *node)
 	}
 #ifdef TREE_NODE_USE_DOUBLE_LINK
 	if (node->hash_prev != EMPTY_NODE) {
-		work = FROM_IDX(node->hash_prev, &(dev->tree.dis));
+		work = FROM_IDX(node->hash_prev, &(dev->tree.pool));
 		work->hash_next = node->hash_next;
 	}
 	if (node->hash_next != EMPTY_NODE) {
-		work = FROM_IDX(node->hash_next, &(dev->tree.dis));
+		work = FROM_IDX(node->hash_next, &(dev->tree.pool));
 		work->hash_prev = node->hash_prev;
 	}
 #else
-	if ((work = _FindPrevNodeFromEntry(dev, *entry, TO_IDX(node, &(dev->tree.dis)))) != NULL) {
+	if ((work = _FindPrevNodeFromEntry(dev, *entry, TO_IDX(node, &(dev->tree.pool)))) != NULL) {
 		work->hash_next = node->hash_next;
 	}
 #endif
 
-	if (*entry == TO_IDX(node, &(dev->tree.dis))) {
+	if (*entry == TO_IDX(node, &(dev->tree.pool))) {
 		*entry = node->hash_next;
 	}
 }

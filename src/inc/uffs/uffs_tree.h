@@ -34,7 +34,7 @@
 #define _UFFS_TREE_H_
 
 #include "uffs/uffs_types.h"
-#include "uffs/ubuffer.h"
+#include "uffs/uffs_pool.h"
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_core.h"
 
@@ -141,8 +141,8 @@ typedef struct uffs_TreeNodeSt {
 
 #define DATA_NODE_HASH_MASK		0x1ff
 #define DATA_NODE_ENTRY_LEN		(DATA_NODE_HASH_MASK + 1)
-#define FROM_IDX(idx, dis)		((TreeNode *)uffs_StaticBufGetByIndex(idx, dis))
-#define TO_IDX(p, dis)			((u16)uffs_StaticBufGetIndex((void *)p, dis))
+#define FROM_IDX(idx, pool)		((TreeNode *)uffs_PoolGetBufByIndex(pool, idx))
+#define TO_IDX(p, pool)			((u16)uffs_PoolGetIndex(pool, (void *) p))
 
 
 #define GET_FILE_HASH(serial)			(serial & FILE_NODE_HASH_MASK)
@@ -159,7 +159,7 @@ struct uffs_TreeSt {
 	u16 dir_entry[DIR_NODE_ENTRY_LEN];
 	u16 file_entry[FILE_NODE_ENTRY_LEN];
 	u16 data_entry[DATA_NODE_ENTRY_LEN];
-	struct uffs_StaticBufSt dis;
+	uffs_Pool pool;
 	u16 max_serial;
 };
 

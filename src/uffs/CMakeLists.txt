@@ -1,5 +1,4 @@
 SET (libuffs_SRCS 
-		ubuffer.c 
 		uffs_badblock.c 
 		uffs_blockinfo.c 
 		uffs_buf.c 
@@ -12,7 +11,8 @@ SET (libuffs_SRCS
 		uffs_init.c 
 		uffs_mem.c 
 		uffs_nand_samsung.c 
-		uffs_nand_simram.c 
+		uffs_nand_simram.c
+		uffs_pool.c 
 		uffs_public.c 
 		uffs_tree.c 
 		uffs_utils.c
@@ -24,7 +24,6 @@ SET (libuffs_SRCS
 SET (HDR ${uffs_SOURCE_DIR}/src/inc/uffs)
 
 SET (libuffs_HEADS 
-		${HDR}/ubuffer.h
 		${HDR}/uffs.h
 		${HDR}/uffs_badblock.h
 		${HDR}/uffs_blockinfo.h
@@ -36,8 +35,9 @@ SET (libuffs_HEADS
 		${HDR}/uffs_fd.h
 		${HDR}/uffs_fs.h
 		${HDR}/uffs_mem.h
-		${HDR}/uffs_os.h
-		${HDR}/uffs_public.h
+        ${HDR}/uffs_os.h
+        ${HDR}/uffs_pool.h
+        ${HDR}/uffs_public.h
 		${HDR}/uffs_tree.h
 		${HDR}/uffs_types.h
 		${HDR}/uffs_utils.h

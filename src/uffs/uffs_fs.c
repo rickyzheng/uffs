@@ -38,7 +38,7 @@
 
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs_config.h"
-#include "uffs/ubuffer.h"
+#include "uffs/uffs_pool.h"
 #include "uffs/uffs_ecc.h"
 #include "uffs/uffs_badblock.h"
 #include "uffs/uffs_os.h"
@@ -71,15 +71,9 @@ static void _ReleaseObjectResource(uffs_Object *obj);
 static URET _TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run);
 
 
-static int _object_buf[sizeof(uffs_Object) * MAX_OBJECT_HANDLE / sizeof(int)];
+static int _object_data[sizeof(uffs_Object) * MAX_OBJECT_HANDLE / sizeof(int)];
 
-static struct uffs_StaticBufSt _object_dis = {
-	_object_buf,
-	sizeof(uffs_Object),
-	MAX_OBJECT_HANDLE,
-	NULL,
-	0,
-};
+static uffs_Pool _object_pool;
 
 
 /**
@@ -87,10 +81,8 @@ static struct uffs_StaticBufSt _object_dis = {
  */
 URET uffs_InitObjectBuf(void)
 {
-	if (uffs_StaticBufInit(&_object_dis) < 0) 
-		return U_FAIL;
-	else
-		return U_SUCC;
+	return uffs_PoolInit(&_object_pool, _object_data, sizeof(_object_data),
+			sizeof(uffs_Object), MAX_OBJECT_HANDLE);
 }
 
 /**
@@ -98,7 +90,7 @@ URET uffs_InitObjectBuf(void)
  */
 URET uffs_ReleaseObjectBuf(void)
 {
-	return uffs_StaticBufRelease(&_object_dis) < 0 ? U_FAIL : U_SUCC;
+	return uffs_PoolRelease(&_object_pool);
 }
 
 /**
@@ -109,7 +101,7 @@ uffs_Object * uffs_GetObject(void)
 {
 	uffs_Object * obj;
 
-	obj = (uffs_Object *)uffs_StaticBufGet(&_object_dis);
+	obj = (uffs_Object *) uffs_PoolGet(&_object_pool);
 	if (obj) {
 		memset(obj, 0, sizeof(uffs_Object));
 		obj->attr_loaded = U_FALSE;
@@ -145,7 +137,7 @@ URET uffs_ReInitObject(uffs_Object *obj)
 void uffs_PutObject(uffs_Object *obj)
 {
 	if (obj)
-		uffs_StaticBufPut(obj, &_object_dis);
+		uffs_PoolPut(&_object_pool, obj);
 }
 
 /**
@@ -153,7 +145,7 @@ void uffs_PutObject(uffs_Object *obj)
  */
 int uffs_GetObjectIndex(uffs_Object *obj)
 {
-	return uffs_StaticBufGetIndex(obj, &_object_dis);
+	return uffs_PoolGetIndex(&_object_pool, obj);
 }
 
 /**
@@ -161,7 +153,7 @@ int uffs_GetObjectIndex(uffs_Object *obj)
  */
 uffs_Object * uffs_GetObjectByIndex(int idx)
 {
-	return (uffs_Object *) uffs_StaticBufGetByIndex(idx, &_object_dis);
+	return (uffs_Object *) uffs_PoolGetBufByIndex(&_object_pool, idx);
 }
 
 static void uffs_ObjectDevLock(uffs_Object *obj)
@@ -489,7 +481,7 @@ ext:
  *			obj->name
  *			obj->name_len
  */
-static URET uffs_ParseObject(uffs_Object *obj, const char *name)
+URET uffs_ParseObject(uffs_Object *obj, const char *name)
 {
 	int len, m_len, d_len;
 	uffs_Device *dev;
