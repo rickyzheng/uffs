@@ -95,6 +95,13 @@ void uffs_PutObject(uffs_Object *obj);
 int uffs_GetObjectIndex(uffs_Object *obj);
 uffs_Object * uffs_GetObjectByIndex(int idx);
 
+/**
+ * Re-initialize an object.
+ * should call this function if you want to re-use an object.
+ */
+URET uffs_ReInitObject(uffs_Object *obj);
+
+
 URET uffs_ParseObject(uffs_Object *obj, const char *name);
 
 URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev, 

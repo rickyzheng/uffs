@@ -114,3 +114,16 @@ void uffs_Perror( int level, const char *errFmt, ...)
 
 #endif
 
+/**
+ * \brief Called when an assert occurred.
+ * This method is called when an assert occurred and should stop the
+ * application from running, as this there is a severe error condition.
+ * \param[in] file Source filename
+ * \param[in] line Source line of code
+ * \param[in] msg Assert message
+ */
+void uffs_AssertCall(const char *file, int line, const char *msg)
+{
+	printf("ASSERT %s:%d - msg\n", file, line, msg);
+	while (1);
+}

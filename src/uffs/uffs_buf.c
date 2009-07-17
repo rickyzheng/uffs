@@ -41,7 +41,7 @@
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_public.h"
-#include "uffs/ubuffer.h"
+#include "uffs/uffs_pool.h"
 #include "uffs/uffs_ecc.h"
 #include "uffs/uffs_badblock.h"
 #include <string.h>

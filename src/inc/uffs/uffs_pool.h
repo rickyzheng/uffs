@@ -31,67 +31,54 @@
 */
 
 /**
- *
- *	\file ubuffer.h
- *	\brief fast/static buffer management
- *	\author	Created by Ricky
- *
+ * \file uffs_pool.h
+ * \brief Fast fixed size memory pool management.
+ * \author Ricky Zheng, Simon Kallweit
  */
 
-#ifndef ___UBUFFER_H___
-#define ___UBUFFER_H___
-
+#ifndef __UFFS_POOL_H__
+#define __UFFS_POOL_H__
 
 #ifdef __cplusplus
 extern "C"{
 #endif
 
-struct uffs_StaticBufSt {
-	void *node_pool;		//!< data pool
-	unsigned int node_size; //!< data struct size
-	unsigned int node_nums;	//!< total nodes
-	void *free_list;		//!< free list, used by internal
-	int lock;				//!< buffer lock
-};
-
-/** init ubuffer data structure with given discriptor */
-int uffs_StaticBufInit(struct uffs_StaticBufSt *dis); 
-
-/** release descriptor, delete lock */
-int uffs_StaticBufRelease(struct uffs_StaticBufSt *dis);
-
-/** get buffer from pool */
-void * uffs_StaticBufGet(struct uffs_StaticBufSt *dis);
+#include "uffs/uffs_types.h"
 
 /**
- * get buffer from pool
- * this is Critical protect version,
- * you should use this version when multitherad 
- * access the same buffer pool
+ * \struct uffs_PoolEntrySt
+ * \brief Helper type for free buffer entries.
  */
-void * uffs_StaticBufGetCt(struct uffs_StaticBufSt *dis);
-
-/** put buffer to pool */
-int uffs_StaticBufPut(void *p, struct uffs_StaticBufSt *dis);
+typedef struct uffs_PoolEntrySt {
+    struct uffs_PoolEntrySt *next;
+} uffs_PoolEntry;
 
 /**
- * put buffer to pool, 
- * this is critical protect version,
- * you should use this version when multithread
- * access the same buffer pool
+ * \struct uffs_PoolSt
+ * \brief Memory pool.
  */
-int uffs_StaticBufPutCt(void *p, struct uffs_StaticBufSt *dis);
+typedef struct uffs_PoolSt {
+	u8 *mem;					//!< memory pool
+	u32 buf_size;				//!< size of a buffer
+	u32 num_bufs;				//!< number of buffers in the pool
+	uffs_PoolEntry *free_list;	//!< linked list of free buffers
+	int sem;					//!< buffer lock
+} uffs_Pool;
 
-/** get buffer pointer by index(offset) */
-void * uffs_StaticBufGetByIndex(unsigned int idx, struct uffs_StaticBufSt *dis);
+URET uffs_PoolInit(uffs_Pool *pool, void *mem, u32 mem_size, u32 buf_size, u32 num_bufs);
+URET uffs_PoolRelease(uffs_Pool *pool);
 
-/** get index by pointer */
-int uffs_StaticBufGetIndex(void *p, struct uffs_StaticBufSt *dis);
+void *uffs_PoolGet(uffs_Pool *pool);
+void *uffs_PoolGetLocked(uffs_Pool *pool);
 
+int uffs_PoolPut(uffs_Pool *pool, void *p);
+int uffs_PoolPutLocked(uffs_Pool *pool, void *p);
+
+void *uffs_PoolGetBufByIndex(uffs_Pool *pool, u32 index);
+u32 uffs_PoolGetIndex(uffs_Pool *pool, void *p);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
-
+#endif // __UFFS_POOL_H__
