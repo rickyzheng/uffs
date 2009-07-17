@@ -378,6 +378,7 @@ URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev,
 {
 
 	obj->err = UENOERR;
+	obj->open_succ = U_FALSE;
 
 	if (dev == NULL) {
 		obj->err = UEINVAL;
@@ -496,6 +497,9 @@ static URET uffs_ParseObject(uffs_Object *obj, const char *name)
 	u16 dir;
 	TreeNode *node;
 	u16 sum;
+
+	if (uffs_ReInitObject(obj) == U_FAIL)
+		return U_FAIL;
 
 	len = strlen(name);
 	m_len = uffs_GetMatchedMountPointSize(name);
@@ -1607,13 +1611,11 @@ URET uffs_RenameObject(const char *old_name, const char *new_name)
 		goto ext;
 	}
 	oflag |= UO_DIR;
-	uffs_ReInitObject(new_obj);
 	if (uffs_OpenObject(new_obj, new_name, oflag) == U_SUCC) {
 		uffs_CloseObject(new_obj);
 		uffs_Perror(UFFS_ERR_NOISY, PFX"new object already exist!\n");
 		goto ext;
 	}
-	uffs_ReInitObject(new_obj);
 
 	if (uffs_ParseObject(new_obj, new_name) != U_SUCC) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"parse new name fail !\n");
@@ -1627,7 +1629,6 @@ URET uffs_RenameObject(const char *old_name, const char *new_name)
 
 	oflag = UO_RDONLY;
 	if (uffs_OpenObject(obj, old_name, oflag) != U_SUCC) {
-		uffs_ReInitObject(obj);
 		oflag |= UO_DIR;
 		if (uffs_OpenObject(obj, old_name, oflag) != U_SUCC) {
 			uffs_Perror(UFFS_ERR_NOISY, PFX"Can't open old object !\n");
