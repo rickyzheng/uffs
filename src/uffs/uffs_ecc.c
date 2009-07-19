@@ -106,7 +106,7 @@ static void uffs_MakeEccChunk256(void *data, void *ecc, u16 len)
 	}
 
 	for (i = 0; i < 256 - len; i++) {
-		b = column_parity_tbl[0];	//always use 0 for the rest of data
+		b = column_parity_tbl[0xFF];	//always use 0 for the rest of data
 		col_parity ^= b;
 
 		if (b & 0x01) { // odd number of bits in the byte
@@ -123,6 +123,7 @@ static void uffs_MakeEccChunk256(void *data, void *ecc, u16 len)
 	pecc[2] = (~col_parity) | 0x03;
 
 }
+
 
 /**
  * calculate ECC
@@ -144,15 +145,12 @@ int uffs_MakeEcc(void *data, int data_len, void *ecc)
 	return p_ecc - (u8 *)ecc;
 }
 
-
 static int uffs_EccCorrectChunk256(void *data, void *read_ecc, const void *test_ecc, int errtop)
 {
 	u8 d0, d1, d2;		/* deltas */
 	u8 *p = (u8 *)data;
 	u8 *pread_ecc = (u8 *)read_ecc, *ptest_ecc = (u8 *)test_ecc;
 
-	dev = dev;
-	
 	d0 = pread_ecc[0] ^ ptest_ecc[0];
 	d1 = pread_ecc[1] ^ ptest_ecc[1];
 	d2 = pread_ecc[2] ^ ptest_ecc[2];
@@ -235,3 +233,95 @@ int uffs_EccCorrect(void *data, int data_len, void *read_ecc, const void *test_e
 	return total;
 
 }
+
+/** generate 12 bit ecc for 8 bytes data */
+u16 uffs_MakeEcc8(void *data, int data_len)
+{
+	u8 *p = (u8 *)data;
+	u8 b, col_parity = 0, line_parity = 0, line_parity_prime = 0;
+	u8 i;
+	u16 ecc = 0;
+
+
+	data_len = (data_len > 8 ? 8 : data_len);
+
+	for (i = 0; i < data_len; i++) {
+		b = column_parity_tbl[*p++];
+		col_parity ^= b;
+		if (b & 0x01) { // odd number of bits in the byte
+			line_parity ^= i;
+			line_parity_prime ^= ~i;
+		}
+	}
+	for (i = 0; i < 8 - data_len; i++) {
+		b = column_parity_tbl[0xFF];	//always use 0xFF for the rest of data
+		col_parity ^= b;
+
+		if (b & 0x01) { // odd number of bits in the byte
+			line_parity ^= i;
+			line_parity_prime ^= ~i;
+		}
+	}
+
+	// ECC layout:
+	// Byte[0]:  (1)   |  (1)   | P32  | P32'  | P8   | P8'		-- row
+	// Byte[1]:  P4    | P4'    | P2   | P2'   | (1)  | (1)		-- column
+	ecc = ~(line_parity_tbl[line_parity & 0xf] | line_parity_prime_tbl[line_parity_prime & 0xf]);
+	ecc |= ((~col_parity) | 0x03) << 8;
+
+	return ecc;
+}
+
+/**
+ * correct 8 bytes data from 12 bits ECC
+ *
+ * return:   0 -- no error
+ *			-1 -- can not be correct
+ *			>0 -- how many bits corrected
+ */
+int uffs_EccCorrect8(void *data, u16 read_ecc, u16 test_ecc, int errtop)
+{
+	u8 d0, d1;			/* deltas */
+	u8 *p = (u8 *)data;
+
+	d0 = (read_ecc & 0xFF) ^ (test_ecc & 0xFF);
+	d1 = (read_ecc >> 8) ^ (test_ecc >> 8);
+	
+	if ((d0 | d1) == 0)
+		return 0;
+	
+	if( ((d0 ^ (d0 >> 1)) & 0x55) == 0x55 &&
+	    ((d1 ^ (d1 >> 1)) & 0x54) == 0x54)
+	{
+		// Single bit (recoverable) error in data
+
+		u8 b;
+		u8 bit;
+		
+		bit = b = 0;		
+		
+		if(d0 & 0x80) b |= 0x08;
+		if(d0 & 0x20) b |= 0x04;
+		if(d0 & 0x08) b |= 0x02;
+		if(d0 & 0x02) b |= 0x01;
+
+		if(d1 & 0x80) bit |= 0x04;
+		if(d1 & 0x20) bit |= 0x02;
+		if(d1 & 0x08) bit |= 0x01;
+
+		if (b >= (u8)errtop) return -1;
+
+		p[b] ^= (1 << bit);
+		
+		return 1;
+	}
+	
+	if ((bits_tbl[d0]+bits_tbl[d1]) == 1) {
+		// error in ecc, no action need		
+		return 1;
+	}
+	
+	// Unrecoverable error
+	return -1;
+}
+

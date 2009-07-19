@@ -325,7 +325,7 @@ BOOL cmdSt(const char *tail)
 	uffs_Perror(UFFS_ERR_NORMAL, "Disk total:   %d\n", uffs_GetDeviceTotal(dev));
 	uffs_Perror(UFFS_ERR_NORMAL, "Disk Used:    %d\n", uffs_GetDeviceUsed(dev));
 	uffs_Perror(UFFS_ERR_NORMAL, "Disk Free:    %d\n", uffs_GetDeviceFree(dev));
-	uffs_Perror(UFFS_ERR_NORMAL, "Block size:   %d\n", dev->attr->block_data_size);
+	uffs_Perror(UFFS_ERR_NORMAL, "Block size:   %d\n", dev->attr->page_data_size * dev->attr->pages_per_block);
 	uffs_Perror(UFFS_ERR_NORMAL, "Total blocks: %d of %d\n", (dev->par.end - dev->par.start + 1), dev->attr->total_blocks);
 	if (dev->tree.bad) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Bad blocks: ");

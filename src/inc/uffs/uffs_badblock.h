@@ -56,4 +56,8 @@ void uffs_ProcessBadBlock(uffs_Device *dev, TreeNode *node);
 /** try to recover data from a new discovered bad block */
 void uffs_RecoverBadBlock(uffs_Device *dev);
 
+/** put a new block to the bad block waiting list */
+void uffs_BadBlockAdd(uffs_Device *dev, int block);
+
+
 #endif

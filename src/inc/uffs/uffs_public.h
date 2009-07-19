@@ -52,13 +52,13 @@ extern "C"{
 /** 
  * \struct uffs_TagsSt
  * \brief this data structure describes the page status.
- *			the first 6(or 7) bytes along with ECC will be stored in page spare area,
- *			'data_len' and 'data_sum' are stored in page data area.
+ *		the first 8 bytes along with page data ECC will be stored in page spare area,
+ *		'data_len' and 'data_sum' are stored in page data area.
  *
  */
 struct uffs_TagsSt {
 
-	/** the following 6(0r 7) bytes are stored in page spare area */
+	/** the following 8 bytes are stored in page spare area */
 
 	u8 dirty:1;				//!< 0: dirty, 1: clear
 	u8 valid:1;				//!< 0: valid, 1: invalid
@@ -69,27 +69,33 @@ struct uffs_TagsSt {
 	u8 page_id;				//!< page id
 	u16 parent;				//!< parent's serial number
 	u16 serial;				//!< serial number
-#if defined(ENABLE_TAG_CHECKSUM) && ENABLE_TAG_CHECKSUM == 1
-	u8 checksum;			//!< checksum of above, or ecc of tag...
-#endif
+	u16 tag_ecc;			//!< ecc of tag
 
 	/** the following 4 bytes are stored in page data area */
 	u16 data_len;			//!< length of page data length
 	u16 data_sum;			//!< sum of file name or directory name, not used if it's file data.
 
-	/** block status: this byte is loaded from flash, but not write to flash directly */
-	u8 block_status;		
+	/**
+	 * block_status is not covered by tag_ecc.
+	 * it's loaded from flash but not directly write to flash.
+	 */
+	u8 block_status;
+
+	/** internal used by block info cache */
+	u8 bad:1;				//!< 1: bad block, 0: good block 
+	u8 expired:1;			//!< 1: expired, 0: valid
 };
 
 /**
  * \struct uffs_TagsSt_8
  * \brief this data structure describes the page status, for 8 bytes page spare.
- *			the first 4(or 5) bytes along with ECC will be stored in page spare area,
- *			'data_len' and 'data_sum' are stored in page data area.
- */
+ *		the first 4 bytes along with page data ECC will be stored in page spare area,
+ *		'data_len' and 'data_sum' are stored in page data area.
  */
 struct uffs_TagsSt_8 {
-	/** the following 4(or 5) bytes are stored in page spare area */
+	/** the following 4 bytes are stored in page spare area
+	 * \note does not support tag_ecc for 8 bytes spare!
+	 */
 	u8 dirty:1;				//!< 0: dirty, 1: clear
 	u8 valid:1;				//!< 0: valid, 1: invalid
 	u8 type:2;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
@@ -99,9 +105,6 @@ struct uffs_TagsSt_8 {
 	u8 page_id;				//!< page id
 	u8 parent;				//!< parent's serial number, warning: using 8-bit, blocks should not > 254
 	u8 serial;				//!< serial number, warning: using 8-bit, blocks should not > 254
-#if defined(ENABLE_TAG_CHECKSUM) && ENABLE_TAG_CHECKSUM == 1
-	u8 checksum;			//!< checksum of above, or ecc of tag...
-#endif
 
 	u16 data_len;			//!< length of page data length
 	u16 data_sum;			//!< sum of file name or directory name

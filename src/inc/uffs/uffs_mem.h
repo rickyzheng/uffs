@@ -39,6 +39,10 @@
 extern "C"{
 #endif
 
+#define MAX_ECC_SIZE	(3 * UFFS_MAX_PAGE_SIZE / 256)
+#define MAX_SPARE_SIZE	(8 * UFFS_MAX_PAGE_SIZE / 256)
+
+
 #if defined(USE_NATIVE_MEMORY_ALLOCATOR)
 
 #define HEAP_HASH_BIT	6							/* hash table bit */
@@ -73,15 +77,22 @@ typedef struct uffs_memAllocatorSt {
 	void * (*malloc)(struct uffs_DeviceSt *dev, unsigned int size); /* allocate memory (for dynamic memory allocation) */
 	URET (*free)(struct uffs_DeviceSt *dev, void *p);   /* free memory (for dynamic memory allocation) */
 
-	void * blockinfo_buffer;
-	void * page_buffer;
-	void * tree_buffer;
-	void * one_page_buffer;
+	void * blockinfo_pool;				//!< block info cache buffers
+	void * pagebuf_pool;				//!< page buffers
+	void * tree_nodes_pool;				//!< tree nodes buffer
 
-	int blockinfo_buffer_size;
-	int page_buffer_size;
-	int tree_buffer_size;
-	int one_page_buffer_size;
+	int blockinfo_pool_size;			//!< block info cache buffers size
+	int pagebuf_pool_size;				//!< page buffers size
+	int tree_nodes_pool_size;			//!< tree nodes buffer size
+
+#ifdef ENABLE_BAD_BLOCK_VERIFY
+	u8 one_page_buffer[UFFS_MAX_PAGE_SIZE];		//!< one page data buffer
+#endif
+	u8 ecc_buffer[MAX_ECC_SIZE];
+	u8 spare_buffer[MAX_SPARE_SIZE];
+	int spare_buffer_size;				//!< calculated page spare buffer size
+
+
 
 #if defined(USE_NATIVE_MEMORY_ALLOCATOR)
 	HeapHashTable tbl[HEAP_HASH_SIZE];

@@ -71,20 +71,20 @@ URET uffs_InitBlockInfoCache(uffs_Device *dev, int maxCachedBlocks)
 			sizeof(uffs_PageSpare) * dev->attr->pages_per_block
 			) * maxCachedBlocks;
 
-	if (dev->mem.blockinfo_buffer_size == 0) {
+	if (dev->mem.blockinfo_pool_size == 0) {
 		if (dev->mem.malloc) {
-			dev->mem.blockinfo_buffer = dev->mem.malloc(dev, size);
-			if (dev->mem.blockinfo_buffer) dev->mem.blockinfo_buffer_size = size;
+			dev->mem.blockinfo_pool = dev->mem.malloc(dev, size);
+			if (dev->mem.blockinfo_pool) dev->mem.blockinfo_pool_size = size;
 		}
 	}
-	if (size > dev->mem.blockinfo_buffer_size) {
-		uffs_Perror(UFFS_ERR_DEAD, PFX"Block cache buffer require %d but only %d available.\n", size, dev->mem.blockinfo_buffer_size);
+	if (size > dev->mem.blockinfo_pool_size) {
+		uffs_Perror(UFFS_ERR_DEAD, PFX"Block cache buffer require %d but only %d available.\n", size, dev->mem.blockinfo_pool_size);
 		return U_FAIL;
 	}
 
 	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc info cache %d bytes.\n", size);
 
-	buf = dev->mem.blockinfo_buffer;
+	buf = dev->mem.blockinfo_pool;
 
 	memset(buf, 0, size);
 

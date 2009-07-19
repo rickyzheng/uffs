@@ -67,8 +67,9 @@ struct uffs_BufSt{
 	u16 mark;							//!< #UFFS_BUF_EMPTY or #UFFS_BUF_VALID, or #UFFS_BUF_DIRTY ?
 	u16 ref_count;						//!< reference counter, or #CLONE_BUF_MARK for a cloned buffer
 	u16 data_len;						//!< length of data
+	u16 check_sum;						//!< checksum field
 	u8 * data;							//!< data buffer
-	u8 * ecc;							//!< ecc buffer
+	u8 * start;							//!< buffer start point
 };
 
 #define uffs_BufIsFree(buf) (buf->ref_count == 0 ? U_TRUE : U_FALSE)

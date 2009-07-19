@@ -198,8 +198,8 @@ TreeNode * uffs_GetErased(uffs_Device *dev);
 
 void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node);
 void uffs_InsertToErasedListHead(uffs_Device *dev, TreeNode *node);
-void uffs_InsertToErasedListTail(uffs_Device *dev, TreeNode *node);
-void uffs_InsertToBadBlockList(uffs_Device *dev, TreeNode *node);
+void uffs_TreeInsertToErasedListTail(uffs_Device *dev, TreeNode *node);
+void uffs_TreeInsertToBadBlockList(uffs_Device *dev, TreeNode *node);
 
 void uffs_BreakFromEntry(uffs_Device *dev, u8 type, TreeNode *node);
 

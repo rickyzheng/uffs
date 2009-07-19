@@ -102,17 +102,18 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 	}
 	
 	size = (sizeof(uffs_Buf) + dev->com.pg_size) * buf_max;
-	if (dev->mem.page_buffer_size == 0) {
+	if (dev->mem.pagebuf_pool_size == 0) {
 		if (dev->mem.malloc) {
-			dev->mem.page_buffer = dev->mem.malloc(dev, size);
-			if (dev->mem.page_buffer) dev->mem.page_buffer_size = size;
+			dev->mem.pagebuf_pool = dev->mem.malloc(dev, size);
+			if (dev->mem.pagebuf_pool)
+				dev->mem.pagebuf_pool_size = size;
 		}
 	}
-	if (size > dev->mem.page_buffer_size) {
-		uffs_Perror(UFFS_ERR_DEAD, PFX"page buffers require %d but only %d available.\n", size, dev->mem.page_buffer_size);
+	if (size > dev->mem.pagebuf_pool_size) {
+		uffs_Perror(UFFS_ERR_DEAD, PFX"page buffers require %d but only %d available.\n", size, dev->mem.pagebuf_pool_size);
 		return U_FAIL;
 	}
-	pool = dev->mem.page_buffer;
+	pool = dev->mem.pagebuf_pool;
 
 	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc %d bytes.\n", size);
 	dev->buf.pool = pool;
@@ -373,6 +374,8 @@ URET uffs_LoadPhyDataToBuf(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
 URET uffs_LoadPhyDataToBufEccUnCare(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
 {
 	URET ret;
+
+	ret = uffs_FlashReadPage(dev, block, page, buf, NULL);
 
 	ret = dev->ops->ReadPageData(dev, block, page, buf->data, 0, dev->com.pg_size);
 	if (ret == U_SUCC) {
@@ -842,14 +845,14 @@ static URET _BufFlush_Exist_With_BlockCover(
 		else {
 			// erase recovered block, put it back to erased block list.
 			dev->ops->EraseBlock(dev, bc->block);
-			uffs_InsertToErasedListTail(dev, newNode);
+			uffs_TreeInsertToErasedListTail(dev, newNode);
 		}
 	}
 	else {
 		uffs_ExpireBlockInfo(dev, newBc, UFFS_ALL_PAGES);
 		dev->ops->EraseBlock(dev, newBlock);
 		newNode->u.list.block = newBlock;
-		uffs_InsertToErasedListTail(dev, newNode);
+		uffs_TreeInsertToErasedListTail(dev, newNode);
 	}
 
 	if (dev->buf.dirtyGroup[slot].dirty != NULL || dev->buf.dirtyGroup[slot].count != 0) {

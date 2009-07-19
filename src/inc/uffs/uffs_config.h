@@ -39,6 +39,11 @@
 #ifndef _UFFS_CONFIG_H_
 #define _UFFS_CONFIG_H_
 
+/**
+ * \def UFFS_MAX_PAGE_SIZE
+ * \note maximum page size UFFS support
+ */
+#define UFFS_MAX_PAGE_SIZE		2048
 
 /**
  * \def MAX_CACHED_BLOCK_INFO
@@ -66,6 +71,7 @@
  * \def MAX_DIRTY_BUF_GROUPS
  */
 #define MAX_DIRTY_BUF_GROUPS	3
+
 
 
 /**
@@ -130,6 +136,14 @@
  * \note do not set it to 1 if your NAND flash only have 8 bytes spare !
  */
 #define ENABLE_TAG_CHECKSUM 0
+
+
+/**
+ * \def ENABLE_BAD_BLOCK_VERIFY
+ * \note allow erase and verify block marked as 'bad' when format UFFS partition.
+ *		it's not recommented for most NAND flash.
+ */
+#define ENABLE_BAD_BLOCK_VERIFY
 
 
 /** micros for calculating buffer sizes */

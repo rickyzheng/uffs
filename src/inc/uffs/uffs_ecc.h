@@ -69,6 +69,21 @@ int uffs_MakeEcc(void *data, int data_len, void *ecc);
 int uffs_EccCorrect(void *data, int data_len, void *read_ecc, const void *test_ecc);
 
 
+/**
+ * generate 12 bit ecc for maximum 8 bytes data
+ */
+u16 uffs_MakeEcc8(void *data, int data_len);
+
+/**
+ * correct maximum 8 bytes data from 12 bits ECC
+ *
+ * return:   0 -- no error
+ *			-1 -- can not be correct
+ *			>0 -- how many bits corrected
+ */
+int uffs_EccCorrect8(void *data, u16 read_ecc, u16 test_ecc, int errtop);
+
+
 #ifdef __cplusplus
 }
 #endif

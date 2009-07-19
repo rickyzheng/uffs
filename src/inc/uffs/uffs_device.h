@@ -55,19 +55,6 @@ extern "C"{
 #endif
 
 
-/**
- * \struct uffs_FlashClassSt
- * \brief Flash class descriptor
- */
-struct uffs_FlashClassSt {
-	const char *class_name;
-	int maker;					//!< manufacture ID
-	int *id_list;
-	struct uffs_FlashOpsSt *flash;
-	URET (*InitClass)(uffs_Device *dev, int id);
-};
-
-
 /** UFFS device type: uffs_DeviceSt.dev_type */
 #define UFFS_DEV_NULL		0
 #define UFFS_DEV_NAND		1
@@ -75,7 +62,6 @@ struct uffs_FlashClassSt {
 #define UFFS_DEV_RAM		3
 #define UFFS_DEV_ROM		4
 #define UFFS_DEV_EMU		5
-
 
 
 /** 
@@ -175,8 +161,7 @@ struct uffs_DeviceSt {
 
 	struct uffs_StorageAttrSt		*attr;		//!< storage attribute
 	struct uffs_PartitionSt			par;		//!< partition information
-	const struct uffs_FlashOpsSt	*flash;		//!< flash specific operations
-	struct uffs_DeviceOpsSt			*ops;		//!< NAND device operations
+	struct uffs_FlashOpsSt			*ops;		//!< flash operations
 	struct uffs_BlockInfoCacheSt	bc;			//!< block info cache
 	struct uffs_LockSt				lock;		//!< lock data structure
 	struct uffs_PageBufDescSt		buf;		//!< page buffers

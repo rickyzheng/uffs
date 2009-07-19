@@ -46,6 +46,7 @@
 
 #define PFX "util: "
 
+#ifdef ENABLE_BAD_BLOCK_VERIFY
 static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 {
 	u8 *pageBuf;
@@ -53,17 +54,6 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 	int i, j;
 
 	pageSize = dev->attr->page_data_size + dev->attr->spare_size;
-	if (dev->mem.one_page_buffer_size == 0) {
-		if (dev->mem.malloc) {
-			dev->mem.one_page_buffer = dev->mem.malloc(dev, pageSize);
-			if (dev->mem.one_page_buffer) 
-				dev->mem.one_page_buffer_size = pageSize;
-		}
-	}
-	if (pageSize > dev->mem.one_page_buffer_size) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Require one page buf %d but only %d available. Format stoped.\n", pageSize, dev->mem.one_page_buffer_size);
-		return;
-	}
 	pageBuf = dev->mem.one_page_buffer;
 
 	if (pageBuf == NULL) {
@@ -100,14 +90,10 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 bad_out:
 	dev->ops->EraseBlock(dev, block);
 	dev->flash->MakeBadBlockMark(dev, block);
-	if (dev->mem.one_page_buffer && dev->mem.free) {
-		dev->mem.free(dev, dev->mem.one_page_buffer);
-		dev->mem.one_page_buffer = NULL;
-		dev->mem.one_page_buffer_size = 0;
-	}
-
 	return;
 }
+#endif
+
 
 
 URET uffs_FormatDevice(uffs_Device *dev)
@@ -148,7 +134,9 @@ URET uffs_FormatDevice(uffs_Device *dev)
 			dev->ops->EraseBlock(dev, i);
 		}
 		else {
+#ifdef ENABLE_BAD_BLOCK_VERIFY
 			_ForceFormatAndCheckBlock(dev, i);
+#endif
 		}
 	}
 

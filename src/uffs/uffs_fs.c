@@ -1301,12 +1301,12 @@ _err:
 		uffs_SetTreeNodeBlock(type, node, newNode->u.list.block);
 		newNode->u.list.block = block;
 		dev->ops->EraseBlock(dev, newNode->u.list.block);
-		uffs_InsertToErasedListTail(dev, newNode);
+		uffs_TreeInsertToErasedListTail(dev, newNode);
 	}
 	else {
 		//fail to cover block, so erase new block
 		dev->ops->EraseBlock(dev, newBlock);
-		uffs_InsertToErasedListTail(dev, newNode);
+		uffs_TreeInsertToErasedListTail(dev, newNode);
 		obj->err = UEIOERR;
 	}
 ext:
@@ -1411,7 +1411,7 @@ static URET _TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run)
 				uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, node);
 				node->u.list.block = bc->block;
 				uffs_PutBlockInfo(dev, bc);
-				uffs_InsertToErasedListTail(dev, node);
+				uffs_TreeInsertToErasedListTail(dev, node);
 				fnode->u.file.len = block_start;
 			}
 			else {
@@ -1495,7 +1495,7 @@ URET uffs_DeleteObject(const char * name)
 	uffs_BreakFromEntry(dev, obj->type, node);
 	dev->ops->EraseBlock(dev, block); //!< ok, the object is deleted now.
 	node->u.list.block = block;
-	uffs_InsertToErasedListTail(dev, node);
+	uffs_TreeInsertToErasedListTail(dev, node);
 
 	ret = U_SUCC;
 err:

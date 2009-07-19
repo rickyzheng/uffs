@@ -120,7 +120,7 @@ void uffs_ProcessBadBlock(uffs_Device *dev, TreeNode *node)
 		dev->flash->MakeBadBlockMark(dev, dev->bad.block);
 
 		// and put it into bad block list
-		uffs_InsertToBadBlockList(dev, node);
+		uffs_TreeInsertToBadBlockList(dev, node);
 
 		//clear bad block mark.
 		dev->bad.block = UFFS_INVALID_BLOCK;
@@ -241,15 +241,22 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find the reported bad block(%d) in the tree???\n", dev->bad.block);
 			if (goodBlockIsDirty == U_TRUE)
 				dev->ops->EraseBlock(dev, good->u.list.block);
-			uffs_InsertToErasedListTail(dev, good);
+			uffs_TreeInsertToErasedListTail(dev, good);
 		}
 	}
 	else {
 		if (goodBlockIsDirty == U_TRUE)
 			dev->ops->EraseBlock(dev, good->u.list.block);
-		uffs_InsertToErasedListTail(dev, good); //put back to erased list
+		uffs_TreeInsertToErasedListTail(dev, good); //put back to erased list
 	}
 
 	uffs_PutBlockInfo(dev, bc);
 
+}
+
+
+/** put a new block to the bad block waiting list */
+void uffs_BadBlockAdd(uffs_Device *dev, int block)
+{
+	//TODO: ...
 }

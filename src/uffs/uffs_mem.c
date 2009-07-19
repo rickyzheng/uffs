@@ -800,10 +800,9 @@ URET uffs_initNativeMemAllocator(uffs_Device *dev)
 	memset(mem->tbl, 0, sizeof(mem->tbl));
 	mem->malloc = uffs_malloc;
 	mem->free = uffs_free;
-	mem->blockinfo_buffer_size = 0;
-	mem->page_buffer_size = 0;
-	mem->tree_buffer_size = 0;
-	mem->one_page_buffer_size = 0;
+	mem->blockinfo_pool_size = 0;
+	mem->pagebuf_pool_size = 0;
+	mem->tree_nodes_pool_size = 0;
 
 	return U_SUCC;
 }

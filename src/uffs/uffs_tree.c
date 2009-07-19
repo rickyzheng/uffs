@@ -65,21 +65,21 @@ URET uffs_InitTreeBuf(uffs_Device *dev)
 	
 	pool = &(dev->tree.pool);
 
-	if (dev->mem.tree_buffer_size == 0) {
+	if (dev->mem.tree_nodes_pool_size == 0) {
 		if (dev->mem.malloc) {
-			dev->mem.tree_buffer = dev->mem.malloc(dev, size * num);
-			if (dev->mem.tree_buffer)
-				dev->mem.tree_buffer_size = size * num;
+			dev->mem.tree_nodes_pool = dev->mem.malloc(dev, size * num);
+			if (dev->mem.tree_nodes_pool)
+				dev->mem.tree_nodes_pool_size = size * num;
 		}
 	}
-	if (size * num > dev->mem.tree_buffer_size) {
-		uffs_Perror(UFFS_ERR_DEAD, PFX"Tree buffer require %d but only %d available.\n", size * num, dev->mem.tree_buffer_size);
+	if (size * num > dev->mem.tree_nodes_pool_size) {
+		uffs_Perror(UFFS_ERR_DEAD, PFX"Tree buffer require %d but only %d available.\n", size * num, dev->mem.tree_nodes_pool_size);
 		memset(pool, 0, sizeof(uffs_Pool));
 		return U_FAIL;
 	}
 	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc tree nodes %d bytes.\n", size * num);
 	
-	uffs_PoolInit(pool, dev->mem.tree_buffer, dev->mem.tree_buffer_size, size, num);
+	uffs_PoolInit(pool, dev->mem.tree_nodes_pool, dev->mem.tree_nodes_pool_size, size, num);
 
 	dev->tree.erased = NULL;
 	dev->tree.erased_tail = NULL;
@@ -115,7 +115,7 @@ URET uffs_ReleaseTreeBuf(uffs_Device *dev)
 	if (pool->mem && dev->mem.free) {
 		dev->mem.free(dev, pool->mem);
 		pool->mem = NULL;
-		dev->mem.tree_buffer_size = 0;
+		dev->mem.tree_nodes_pool_size = 0;
 	}
 	uffs_PoolRelease(pool);
 	memset(pool, 0, sizeof(uffs_Pool));
@@ -253,7 +253,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 		uffs_ExpireBlockInfo(dev, bc, UFFS_ALL_PAGES);
 
 		/* now, put this node to erased list to tail */
-		uffs_InsertToErasedListTail(dev, node);
+		uffs_TreeInsertToErasedListTail(dev, node);
 		return U_SUCC;
 	}
 
@@ -300,7 +300,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 			dev->ops->EraseBlock(dev, block);
 			uffs_ExpireBlockInfo(dev, bc, UFFS_ALL_PAGES);
 			node->u.list.block = block;
-			uffs_InsertToErasedListTail(dev, node);
+			uffs_TreeInsertToErasedListTail(dev, node);
 			uffs_PutBlockInfo(dev, bc_alt);
 
 			return U_SUCC;
@@ -313,7 +313,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 			dev->ops->EraseBlock(dev, block_save);
 			uffs_ExpireBlockInfo(dev, bc_alt, UFFS_ALL_PAGES);
 			node->u.list.block = block_save;
-			uffs_InsertToErasedListTail(dev, node);
+			uffs_TreeInsertToErasedListTail(dev, node);
 			uffs_PutBlockInfo(dev, bc_alt);
 			
 			node = node_alt;	//use node_alt to store new informations in following
@@ -394,15 +394,15 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 			break;
 		}
 		//Need to check bad block at first !
-		if (dev->flash->IsBlockBad(dev, bc) == U_TRUE) { //@ read one spare: 0
+		if (dev->ops->IsBadBlock(dev, block_lt)) {
 			node->u.list.block = block_lt;
-			uffs_InsertToBadBlockList(dev, node);
+			uffs_TreeInsertToBadBlockList(dev, node);
 			uffs_Perror(UFFS_ERR_NORMAL, PFX"found bad block %d\n", block_lt);
 		}
 		else if (uffs_IsPageErased(dev, bc, 0) == U_TRUE) { //@ read one spare: 0
-			//just need to check page 0 to judge whether the block is erased
+			//just need to check page 0 to know whether the block is erased
 			node->u.list.block = block_lt;
-			uffs_InsertToErasedListTail(dev, node);
+			uffs_TreeInsertToErasedListTail(dev, node);
 		}
 		else {
 			//uffs_Perror(UFFS_ERR_NOISY, PFX"find a valid block\n");
@@ -436,7 +436,7 @@ static URET _BuildTreeStepTwo(uffs_Device *dev)
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"No erased block ?\n");
 			return U_FAIL;
 		}
-		uffs_InsertToErasedListTail(dev, node);
+		uffs_TreeInsertToErasedListTail(dev, node);
 		startCount++;
 	}
 
@@ -841,7 +841,7 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 				blockSave = work->u.data.block;
 				work->u.list.block = blockSave;
 				dev->ops->EraseBlock(dev, blockSave);
-				uffs_InsertToErasedListTail(dev, work);
+				uffs_TreeInsertToErasedListTail(dev, work);
 			}
 			else {
 				node->u.file.len += work->u.data.len;
@@ -1055,7 +1055,7 @@ void uffs_InsertToErasedListHead(uffs_Device *dev, TreeNode *node)
 	tree->erased_count++;
 }
 
-void uffs_InsertToErasedListTail(uffs_Device *dev, TreeNode *node)
+void uffs_TreeInsertToErasedListTail(uffs_Device *dev, TreeNode *node)
 {
 	struct uffs_TreeSt *tree;
 	tree = &(dev->tree);
@@ -1073,7 +1073,7 @@ void uffs_InsertToErasedListTail(uffs_Device *dev, TreeNode *node)
 	tree->erased_count++;
 }
 
-void uffs_InsertToBadBlockList(uffs_Device *dev, TreeNode *node)
+void uffs_TreeInsertToBadBlockList(uffs_Device *dev, TreeNode *node)
 {
 	struct uffs_TreeSt *tree;
 

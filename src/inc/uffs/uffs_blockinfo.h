@@ -50,10 +50,8 @@ extern "C"{
  * \brief this structure is for storing uffs tag and more. 
  */
 struct uffs_PageSpareSt {
-	u8 expired:1;			//!< 0 not expired. 1 expired. 
-	u8 check_ok:1;			//!< 0 check sum is OK. 1 check sum is error. 
-	u8 block_status:1;		//!< for block status, 1 bad, 0 valid 
-	uffs_Tags tag;			//!< page tag 
+	uffs_Tags tag;			//!< page tag
+	u8 *ecc;				//!< ecc for page data
 };
 
 /** 

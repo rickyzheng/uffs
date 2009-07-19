@@ -55,86 +55,161 @@ extern "C"{
 #define UFFS_ECC_HW			2	//!< Flash driver(or by hardware) calculate the ECC
 #define UFFS_ECC_HW_AUTO	3	//!< Hardware calculate the ECC and automatically write to spare.
 
+
+/** spare layout options (uffs_StorageAttrSt.layout_opt) */
+#define UFFS_LAYOUT_UFFS	0	//!< do layout by dev->attr information
+#define UFFS_LAYOUT_FLASH	1	//!< flash driver do the layout
+
+
 /** 
  * \struct uffs_StorageAttrSt
  * \brief uffs device storage attribute, provide by nand specific file
  */
 struct uffs_StorageAttrSt {
 	u32 total_blocks;		//!< total blocks in this chip
-	u32 block_data_size;	//!< block data size (= page_data_size * pages_per_block)
 	u16 page_data_size;		//!< page data size (physical page data size, e.g. 512)
 	u16 spare_size;			//!< page spare size (physical page spare size, e.g. 16)
 	u16 pages_per_block;	//!< pages per block
-	u16 block_status_offs;	//!< block status byte in spare
+	u16 block_status_offs;	//!< block status byte offset in spare
 	int ecc_opt;			//!< ecc option ( #UFFS_ECC_[NONE|SOFT|HW|HW_AUTO] )
-	const u8 *ecc_layout;	//!< ECC layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
+	int layout_opt;			//!< layout option
+	const u8 *ecc_layout;	//!< page data ECC layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
+	const u8 *s_ecc_layout;	//!< spare data ECC layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
 	const u8 *data_layout;	//!< spare data layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
 	void *private;			//!< private data for storage attribute
 };
 
 
 /**
- * \struct uffs_DeviceOpsSt 
+ * \struct uffs_FlashOpsSt 
  * \brief lower level flash operations, should be implement in flash driver
  */
-struct uffs_DeviceOpsSt {
+struct uffs_FlashOpsSt {
 	/**
-	 * Read page data and calculate ECC. flash driver MUST provide this function.
-	 * if ecc_opt is UFFS_ECC_HW, flash driver must use their own ECC algrithm,
-	 * or use hardware calculate the ECC. 
+	 * Read page data.
+	 * 
+	 * if ecc_opt is UFFS_ECC_HW, flash driver must calculate and return ecc (if ecc != NULL).
+	 *
+	 * if ecc_opt is UFFS_ECC_HW or UFFS_ECC_HW_AUTO, flash driver do ecc
+	 * correction with stored ecc in spare area.
+	 *
+	 * if ecc_opt is UFFS_ECC_HW_AUTO, not neccessary return ecc.
+	 *
+	 * \return 0: success and/or has no flip bits, otherwise:
+	 *		-1: I/O error, expect retry ?
+	 *		-2: page data has flip bits and ecc correct failed.
+	 *		>0: page data has flip bits and corrected by ecc.
+	 *
+	 * \note pad 0xFF for calculating ECC if len < page_data_size
 	 */
-	URET (*ReadPageData)(uffs_Device *dev, u32 block, u32 page, u8 *page, int len, u8 *ecc);
+	int (*ReadPageData)(uffs_Device *dev, u32 block, u32 page, u8 *data, int len, u8 *ecc);
+
 
 	/**
-	 * Read page spare. flash driver MUST provide this function.
+	 * Read page spare.
+	 *
+	 * \note flash driver must privide this function when layout_opt is UFFS_LAYOUT_UFFS.
+	 *
+	 * \return 0: success and/or has no flip bits, otherwise:
+	 *		-1: I/O error, expect retry ?
+	 *		-2: spare data has flip bits and can't be corrected by ecc.
+	 *		>0: spare data has flip bit and corrected by ECC.
 	 */
-	URET (*ReadPageSpare)(uffs_Device *dev, u32 block, u32 page, u8 *spare, int len);
+	int (*ReadPageSpare)(uffs_Device *dev, u32 block, u32 page, u8 *spare, int len);
 
 	/**
-	 * Write page data and calculate ECC. flash driver MUST provide this function.
-	 * if ecc_opt is UFFS_ECC_HW, flash driver must use their own ECC algrithm,
-	 * or use hardware calculate the ECC. 
+	 * Read page spare and unload to tag.
+	 *
+	 * \note flash driver must provide this function if layout_opt is UFFS_LAYOUT_FLASH.
+	 *
+	 * \return 0: success and/or has no flip bits, otherwise:
+	 *		-1: I/O error, expect retyr ?
+	 *		-2: spare data has flip bits and can't be corrected by ecc.
+	 *		>0: spare data has flip bit and corrected by ECC.
 	 */
-	URET (*WritePageData)(uffs_Device *dev, u32 block, u32 page, const u8 *page, int len, u8 *ecc);
+	int (*ReadPageSpareLayout)(uffs_Device *dev, u32 block, u32 page, u8 *tag, int len, u8 *ecc);
 
 	/**
-	 * Write page spare. flash driver MUST provide this function.
-	 * if ecc_opt is UFFS_ECC_HW_AUTO, flash driver should not overwite the ECC part.
+	 * Write page data.
+	 *
+	 * if ecc_opt is UFFS_ECC_HW, flash driver must calculate and return the ecc.
+	 * if ecc_opt is UFFS_ECC_HW_AUTO, do not need to return ecc.
+	 *
+	 * \return 0: success,
+	 *		  -1: I/O error, expect retry ?
+	 *		  -2: a bad block detected
+	 *
+	 * \note pad 0xFF for calculating ECC if len < page_data_size
 	 */
-	URET (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int len);
+	int (*WritePageData)(uffs_Device *dev, u32 block, u32 page, const u8 *data, int len, u8 *ecc);
+
 
 	/**
-	 * check if this is a bad block. this function is optional.
-	 * if not provided, UFFS check will the status byte in spare.
+	 * Write page spare.
+	 *
+	 * \note flash driver must privide this function when layout_opt is UFFS_LAYOUT_UFFS.
+	 *
+	 * \return 0: success
+	 *		-1: I/O error, expect retry ?
+	 *		-2: a bad block detected
 	 */
-	UBOOL (*IsBadBlock)(uffs_Device *dev, u32 block);
+	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int len);
 
 	/**
-	 * Mark a new bad block. flash driver MUST provide this function.
+	 * Write page spare, flash driver do the layout.
+	 *
+	 * \note flash driver must provide this function if layout_opt is UFFS_LAYOUT_FLASH.
+	 *
+	 * \return 0: success
+	 *		-1: I/O error, expect retyr ?
+	 *		-2: a bad block is detected
 	 */
-	URET (*MarkBadBlock)(uffs_Device *dev, u32 block);
+	int (*WritePageSpareLayout)(uffs_Device *dev, u32 block, u32 page, u8 *tag, int len, u8 *ecc);
 
 	/**
-	 * Erase a block. flash driver MUST provide this function.
+	 * check block status.
+	 *
+	 * \note flash driver may maintain a bad block table to speed up bad block checking or
+	 *		it will require one or two read spare I/O to check block status.
+	 *
+	 * \note if this function is not provided, UFFS check the block_status byte in spare.
+	 *
+	 * \return 1 if it's a bad block, 0 if it's not.
 	 */
-	URET (*EraseBlock)(uffs_Device *dev, u32 block);
+	int (*IsBadBlock)(uffs_Device *dev, u32 block);
+
+	/**
+	 * Mark a new bad block.
+	 *
+	 * \return 0 if success, otherwise return -1.
+	 */
+	int (*MarkBadBlock)(uffs_Device *dev, u32 block);
+
+	/**
+	 * Erase a block.
+	 *
+	 * \return 0: erase success
+	 *		  -1: a bad block detected.
+	 *		  -2: unknown error, probably expect a retry
+	 */
+	int (*EraseBlock)(uffs_Device *dev, u32 block);
 };
 
 
 /** read page spare, fill tag and ECC */
-URET uffs_ReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag, u8 *ecc);
+URET uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag, u8 *ecc);
 
-/** read page data to page buf and calculate ecc */
-URET uffs_ReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, u8 *ecc);
+/** read page data to page buf and do ECC correct */
+URET uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, u8 *ecc_read);
 
 /** write page data, tag and ecc */
-URET uffs_WritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *buf, uffs_Tags *tag, u8 *ecc);
+URET uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *buf, uffs_Tags *tag, u8 *ecc);
 
 /** Mark this block as bad block */
-URET uffs_MarkBadBlock(uffs_Device *dev, int block);
+URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block);
 
 /** Erase flash block */
-URET uffs_EraseBlock(uffs_Device *dev, int block);
+URET uffs_FlashEraseBlock(uffs_Device *dev, int block);
 
 
 #ifdef __cplusplus

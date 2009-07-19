@@ -37,8 +37,8 @@
 
 /** \typedef uffs_Device */
 typedef struct uffs_DeviceSt		uffs_Device;
-/** \typedef uffs_DevOps */
-typedef struct uffs_DeviceOpsSt		uffs_DevOps;
+/** \typedef uffs_FlashOps */
+typedef struct uffs_FlashOpsSt		uffs_FlashOps;
 
 typedef struct uffs_BlockInfoSt uffs_BlockInfo;
 typedef struct uffs_PageSpareSt uffs_PageSpare;
