@@ -149,7 +149,10 @@ static void setup_emu_storage(struct uffs_StorageAttrSt *attr)
 	attr->page_data_size = conf_pages_data_size;		/* page data size */
 	attr->spare_size = conf_pages_spare_size;			/* page spare size */
 	attr->pages_per_block = conf_pages_per_block;	/* pages per block */
+
 	attr->block_status_offs = 5;                /* block status offset is 5th byte in spare */
+	attr->ecc_opt = UFFS_ECC_SOFT;				/* let UFFS handle the ECC */
+	attr->layout_opt = UFFS_LAYOUT_UFFS;		/* let UFFS handle layout */
 }
 
 static void setup_emu_private(uffs_FileEmu *emu)

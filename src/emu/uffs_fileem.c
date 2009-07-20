@@ -400,20 +400,24 @@ static URET femu_EraseBlock(uffs_Device *dev, u32 blockNumber)
 static uffs_FlashOps emu_flash_ops = {
 	.ReadPageData = femu_ReadPageData,
 	.ReadPageSpare = femu_ReadPageSpare,
+	.ReadPageSpareLayout = NULL,
 	.WritePageData = femu_WritePageData,
 	.WritePageSpare = femu_WritePageSpare,
+	.WritePageSpareLayout = NULL,
 	.IsBadBlock = NULL,					//!< UFFS take care of it
-	.MarkBadBlock = femu_MarkBadBlock,	//!< UFFS take care of it
+	.MarkBadBlock = femu_MarkBadBlock,
 	.EraseBlock = femu_EraseBlock,
 };
 #else
 static uffs_FlashOps emu_flash_ops = {
 	femu_ReadPageData,
 	femu_ReadPageSpare,
+	NULL,					//!< ReadPageSpareLayout, using UFFS's layout facility
 	femu_WritePageData,
 	femu_WritePageSpare,
+	NULL,					//!< WritePageSpareLayout, using UFFS's layout facility
 	NULL,					//!< IsBadBlock(), UFFS take care of it
-	femu_MarkBadBlock,		//!< UFFS take care of it
+	femu_MarkBadBlock,
 	femu_EraseBlock,
 };
 #endif

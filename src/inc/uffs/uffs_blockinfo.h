@@ -51,7 +51,8 @@ extern "C"{
  */
 struct uffs_PageSpareSt {
 	uffs_Tags tag;			//!< page tag
-	u8 *ecc;				//!< ecc for page data
+	u8 expired:1;
+	u8 check_ok:1;
 };
 
 /** 

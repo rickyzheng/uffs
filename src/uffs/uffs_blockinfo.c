@@ -133,7 +133,7 @@ URET uffs_InitBlockInfoCache(uffs_Device *dev, int maxCachedBlocks)
 }
 
 /**
- * \brief release all allocated memory in initialize process, 
+ * \brief release all allocated memory of block info cache, 
  *			this function should be called when unmount file system
  * \param[in] dev uffs device
  */
@@ -195,17 +195,8 @@ static void _MoveBcToTail(uffs_Device *dev, uffs_BlockInfo *bc)
  */
 void uffs_CheckPageSpare(uffs_Device *dev, uffs_PageSpare *spare)
 {
-#if defined(ENABLE_TAG_CHECKSUM) && ENABLE_TAG_CHECKSUM == 1
-	if (uffs_CalTagCheckSum(&(spare->tag)) == spare->tag.checksum) {
-		spare->check_ok = 1;
-	}
-	else {
-		spare->check_ok = 0;
-	}
-#else
 	dev = dev;
 	spare->check_ok = 1;
-#endif
 }
 
 /** 
@@ -230,7 +221,7 @@ URET uffs_LoadBlockInfo(uffs_Device *dev, uffs_BlockInfo *work, int page)
 			if (spare->expired == 0)
 				continue;
 			
-			if (dev->flash->LoadPageSpare(dev, work->block, i, &(spare->tag)) == U_FAIL ) {
+			if (uffs_LoadPageSpare(dev, work->block, i, &(spare->tag)) == U_FAIL ) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX "load block %d page %d spare fail.", work->block, i);
 				return U_FAIL;
 			}
@@ -246,7 +237,7 @@ URET uffs_LoadBlockInfo(uffs_Device *dev, uffs_BlockInfo *work, int page)
 		}
 		spare = &(work->spares[page]);
 		if (spare->expired != 0) {
-			if (dev->flash->LoadPageSpare(dev, work->block, page, &(spare->tag)) == U_FAIL ) {
+			if (uffs_LoadPageSpare(dev, work->block, page, &(spare->tag)) == U_FAIL ) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX "load block %d page %d spare fail.", work->block, page);
 				return U_FAIL;
 			}

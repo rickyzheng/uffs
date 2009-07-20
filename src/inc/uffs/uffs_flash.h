@@ -164,7 +164,7 @@ struct uffs_FlashOpsSt {
 	 *		-1: I/O error, expect retyr ?
 	 *		-2: a bad block is detected
 	 */
-	int (*WritePageSpareLayout)(uffs_Device *dev, u32 block, u32 page, u8 *tag, int len, u8 *ecc);
+	int (*WritePageSpareLayout)(uffs_Device *dev, u32 block, u32 page, const u8 *tag, int len, const u8 *ecc);
 
 	/**
 	 * check block status.
@@ -200,13 +200,16 @@ struct uffs_FlashOpsSt {
 URET uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag, u8 *ecc);
 
 /** read page data to page buf and do ECC correct */
-URET uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, u8 *ecc_read);
+URET uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf);
 
-/** write page data, tag and ecc */
-URET uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *buf, uffs_Tags *tag, u8 *ecc);
+/** write page data and spare */
+URET uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *buf, uffs_Tags *tag);
 
 /** Mark this block as bad block */
 URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block);
+
+/** Is this block a bad block ? */
+UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block);
 
 /** Erase flash block */
 URET uffs_FlashEraseBlock(uffs_Device *dev, int block);

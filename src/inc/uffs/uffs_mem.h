@@ -88,7 +88,6 @@ typedef struct uffs_memAllocatorSt {
 #ifdef ENABLE_BAD_BLOCK_VERIFY
 	u8 one_page_buffer[UFFS_MAX_PAGE_SIZE];		//!< one page data buffer
 #endif
-	u8 ecc_buffer[MAX_ECC_SIZE];
 	u8 spare_buffer[MAX_SPARE_SIZE];
 	int spare_buffer_size;				//!< calculated page spare buffer size
 

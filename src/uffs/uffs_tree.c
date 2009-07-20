@@ -244,9 +244,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 	}
 
 	if (tag->valid == TAG_INVALID) {
-//	if(page == UFFS_INVALID_PAGE) {
-
-		//all pages are invalid ? should be erased now!
+		//first page is invalid ? should be erased now!
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"all pages in block %d are invalid, will be erased now!\n", bc->block);
 		
 		dev->ops->EraseBlock(dev, bc->block);
