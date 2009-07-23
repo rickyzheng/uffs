@@ -60,6 +60,16 @@ extern "C"{
 #define UFFS_LAYOUT_UFFS	0	//!< do layout by dev->attr information
 #define UFFS_LAYOUT_FLASH	1	//!< flash driver do the layout
 
+/** flash operation return code */
+#define UFFS_FLASH_NO_ERR		0
+#define UFFS_FLASH_ECC_OK		1
+#define UFFS_FLASH_IO_ERR		-1
+#define UFFS_FLASH_ECC_FAIL		-2
+#define UFFS_FLASH_BAD_BLK		-3
+#define UFFS_FLASH_UNKNOWN_ERR	-100
+
+#define UFFS_FLASH_HAVE_ERR(e)		((e) < 0)
+#define UFFS_FLASH_IS_BAD_BLOCK(e)	((e) == UFFS_FLASH_ECC_FAIL || (e) == UFFS_FLASH_BAD_BLK)
 
 /** 
  * \struct uffs_StorageAttrSt
@@ -95,10 +105,10 @@ struct uffs_FlashOpsSt {
 	 *
 	 * if ecc_opt is UFFS_ECC_HW_AUTO, not neccessary return ecc.
 	 *
-	 * \return 0: success and/or has no flip bits, otherwise:
-	 *		-1: I/O error, expect retry ?
-	 *		-2: page data has flip bits and ecc correct failed.
-	 *		>0: page data has flip bits and corrected by ecc.
+	 * \return	#UFFS_FLASH_NO_ERR: success and/or has no flip bits.
+	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
+	 *			#UFFS_FLASH_ECC_FAIL: page data has flip bits and ecc correct failed.
+	 *			#UFFS_FLASH_ECC_OK: page data has flip bits and corrected by ecc.
 	 *
 	 * \note pad 0xFF for calculating ECC if len < page_data_size
 	 */
@@ -110,24 +120,26 @@ struct uffs_FlashOpsSt {
 	 *
 	 * \note flash driver must privide this function when layout_opt is UFFS_LAYOUT_UFFS.
 	 *
-	 * \return 0: success and/or has no flip bits, otherwise:
-	 *		-1: I/O error, expect retry ?
-	 *		-2: spare data has flip bits and can't be corrected by ecc.
-	 *		>0: spare data has flip bit and corrected by ECC.
+	 * \return	#UFFS_FLASH_NO_ERR: success
+	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
+	 *
+	 * \note flash driver DO NOT need to do ecc correction for spare data,
+	 *		UFFS will take care of spare data ecc.
 	 */
 	int (*ReadPageSpare)(uffs_Device *dev, u32 block, u32 page, u8 *spare, int len);
 
 	/**
-	 * Read page spare and unload to tag.
+	 * Read page spare, unload to tag and ecc.
 	 *
 	 * \note flash driver must provide this function if layout_opt is UFFS_LAYOUT_FLASH.
 	 *
-	 * \return 0: success and/or has no flip bits, otherwise:
-	 *		-1: I/O error, expect retyr ?
-	 *		-2: spare data has flip bits and can't be corrected by ecc.
-	 *		>0: spare data has flip bit and corrected by ECC.
+	 * \return	#UFFS_FLASH_NO_ERR: success
+	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
+	 *
+	 * \note flash driver DO NOT need to do ecc correction for spare data,
+	 *		UFFS will take care of spare data ecc.
 	 */
-	int (*ReadPageSpareLayout)(uffs_Device *dev, u32 block, u32 page, u8 *tag, int len, u8 *ecc);
+	int (*ReadPageSpareWithLayout)(uffs_Device *dev, u32 block, u32 page, u8 *tag, int len, u8 *ecc);
 
 	/**
 	 * Write page data.
@@ -135,9 +147,9 @@ struct uffs_FlashOpsSt {
 	 * if ecc_opt is UFFS_ECC_HW, flash driver must calculate and return the ecc.
 	 * if ecc_opt is UFFS_ECC_HW_AUTO, do not need to return ecc.
 	 *
-	 * \return 0: success,
-	 *		  -1: I/O error, expect retry ?
-	 *		  -2: a bad block detected
+	 * \return	#UFFS_FLASH_NO_ERR: success
+	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
+	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 *
 	 * \note pad 0xFF for calculating ECC if len < page_data_size
 	 */
@@ -149,9 +161,9 @@ struct uffs_FlashOpsSt {
 	 *
 	 * \note flash driver must privide this function when layout_opt is UFFS_LAYOUT_UFFS.
 	 *
-	 * \return 0: success
-	 *		-1: I/O error, expect retry ?
-	 *		-2: a bad block detected
+	 * \return	#UFFS_FLASH_NO_ERR: success
+	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
+	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
 	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int len);
 
@@ -160,11 +172,11 @@ struct uffs_FlashOpsSt {
 	 *
 	 * \note flash driver must provide this function if layout_opt is UFFS_LAYOUT_FLASH.
 	 *
-	 * \return 0: success
-	 *		-1: I/O error, expect retyr ?
-	 *		-2: a bad block is detected
+	 * \return	#UFFS_FLASH_NO_ERR: success
+	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
+	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WritePageSpareLayout)(uffs_Device *dev, u32 block, u32 page, const u8 *tag, int len, const u8 *ecc);
+	int (*WritePageSpareWithLayout)(uffs_Device *dev, u32 block, u32 page, const u8 *tag, int len, const u8 *ecc);
 
 	/**
 	 * check block status.
@@ -188,31 +200,31 @@ struct uffs_FlashOpsSt {
 	/**
 	 * Erase a block.
 	 *
-	 * \return 0: erase success
-	 *		  -1: a bad block detected.
-	 *		  -2: unknown error, probably expect a retry
+	 * \return	#UFFS_FLASH_NO_ERR: success
+	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
+	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
 	int (*EraseBlock)(uffs_Device *dev, u32 block);
 };
 
 
 /** read page spare, fill tag and ECC */
-URET uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag, u8 *ecc);
+int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag, u8 *ecc);
 
 /** read page data to page buf and do ECC correct */
-URET uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf);
+int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf);
 
 /** write page data and spare */
-URET uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *buf, uffs_Tags *tag);
+int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *buf, uffs_Tags *tag);
 
 /** Mark this block as bad block */
-URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block);
+int uffs_FlashMarkBadBlock(uffs_Device *dev, int block);
 
 /** Is this block a bad block ? */
 UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block);
 
 /** Erase flash block */
-URET uffs_FlashEraseBlock(uffs_Device *dev, int block);
+int uffs_FlashEraseBlock(uffs_Device *dev, int block);
 
 
 #ifdef __cplusplus

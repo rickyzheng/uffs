@@ -81,9 +81,9 @@ struct uffs_TagsSt {
 	 */
 	u8 block_status;
 
-	/** internal used by block info cache */
-	u8 bad:1;				//!< 1: bad block, 0: good block 
-	u8 expired:1;			//!< 1: expired, 0: valid
+	/** internal used */
+	u8 _dirty:1;			//!< raw data, before doing ecc correction
+	u8 _valid:1;			//!< raw data, before doing ecc correction
 };
 
 /**
