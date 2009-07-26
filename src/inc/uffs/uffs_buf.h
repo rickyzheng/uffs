@@ -69,7 +69,6 @@ struct uffs_BufSt{
 	u16 data_len;						//!< length of data
 	u16 check_sum;						//!< checksum field
 	u8 * data;							//!< data buffer
-	u8 * start;							//!< buffer start point
 };
 
 #define uffs_BufIsFree(buf) (buf->ref_count == 0 ? U_TRUE : U_FALSE)
@@ -147,7 +146,7 @@ uffs_Buf * uffs_BufClone(struct uffs_DeviceSt *dev, uffs_Buf *buf);
 void uffs_BufFreeClone(uffs_Device *dev, uffs_Buf *buf);
 
 /** load physical storage data to page buffer */
-URET uffs_LoadPhyDataToBuf(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page);
+URET uffs_BufLoadPhyData(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page);
 
 /** load physical storage data to page buffer withouth checking ECC */
 URET uffs_LoadPhyDataToBufEccUnCare(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page);

@@ -150,14 +150,14 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 		return;
 
 	// pick up a erased good block
-	good = uffs_GetErased(dev);
+	good = uffs_TreeGetErasedNode(dev);
 	if (good == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free block to replace bad block!\n");
 		return;
 	}
 
 	//recover block
-	bc = uffs_GetBlockInfo(dev, dev->bad.block);
+	bc = uffs_BlockInfoGet(dev, dev->bad.block);
 	
 	if (bc == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get bad block info\n");
@@ -214,7 +214,7 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 		//successful recover bad block, so need to mark bad block, and replace with good one
 
 		region = SEARCH_REGION_DIR|SEARCH_REGION_FILE|SEARCH_REGION_DATA;
-		bad = uffs_FindNodeByBlock(dev, dev->bad.block, &region);
+		bad = uffs_TreeFindNodeByBlock(dev, dev->bad.block, &region);
 		if (bad != NULL) {
 			switch (region) {
 			case SEARCH_REGION_DIR:
@@ -232,7 +232,7 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 			
 			//from now, the 'bad' is actually good block :)))
 			uffs_Perror(UFFS_ERR_NOISY, PFX"new bad block %d found, and replaced by %d!\n", dev->bad.block, good->u.list.block);
-			uffs_ExpireBlockInfo(dev, bc, UFFS_ALL_PAGES);
+			uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 			//we reuse the 'good' node as bad block node, and process the bad block.
 			good->u.list.block = dev->bad.block;
 			uffs_ProcessBadBlock(dev, good);
@@ -250,7 +250,7 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 		uffs_TreeInsertToErasedListTail(dev, good); //put back to erased list
 	}
 
-	uffs_PutBlockInfo(dev, bc);
+	uffs_BlockInfoPut(dev, bc);
 
 }
 

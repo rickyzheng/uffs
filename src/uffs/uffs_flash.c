@@ -47,7 +47,7 @@
 
 
 #define ECC_SIZE(dev) (3 * (dev)->attr->page_data_size / 256)
-#define TAG_STORE_SIZE	(sizeof(u16) + (int)(&((struct uffs_TagsSt *)0)->tag_ecc))
+#define TAG_STORE_SIZE	(sizeof(struct uffs_TagStoreSt))
 
 // P256: [D0, D1, D2, D3, ECC1, S, ECC2, ECC3]
 static const u8 P256_sdata_layout[] = {0, 4, 0xFF, 0};
@@ -76,7 +76,23 @@ static const u8 * layout_sel_tbl[4][3] = {
 	{P2K_sdata_layout, P2K_ecc_layout, P2K_s_ecc_layout},
 };
 
+static void uffs_TagMakeEcc(struct uffs_TagStoreSt *ts)
+{
+	ts->tag_ecc = 0xFFF;
+	ts->tag_ecc = uffs_MakeEcc8(ts, sizeof(struct uffs_TagStoreSt));
+}
 
+static int uffs_TagEccCorrect(struct uffs_TagStoreSt *ts)
+{
+	struct uffs_TagStoreSt local;
+	u16 ecc;
+
+	memcpy(&local, ts, sizeof(struct uffs_TagStoreSt));
+	local.tag_ecc = 0xfff;
+	ecc = uffs_MakeEcc8(&local, sizeof(local));
+
+	return uffs_EccCorrect8(ts, ts->tag_ecc, ecc, 8);
+}
 
 static int _calculate_spare_buf_size(uffs_Device *dev)
 {
@@ -142,7 +158,7 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
  */
 static void _UnloadSpare(uffs_Device *dev, const u8 *spare, uffs_Tags *tag, u8 *ecc)
 {
-	u8 *p_tag = (u8 *)tag;
+	u8 *p_tag = (u8 *)&tag->s;
 	int tag_size = TAG_STORE_SIZE;
 	int ecc_size = ECC_SIZE(dev);
 	int n;
@@ -194,37 +210,34 @@ int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *ta
 	uffs_FlashOps *ops = dev->ops;
 	struct uffs_StorageAttrSt *attr = dev->attr;
 	u8 * spare_buf = dev->mem.spare_buffer;
-	u8 * p_tag;
-	u16 tag_ecc;
 	int ret = 0;
 	UBOOL is_bad = U_FALSE;
 
 	if (attr->layout_opt == UFFS_LAYOUT_FLASH)
-		ret = ops->ReadPageSpareWithLayout(dev, block, page, (u8 *)tag, tag ? TAG_STORE_SIZE : 0, ecc);
+		ret = ops->ReadPageSpareWithLayout(dev, block, page, (u8 *)&tag->s, tag ? TAG_STORE_SIZE : 0, ecc);
 	else
-		ret = ops->ReadPageSpare(dev, block, page, spare_buf, dev->mem.spare_buffer_size);
+		ret = ops->ReadPageSpare(dev, block, page, spare_buf, 0, dev->mem.spare_buffer_size);
+
 
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 		is_bad = U_TRUE;
-
-	if (UFFS_FLASH_HAVE_ERR(ret))
-		goto ext;
 
 	if (attr->layout_opt != UFFS_LAYOUT_FLASH)
 		_UnloadSpare(dev, spare_buf, tag, ecc);
 
 	// copy some raw data
-	tag->_dirty = tag->dirty;
-	tag->_valid = tag->valid;
+	tag->_dirty = tag->s.dirty;
+	tag->_valid = tag->s.valid;
 
-	if (tag->valid == 1) //it's not a valid page ? don't need go further
+	if (UFFS_FLASH_HAVE_ERR(ret))
+		goto ext;
+
+	if (tag->_valid == 1) //it's not a valid page ? don't need go further
 		goto ext;
 
 	// do tag ecc correction
 	if (dev->attr->ecc_opt != UFFS_ECC_NONE) {
-		p_tag = (u8 *)tag;
-		tag_ecc = uffs_MakeEcc8(p_tag, TAG_STORE_SIZE - sizeof(tag_ecc));
-		ret = uffs_EccCorrect8(p_tag, tag->tag_ecc, tag_ecc, TAG_STORE_SIZE - sizeof(tag_ecc));
+		ret = uffs_TagEccCorrect(&tag->s);
 		ret = (ret < 0 ? UFFS_FLASH_ECC_FAIL :
 				(ret > 0 ? UFFS_FLASH_ECC_OK : UFFS_FLASH_NO_ERR));
 
@@ -247,9 +260,14 @@ ext:
 /**
  * Read page data to page buf and calculate ecc.
  * \param[in] dev uffs device
- * \param[in] block
- * \param[in] page
- * \param[out] buf
+ * \param[in] block flash block num
+ * \param[in] page flash page num of the block
+ * \param[out] buf holding the read out data
+ *
+ * \return	#UFFS_FLASH_NO_ERR: success and/or has no flip bits.
+ *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
+ *			#UFFS_FLASH_ECC_FAIL: spare data has flip bits and ecc correct failed.
+ *			#UFFS_FLASH_ECC_OK: spare data has flip bits and corrected by ecc.
  */
 int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf)
 {
@@ -305,10 +323,10 @@ ext:
 /**
  * make spare from tag and ecc
  */
-static void _MakeSpare(uffs_Device *dev, uffs_Tags *tag, u8 *ecc, u8* spare)
+static void _MakeSpare(uffs_Device *dev, uffs_TagStore *ts, u8 *ecc, u8* spare)
 {
-	u8 *p_tag = (u8 *)tag;
-	int tag_size = TAG_STORE_SIZE;
+	u8 *p_ts = (u8 *)ts;
+	int ts_size = TAG_STORE_SIZE;
 	int ecc_size = ECC_SIZE(dev);
 	int n;
 	const u8 *p;
@@ -327,19 +345,12 @@ static void _MakeSpare(uffs_Device *dev, uffs_Tags *tag, u8 *ecc, u8* spare)
 		}
 	}
 
-	// load tag
-	if (dev->attr->ecc_opt == UFFS_ECC_NONE) {
-		tag->tag_ecc = 0xFFFF;
-	}
-	else {
-		tag->tag_ecc = uffs_MakeEcc8(p_tag, tag_size - sizeof(tag->tag_ecc));
-	}
 	p = dev->attr->data_layout;
-	while (*p != 0xFF && tag_size > 0) {
-		n = (p[1] > tag_size ? tag_size : p[1]);
-		memcpy(p_tag, spare + p[1], n);
-		tag_size -= n;
-		p_tag += n;
+	while (*p != 0xFF && ts_size > 0) {
+		n = (p[1] > ts_size ? ts_size : p[1]);
+		memcpy(p_ts, spare + p[1], n);
+		ts_size -= n;
+		p_ts += n;
 		p += 2;
 	}
 }
@@ -362,18 +373,18 @@ int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *
 	u8 *spare = dev->mem.spare_buffer;
 	int ret;
 	UBOOL is_bad = U_FALSE;
-	uffs_Tags local_tag;
+	uffs_TagStore local_ts;
 
 	// setp 1: write only the dirty bit to the spare
-	memset(&local_tag, 0xFF, sizeof(local_tag));
-	local_tag.dirty = 0;	//!< set dirty mark
+	memset(&local_ts, 0xFF, sizeof(local_ts));
+	local_ts.dirty = TAG_DIRTY;	//!< set dirty mark
 
 	if (dev->attr->layout_opt == UFFS_LAYOUT_UFFS) {
-		_MakeSpare(dev, &local_tag, NULL, spare);
-		ret = ops->WritePageSpare(dev, block, page, spare, dev->mem.spare_buffer_size);
+		_MakeSpare(dev, &local_ts, NULL, spare);
+		ret = ops->WritePageSpare(dev, block, page, spare, 0, dev->mem.spare_buffer_size);
 	}
 	else {
-		ret = ops->WritePageSpareWithLayout(dev, block, page, (u8 *)&local_tag, 1, NULL);
+		ret = ops->WritePageSpareWithLayout(dev, block, page, (u8 *)&local_ts, 1, NULL);
 	}
 
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
@@ -394,25 +405,25 @@ int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *
 		goto ext;
 
 	// setep 3: write full tag to spare, with ECC
-	tag->dirty = 0;
-	tag->valid = 0;  //!< set valid bit = 0
+	tag->s.dirty = TAG_DIRTY;		//!< set dirty bit
+	tag->s.valid = TAG_VALID;		//!< set valid bit
 	if (dev->attr->ecc_opt != UFFS_ECC_NONE)
-		tag->tag_ecc = uffs_MakeEcc8(tag, TAG_STORE_SIZE);
+		uffs_TagMakeEcc(&tag->s);
 	else
-		tag->tag_ecc = 0xFFFF;
+		tag->s.tag_ecc = 0xFFFF;
 
 	if (dev->attr->layout_opt == UFFS_LAYOUT_UFFS) {
 		if (dev->attr->ecc_opt == UFFS_ECC_SOFT ||
 			dev->attr->ecc_opt == UFFS_ECC_HW) {
-			_MakeSpare(dev, tag, ecc_buf, spare);
+			_MakeSpare(dev, &tag->s, ecc_buf, spare);
 		}
 		else
-			_MakeSpare(dev, tag, NULL, spare);
+			_MakeSpare(dev, &tag->s, NULL, spare);
 
-		ret = ops->WritePageSpare(dev, block, page, spare, dev->mem.spare_buffer_size);
+		ret = ops->WritePageSpare(dev, block, page, spare, 0, dev->mem.spare_buffer_size);
 	}
 	else {
-		ret = ops->WritePageSpareWithLayout(dev, block, page, (u8 *)tag, TAG_STORE_SIZE, ecc_buf);
+		ret = ops->WritePageSpareWithLayout(dev, block, page, (u8 *)(&tag->s), TAG_STORE_SIZE, ecc_buf);
 	}
 
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
@@ -428,37 +439,45 @@ ext:
 /** Mark this block as bad block */
 URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block)
 {
-	// for now, just call flash driver's function
+	u8 status = 0;
+	int ret;
 
-	return dev->ops->MarkBadBlock(dev, block) == 0 ? U_SUCC : U_FAIL;
+	if (dev->ops->MarkBadBlock)
+		return dev->ops->MarkBadBlock(dev, block) == 0 ? U_SUCC : U_FAIL;
+
+	if (dev->ops->WritePageSpare == NULL) {
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"flash driver must provide 'WritePageSpare' function!\n");
+		return U_FAIL;
+	}
+
+	ret = dev->ops->WritePageSpare(dev, block, 0, &status, dev->attr->block_status_offs, 1);
+
+	return ret == UFFS_FLASH_NO_ERR ? U_SUCC : U_FAIL;
 }
 
 /** Is this block a bad block ? */
 UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block)
 {
-	uffs_Tags tag;
+	u8 status = 0xFF;
 
 	if (dev->ops->IsBadBlock)
 		return dev->ops->IsBadBlock(dev, block) == 1 ? U_TRUE : U_FALSE;
 
-	if (dev->attr->layout_opt == UFFS_LAYOUT_FLASH)
-		dev->ops->ReadPageSpareWithLayout(dev, block, 0, (u8 *)&tag, TAG_STORE_SIZE, NULL);
-	else
-		dev->ops->ReadPageSpare(dev, block, 0, (u8 *)&tag, TAG_STORE_SIZE);
+	if (dev->ops->WritePageSpare == NULL) {
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"flash driver must provide 'ReadPageSpare' function!\n");
+		return U_FALSE;
+	}
 
-	if (tag.block_status == 0xFF) {
-		if (dev->attr->layout_opt == UFFS_LAYOUT_FLASH)
-			dev->ops->ReadPageSpareWithLayout(dev, block, 0, (u8 *)&tag, TAG_STORE_SIZE, NULL);
-		else
-			dev->ops->ReadPageSpare(dev, block, 0, (u8 *)&tag, TAG_STORE_SIZE);
+	dev->ops->ReadPageSpare(dev, block, 0, &status, dev->attr->block_status_offs, 1);
 
-		if (tag.block_status == 0xFF)
+	if (status == 0xFF) {
+		dev->ops->ReadPageSpare(dev, block, 1, &status, dev->attr->block_status_offs, 1);
+		if (status == 0xFF)
 			return U_FALSE;
 	}
 
 	return U_TRUE;
 }
-
 
 /** Erase flash block */
 URET uffs_FlashEraseBlock(uffs_Device *dev, int block)

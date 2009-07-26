@@ -53,7 +53,7 @@
  *		\retval U_SUCC successful
  *		\retval U_FAIL failed
  */
-URET uffs_InitBlockInfoCache(uffs_Device *dev, int maxCachedBlocks)
+URET uffs_BlockInfoInitCache(uffs_Device *dev, int maxCachedBlocks)
 {
 	uffs_BlockInfo * blockInfos = NULL;
 	uffs_PageSpare * pageSpares = NULL;
@@ -63,7 +63,7 @@ URET uffs_InitBlockInfoCache(uffs_Device *dev, int maxCachedBlocks)
 
 	if (dev->bc.head != NULL) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"block info cache has been inited already, now release it first.\n");
-		uffs_ReleaseBlockInfoCache(dev);
+		uffs_BlockInfoReleaseCache(dev);
 	}
 
 	size = ( 
@@ -137,7 +137,7 @@ URET uffs_InitBlockInfoCache(uffs_Device *dev, int maxCachedBlocks)
  *			this function should be called when unmount file system
  * \param[in] dev uffs device
  */
-URET uffs_ReleaseBlockInfoCache(uffs_Device *dev)
+URET uffs_BlockInfoReleaseCache(uffs_Device *dev)
 {
 	uffs_BlockInfo *work;
 
@@ -188,16 +188,6 @@ static void _MoveBcToTail(uffs_Device *dev, uffs_BlockInfo *bc)
 	_InsertToBcListTail(dev, bc);
 }
 
-/**
- * \brief check spare data, set .check_ok value.
- * \param[in] dev uffs device
- * \param[in,out] spare page spare
- */
-void uffs_CheckPageSpare(uffs_Device *dev, uffs_PageSpare *spare)
-{
-	dev = dev;
-	spare->check_ok = 1;
-}
 
 /** 
  * \brief load page spare data to given block info structure with given page number
@@ -210,9 +200,9 @@ void uffs_CheckPageSpare(uffs_Device *dev, uffs_PageSpare *spare)
  * \retval U_FAIL fail to load
  * \note work->block must be set before load block info
  */
-URET uffs_LoadBlockInfo(uffs_Device *dev, uffs_BlockInfo *work, int page)
+URET uffs_BlockInfoLoad(uffs_Device *dev, uffs_BlockInfo *work, int page)
 {
-	int i;
+	int i, ret;
 	uffs_PageSpare *spare;
 
 	if (page == UFFS_ALL_PAGES) {
@@ -221,11 +211,11 @@ URET uffs_LoadBlockInfo(uffs_Device *dev, uffs_BlockInfo *work, int page)
 			if (spare->expired == 0)
 				continue;
 			
-			if (uffs_LoadPageSpare(dev, work->block, i, &(spare->tag)) == U_FAIL ) {
+			ret = uffs_FlashReadPageSpare(dev, work->block, i, &(spare->tag), NULL);
+			if (UFFS_FLASH_HAVE_ERR(ret)) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX "load block %d page %d spare fail.", work->block, i);
 				return U_FAIL;
 			}
-			uffs_CheckPageSpare(dev, spare);
 			spare->expired = 0;
 			work->expired_count--;
 		}
@@ -237,11 +227,11 @@ URET uffs_LoadBlockInfo(uffs_Device *dev, uffs_BlockInfo *work, int page)
 		}
 		spare = &(work->spares[page]);
 		if (spare->expired != 0) {
-			if (uffs_LoadPageSpare(dev, work->block, page, &(spare->tag)) == U_FAIL ) {
+			ret = uffs_FlashReadPageSpare(dev, work->block, page, &(spare->tag), NULL);
+			if (UFFS_FLASH_HAVE_ERR(ret)) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX "load block %d page %d spare fail.", work->block, page);
 				return U_FAIL;
 			}
-			uffs_CheckPageSpare(dev, spare);
 			spare->expired = 0;
 			work->expired_count--;
 		}
@@ -258,7 +248,7 @@ URET uffs_LoadBlockInfo(uffs_Device *dev, uffs_BlockInfo *work, int page)
  * \retval NULL cache not found
  * \retval non-NULL found cache pointer
  */
-uffs_BlockInfo * uffs_FindBlockInfoInCache(uffs_Device *dev, int block)
+uffs_BlockInfo * uffs_BlockInfoFindInCache(uffs_Device *dev, int block)
 {
 	uffs_BlockInfo *work;
 	
@@ -283,13 +273,13 @@ uffs_BlockInfo * uffs_FindBlockInfoInCache(uffs_Device *dev, int block)
  * \retval NULL caches used out
  * \retval non-NULL buffer pointer of given block
  */
-uffs_BlockInfo * uffs_GetBlockInfo(uffs_Device *dev, int block)
+uffs_BlockInfo * uffs_BlockInfoGet(uffs_Device *dev, int block)
 {
 	uffs_BlockInfo *work;
 	int i;
 
 	//search cached block
-	if ((work = uffs_FindBlockInfoInCache(dev, block)) != NULL) {
+	if ((work = uffs_BlockInfoFindInCache(dev, block)) != NULL) {
 		_MoveBcToTail(dev, work);
 		return work;
 	}
@@ -318,11 +308,11 @@ uffs_BlockInfo * uffs_GetBlockInfo(uffs_Device *dev, int block)
 }
 
 /** 
- * \brief put block info buffer back to pool, should be called with #uffs_GetBlockInfo in pairs.
+ * \brief put block info buffer back to pool, should be called with #uffs_BlockInfoGet in pairs.
  * \param[in] dev uffs device
  * \param[in] p pointer of block info buffer
  */
-void uffs_PutBlockInfo(uffs_Device *dev, uffs_BlockInfo *p)
+void uffs_BlockInfoPut(uffs_Device *dev, uffs_BlockInfo *p)
 {
 	dev = dev;
 	if (p->ref_count == 0) {
@@ -340,7 +330,7 @@ void uffs_PutBlockInfo(uffs_Device *dev, uffs_BlockInfo *p)
  * \param[in] p pointer of block info buffer
  * \param[in] page given page number. if #UFFS_ALL_PAGES presented, all pages in the block should be made expired.
  */
-void uffs_ExpireBlockInfo(uffs_Device *dev, uffs_BlockInfo *p, int page)
+void uffs_BlockInfoExpire(uffs_Device *dev, uffs_BlockInfo *p, int page)
 {
 	int i;
 	uffs_PageSpare *spare;
@@ -368,7 +358,7 @@ void uffs_ExpireBlockInfo(uffs_Device *dev, uffs_BlockInfo *p, int page)
 /** 
  * Is all blcok info cache free (not referenced) ?
  */
-UBOOL uffs_IsAllBlockInfoFree(uffs_Device *dev)
+UBOOL uffs_BlockInfoIsAllFree(uffs_Device *dev)
 {
 	uffs_BlockInfo *work;
 
@@ -382,13 +372,13 @@ UBOOL uffs_IsAllBlockInfoFree(uffs_Device *dev)
 	return U_TRUE;
 }
 
-void uffs_ExpireAllBlockInfo(uffs_Device *dev)
+void uffs_BlockInfoExpireAll(uffs_Device *dev)
 {
 	uffs_BlockInfo *bc;
 
 	bc = dev->bc.head;
 	while (bc) {
-		uffs_ExpireBlockInfo(dev, bc, UFFS_ALL_PAGES);
+		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 		bc = bc->next;
 	}
 	return;

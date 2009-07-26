@@ -133,7 +133,7 @@ URET uffs_OpenFindObjectEx(uffs_FindInfo *f, uffs_Device *dev, int dir)
 	if (f == NULL || dev == NULL)
 		return U_FAIL;
 
-	node = uffs_FindDirNodeFromTree(dev, dir);
+	node = uffs_TreeFindDirNode(dev, dir);
 
 	if (node == NULL)
 		return U_FAIL;

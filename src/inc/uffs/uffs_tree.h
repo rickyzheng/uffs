@@ -129,7 +129,8 @@ typedef struct uffs_TreeNodeSt {
 #define EMPTY_NODE 0xffff				//!< special index num of empty node.
 
 #define ROOT_DIR_SERIAL	0				//!< serial num of root dir
-#define MAX_UFFS_SERIAL			0xfffe	//!< maximum serial numbers
+#define MAX_UFFS_FSN			0x3ff	//!< maximum dir|file serial number (uffs_TagStore#parent: 10 bits)
+#define MAX_UFFS_FDN			0x3fff	//!< maximum file data block serial numbers (uffs_TagStore#serial: 14 bits)
 #define PARENT_OF_ROOT			0xfffd	//!< parent of ROOT ? kidding me ...
 #define INVALID_UFFS_SERIAL		0xffff	//!< invalid serial num
 
@@ -168,33 +169,33 @@ URET uffs_InitTreeBuf(uffs_Device *dev);
 URET uffs_ReleaseTreeBuf(uffs_Device *dev);
 URET uffs_BuildTree(uffs_Device *dev);
 u16 uffs_FindFreeFsnSerial(uffs_Device *dev);
-TreeNode * uffs_FindFileNodeFromTree(uffs_Device *dev, u16 serial);
-TreeNode * uffs_FindFileNodeFromTreeWithParent(uffs_Device *dev, u16 parent);
-TreeNode * uffs_FindDirNodeFromTree(uffs_Device *dev, u16 serial);
-TreeNode * uffs_FindDirNodeFromTreeWithParent(uffs_Device *dev, u16 parent);
-TreeNode * uffs_FindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
-TreeNode * uffs_FindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
-TreeNode * uffs_FindDataNode(uffs_Device *dev, u16 parent, u16 serial);
+TreeNode * uffs_TreeFindFileNode(uffs_Device *dev, u16 serial);
+TreeNode * uffs_TreeFindFileNodeWithParent(uffs_Device *dev, u16 parent);
+TreeNode * uffs_TreeFindDirNode(uffs_Device *dev, u16 serial);
+TreeNode * uffs_TreeFindDirNodeWithParent(uffs_Device *dev, u16 parent);
+TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
+TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
+TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial);
 
 
-TreeNode * uffs_FindDirNodeByBlock(uffs_Device *dev, u16 block);
-TreeNode * uffs_FindFileNodeByBlock(uffs_Device *dev, u16 block);
-TreeNode * uffs_FindDataNodeByBlock(uffs_Device *dev, u16 block);
-TreeNode * uffs_FindErasedNodeByBlock(uffs_Device *dev, u16 block);
-TreeNode * uffs_FindBadNodeByBlock(uffs_Device *dev, u16 block);
+TreeNode * uffs_TreeFindDirNodeByBlock(uffs_Device *dev, u16 block);
+TreeNode * uffs_TreeFindFileNodeByBlock(uffs_Device *dev, u16 block);
+TreeNode * uffs_TreeFindDataNodeByBlock(uffs_Device *dev, u16 block);
+TreeNode * uffs_TreeFindErasedNodeByBlock(uffs_Device *dev, u16 block);
+TreeNode * uffs_TreeFindBadNodeByBlock(uffs_Device *dev, u16 block);
 
 #define SEARCH_REGION_DIR		1
 #define SEARCH_REGION_FILE		2
 #define SEARCH_REGION_DATA		4
 #define SEARCH_REGION_BAD		8
 #define SEARCH_REGION_ERASED	16
-TreeNode * uffs_FindNodeByBlock(uffs_Device *dev, u16 block, int *region);
+TreeNode * uffs_TreeFindNodeByBlock(uffs_Device *dev, u16 block, int *region);
 
 
 
-UBOOL uffs_CompareFileNameWithTreeNode(uffs_Device *dev, const char *name, u32 len, u16 sum, TreeNode *node, int type);
+UBOOL uffs_TreeCompareFileName(uffs_Device *dev, const char *name, u32 len, u16 sum, TreeNode *node, int type);
 
-TreeNode * uffs_GetErased(uffs_Device *dev);
+TreeNode * uffs_TreeGetErasedNode(uffs_Device *dev);
 
 void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node);
 void uffs_InsertToErasedListHead(uffs_Device *dev, TreeNode *node);
@@ -203,7 +204,7 @@ void uffs_TreeInsertToBadBlockList(uffs_Device *dev, TreeNode *node);
 
 void uffs_BreakFromEntry(uffs_Device *dev, u8 type, TreeNode *node);
 
-void uffs_SetTreeNodeBlock(u8 type, TreeNode *node, u16 block);
+void uffs_TreeSetNodeBlock(u8 type, TreeNode *node, u16 block);
 
 
 

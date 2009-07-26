@@ -122,12 +122,12 @@ URET uffs_FormatDevice(uffs_Device *dev)
 	uffs_BufSetAllEmpty(dev);
 
 
-	if (uffs_IsAllBlockInfoFree(dev) == U_FALSE) {
+	if (uffs_BlockInfoIsAllFree(dev) == U_FALSE) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"there still have block info cache ? fail to format\n");
 		return U_FAIL;
 	}
 
-	uffs_ExpireAllBlockInfo(dev);
+	uffs_BlockInfoExpireAll(dev);
 
 	for (i = dev->par.start; i <= dev->par.end; i++) {
 		if (dev->ops->IsBlockBad(dev, i) == U_FALSE) {

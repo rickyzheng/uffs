@@ -48,32 +48,48 @@
 extern "C"{
 #endif
 
+/**
+ * \struct uffs_TagStoreSt
+ * \brief uffs tag, 8 bytes, will be store in page spare area.
+ */
+struct uffs_TagStoreSt {
+	u32 dirty:1;		//!< 0: dirty, 1: clear
+	u32 valid:1;		//!< 0: valid, 1: invalid
+	u32 type:2;			//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
+	u32 block_ts:2;		//!< time stamp of block;
+	u32 data_len:12;	//!< length of page data
+	u32 serial:14;		//!< serial number
+
+	u32 parent:10;		//!< parent's serial number
+	u32 page_id:6;		//!< page id
+	u32 reserved:4;		//!< reserved, for UFFS2
+	u32 tag_ecc:12;		//!< tag ECC
+};
+
+/**
+ * \struct uffs_TagStoreSt_8
+ * \brief this data structure describes the page status, for 8 bytes page spare.
+ * \note there is no tag ecc for this !
+ */
+struct uffs_TagStoreSt_8 {
+	u32 dirty:1;			//!< 0: dirty, 1: clear
+	u32 valid:1;			//!< 0: valid, 1: invalid
+	u32 type:2;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
+	u32 block_ts:2;			//!< time stamp of block;
+	u32 page_id:5;			//!< page id
+	u32 parent:7;			//!< parent's serial number
+	u32 serial:8;			//!< serial number
+	u32 data_len:8;			//!< length of page data
+};
 
 /** 
  * \struct uffs_TagsSt
- * \brief this data structure describes the page status.
- *		the first 8 bytes along with page data ECC will be stored in page spare area,
- *		'data_len' and 'data_sum' are stored in page data area.
- *
  */
 struct uffs_TagsSt {
+	struct uffs_TagStoreSt s;		/* store must be the first member */
 
-	/** the following 8 bytes are stored in page spare area */
-
-	u8 dirty:1;				//!< 0: dirty, 1: clear
-	u8 valid:1;				//!< 0: valid, 1: invalid
-	u8 type:2;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
-	u8 block_ts:2;			//!< time stamp of block;
-	u8 page_full:1;			//!< 0: not full, 1: full
-
-	u8 page_id;				//!< page id
-	u16 parent;				//!< parent's serial number
-	u16 serial;				//!< serial number
-	u16 tag_ecc;			//!< ecc of tag
-
-	/** the following 4 bytes are stored in page data area */
-	u16 data_len;			//!< length of page data length
-	u16 data_sum;			//!< sum of file name or directory name, not used if it's file data.
+	/** data_sum for file or dir name */
+	u16 data_sum;
 
 	/**
 	 * block_status is not covered by tag_ecc.
@@ -86,34 +102,6 @@ struct uffs_TagsSt {
 	u8 _valid:1;			//!< raw data, before doing ecc correction
 };
 
-/**
- * \struct uffs_TagsSt_8
- * \brief this data structure describes the page status, for 8 bytes page spare.
- *		the first 4 bytes along with page data ECC will be stored in page spare area,
- *		'data_len' and 'data_sum' are stored in page data area.
- */
-struct uffs_TagsSt_8 {
-	/** the following 4 bytes are stored in page spare area
-	 * \note does not support tag_ecc for 8 bytes spare!
-	 */
-	u8 dirty:1;				//!< 0: dirty, 1: clear
-	u8 valid:1;				//!< 0: valid, 1: invalid
-	u8 type:2;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
-	u8 block_ts:2;			//!< time stamp of block;
-	u8 page_full:1;			//!< 0: not full, 1: full
-
-	u8 page_id;				//!< page id
-	u8 parent;				//!< parent's serial number, warning: using 8-bit, blocks should not > 254
-	u8 serial;				//!< serial number, warning: using 8-bit, blocks should not > 254
-
-	u16 data_len;			//!< length of page data length
-	u16 data_sum;			//!< sum of file name or directory name
-
-	/** block status: this byte is loaded from flash, but not write to flash directly */
-	u8 block_status;		
-};
-
-
 
 /** uffs_TagsSt.dirty */
 #define TAG_VALID		0
@@ -123,13 +111,19 @@ struct uffs_TagsSt_8 {
 #define TAG_DIRTY		0
 #define TAG_CLEAR		1
 
+#define TAG_IS_DIRTY(tag) ((tag)->s.dirty == TAG_DIRTY)
+#define TAG_IS_VALID(tag) ((tag)->s.valid == TAG_VALID)
+#define TAG_SERIAL(tag) (tag)->s.serial
+#define TAG_PARENT(tag) (tag)->s.parent
+#define TAG_PAGE_ID(tag) (tag)->s.page_id
+#define TAG_DATA_LEN(tag) (tag)->s.data_len
+#define TAG_TYPE(tag) (tag)->s.type
+#define TAG_BLOCK_TS(tag) (tag)->s.block_ts
+
 
 int uffs_GetFirstBlockTimeStamp(void);
 int uffs_GetNextBlockTimeStamp(int prev);
 UBOOL uffs_IsSrcNewerThanObj(int src, int obj);
-
-void uffs_TransferToTag8(uffs_Tags *tag, uffs_Tags_8 *tag_8);
-void uffs_TransferFromTag8(uffs_Tags *tag, uffs_Tags_8 *tag_8);
 
 
 #include "uffs_device.h"

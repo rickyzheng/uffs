@@ -71,6 +71,14 @@ extern "C"{
 #define UFFS_FLASH_HAVE_ERR(e)		((e) < 0)
 #define UFFS_FLASH_IS_BAD_BLOCK(e)	((e) == UFFS_FLASH_ECC_FAIL || (e) == UFFS_FLASH_BAD_BLK)
 
+
+/** defines for page info (data length and data sum) */
+#define UFFS_PAGE_INFO_CLEAN	0xFFFFFFFF
+#define UFFS_PAGE_INFO_IOERR	0xDEADFFFF
+#define UFFS_PAGE_GET_LEN(info)	(info & 0xFFFF)
+#define UFFS_PAGE_GET_DSUM(info) (info >> 16)
+#define UFFS_PAGE_MAKE_INFO(d_len, d_sum) ((d_sum << 16) | d_len)
+
 /** 
  * \struct uffs_StorageAttrSt
  * \brief uffs device storage attribute, provide by nand specific file
@@ -116,9 +124,9 @@ struct uffs_FlashOpsSt {
 
 
 	/**
-	 * Read page spare.
+	 * Read page spare [len] bytes from [ofs].
 	 *
-	 * \note flash driver must privide this function when layout_opt is UFFS_LAYOUT_UFFS.
+	 * \note flash driver must privide this function.
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
@@ -126,7 +134,7 @@ struct uffs_FlashOpsSt {
 	 * \note flash driver DO NOT need to do ecc correction for spare data,
 	 *		UFFS will take care of spare data ecc.
 	 */
-	int (*ReadPageSpare)(uffs_Device *dev, u32 block, u32 page, u8 *spare, int len);
+	int (*ReadPageSpare)(uffs_Device *dev, u32 block, u32 page, u8 *spare, int ofs, int len);
 
 	/**
 	 * Read page spare, unload to tag and ecc.
@@ -157,7 +165,7 @@ struct uffs_FlashOpsSt {
 
 
 	/**
-	 * Write page spare.
+	 * Write [len] bytes to page spare from [ofs].
 	 *
 	 * \note flash driver must privide this function when layout_opt is UFFS_LAYOUT_UFFS.
 	 *
@@ -165,7 +173,7 @@ struct uffs_FlashOpsSt {
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int len);
+	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int ofs, int len);
 
 	/**
 	 * Write page spare, flash driver do the layout.
@@ -226,6 +234,15 @@ UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block);
 /** Erase flash block */
 int uffs_FlashEraseBlock(uffs_Device *dev, int block);
 
+/**
+ * get page head info
+ *
+ * \return #UFFS_PAGE_INFO_IOERR if I/O error, otherwise return page info
+ */
+u32 uffs_FlashGetPageInfo(uffs_Device *dev, int block, int page);
+
+/** load uffs_FileInfo from flash storage */
+URET uffs_FlashReadFileinfoPhy(uffs_Device *dev, int block, int page, uffs_FileInfo *info);
 
 #ifdef __cplusplus
 }

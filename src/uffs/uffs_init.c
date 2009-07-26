@@ -74,7 +74,7 @@ URET uffs_InitDevice(uffs_Device *dev)
 		goto fail;
 	}
 	uffs_Perror(UFFS_ERR_NOISY, PFX"init block info cache\n");
-	ret = uffs_InitBlockInfoCache(dev, MAX_CACHED_BLOCK_INFO);
+	ret = uffs_BlockInfoInitCache(dev, MAX_CACHED_BLOCK_INFO);
 	if (ret != U_SUCC) {
 		uffs_Perror(UFFS_ERR_DEAD, PFX"Initialize block info fail\n");
 		goto fail;
@@ -104,7 +104,7 @@ URET uffs_ReleaseDevice(uffs_Device *dev)
 {
 	URET ret;
 
-	ret = uffs_ReleaseBlockInfoCache(dev);
+	ret = uffs_BlockInfoReleaseCache(dev);
 	if (ret != U_SUCC) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX "fail to release block info.\n");
 		return U_FAIL;

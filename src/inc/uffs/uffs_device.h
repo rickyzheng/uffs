@@ -124,7 +124,7 @@ struct uffs_PageBufDescSt {
 struct uffs_PageCommInfoSt {
 	u32 pg_data_size;			//!< page data size
 	u32 ecc_size;				//!< ecc size
-	u32 pg_size;				//!< page size = page data size + ecc size
+	u32 pg_size;				//!< page size
 };
 
 /** 

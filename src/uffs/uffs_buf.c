@@ -93,8 +93,8 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 
 	//init device common parameters, which are needed by page buffers
 	dev->com.pg_size = dev->attr->page_data_size;
-	dev->com.ecc_size = dev->flash->GetEccSize(dev);
-	dev->com.pg_data_size = dev->com.pg_size - dev->com.ecc_size;
+	dev->com.ecc_size = 0;  //v1.3: ecc in spare, no ecc in page data area
+	dev->com.pg_data_size = dev->attr->page_data_size; //v1.3: pg_data_size is the same as pg_size.
 
 	if (dev->buf.pool != NULL) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"buf.pool is not NULL, buf already inited ?\n");
@@ -126,7 +126,7 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 		data = (u8 *)pool + (sizeof(uffs_Buf) * buf_max) + (dev->com.pg_size * i);
 
 		buf->data = data;
-		buf->ecc = data + dev->com.pg_data_size;
+		//buf->ecc = data + dev->com.pg_data_size;
 		buf->mark = UFFS_BUF_EMPTY;
 		if (i == 0) {
 			buf->prev = NULL;
@@ -341,25 +341,20 @@ static uffs_Buf * _FindFreeBuf(uffs_Device *dev)
  * \param[in] page psychical page number
  * \return return U_SUCC if no error, return U_FAIL if I/O error or ecc check fail
  */
-URET uffs_LoadPhyDataToBuf(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
+URET uffs_BufLoadPhyData(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
 {
-	URET ret;
+	int ret;
 
-	ret = dev->ops->ReadPageData(dev, block, page, buf->data, 0, dev->com.pg_size);
-	if (ret == U_SUCC) {
-		if (uffs_CheckBadBlock(dev, buf, block) == U_SUCC) {
-			buf->mark = UFFS_BUF_VALID; // the data is valid now
-		}
-		else {
-			buf->mark = UFFS_BUF_EMPTY;
-			ret = U_FAIL;
-		}
+	ret = uffs_FlashReadPage(dev, block, page, buf);
+
+	if (UFFS_FLASH_HAVE_ERR(ret)) {
+		buf->mark = UFFS_BUF_EMPTY;
+		return U_FAIL;
 	}
 	else {
-		buf->mark = UFFS_BUF_EMPTY; // the data is not valid
+		buf->mark = UFFS_BUF_VALID;
+		return U_SUCC;
 	}
-	
-	return ret;
 }
 
 /** 
@@ -373,23 +368,18 @@ URET uffs_LoadPhyDataToBuf(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
  */
 URET uffs_LoadPhyDataToBufEccUnCare(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
 {
-	URET ret;
+	int ret;
 
-	ret = uffs_FlashReadPage(dev, block, page, buf, NULL);
+	ret = uffs_FlashReadPage(dev, block, page, buf);
 
-	ret = dev->ops->ReadPageData(dev, block, page, buf->data, 0, dev->com.pg_size);
-	if (ret == U_SUCC) {
-		if (uffs_CheckBadBlock(dev, buf, block) == U_SUCC) {
-			//ECC check fail, but we return 'successful' anyway !!
-			buf->mark = UFFS_BUF_VALID;
-		}
-		return U_SUCC;
+	if (ret == UFFS_FLASH_IO_ERR) {
+		buf->mark = UFFS_BUF_EMPTY;
+		return U_FAIL;
 	}
 	else {
-		buf->mark = UFFS_BUF_EMPTY; // the data is not valid, I/O error ?
+		buf->mark = UFFS_BUF_VALID;
+		return U_SUCC;
 	}
-	
-	return ret;
 }
 
 
@@ -466,7 +456,7 @@ static URET _BreakFromDirty(uffs_Device *dev, uffs_Buf *dirtyBuf)
 	return U_SUCC;
 }
 
-static u16 _GetDataSum(uffs_Device *dev, uffs_Buf *buf)
+static u16 _GetDirOrFileNameSum(uffs_Device *dev, uffs_Buf *buf)
 {
 	u16 data_sum = 0; //default: 0
 	uffs_FileInfo *fi;
@@ -544,7 +534,7 @@ URET
 	u16 page;
 	uffs_Buf *buf;
 	uffs_Tags *tag;
-	URET ret;
+	int ret;
 
 //	uffs_Perror(UFFS_ERR_NOISY, PFX"Flush buffers with Enough Free Page, in block %d\n",
 //							bc->block);
@@ -560,17 +550,18 @@ URET
 		}
 
 		//writre the dirty page (id: buf->page_id) to page i (free page)
-		uffs_LoadBlockInfo(dev, bc, page);
-		tag = &(bc->spares[page].tag);
-		tag->block_ts = uffs_GetBlockTimeStamp(dev, bc);
-		tag->data_len = buf->data_len;
-		tag->type = buf->type;
-		tag->data_sum = _GetDataSum(dev, buf);
-		tag->parent = buf->parent;
-		tag->serial = buf->serial;
-		tag->page_id = (u8)(buf->page_id);  //FIX ME!! if more than 256 pages in a block
-		ret = uffs_WriteDataToNewPage(dev, bc->block, page, tag, buf);
-		if (ret == U_SUCC) {
+		uffs_BlockInfoLoad(dev, bc, page);
+		tag = GET_TAG(bc, page);
+		TAG_BLOCK_TS(tag) = uffs_GetBlockTimeStamp(dev, bc);
+		TAG_DATA_LEN(tag) = buf->data_len;
+		TAG_TYPE(tag) = buf->type;
+		//tag->data_sum = _GetDirOrFileNameSum(dev, buf);
+		TAG_PARENT(tag) = buf->parent;
+		TAG_SERIAL(tag) = buf->serial;
+		TAG_PAGE_ID(tag) = (u8)(buf->page_id);
+
+		ret = uffs_FlashWritePageCombine(dev, bc->block, page, buf, tag);
+		if (ret != UFFS_FLASH_IO_ERR) {
 			if(_BreakFromDirty(dev, buf) == U_SUCC) {
 				buf->mark = UFFS_BUF_VALID;
 				_MoveNodeToHead(dev, buf);
@@ -607,19 +598,21 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 	u16 i;
 	uffs_BlockInfo *bc;
 	uffs_Tags *tag;
-	URET ret;
+	int ret;
+	uffs_FileInfo *fi;
+	u16 data_sum = 0;
 
 	dirty = dev->buf.dirtyGroup[slot].dirty;
 	type = dirty->type;
 	parent = dirty->parent;		//all pages in dirty list have the same type, parent and serial
 	serial = dirty->serial;
 
-	node = uffs_GetErased(dev);
+	node = uffs_TreeGetErasedNode(dev);
 	if (node == NULL) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"no erased block!\n");
 		return U_FAIL;
 	}
-	bc = uffs_GetBlockInfo(dev, node->u.list.block);
+	bc = uffs_BlockInfoGet(dev, node->u.list.block);
 	if (bc == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"get block info fail!\n");
 		uffs_InsertToErasedListHead(dev, node); //put node back to erased list
@@ -633,17 +626,25 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 		buf = _FindBufInDirtyList(dirty, i);
 		if (buf == NULL)
 			break;
-		uffs_LoadBlockInfo(dev, bc, i);
-		tag = &(bc->spares[i].tag);
-		tag->block_ts = uffs_GetFirstBlockTimeStamp();
-		tag->data_len = buf->data_len;
-		tag->data_sum = _GetDataSum(dev, buf);
-		tag->type = type;
-		tag->parent = buf->parent;
-		tag->serial = buf->serial;
-		tag->page_id = (u8)(buf->page_id);	//FIX ME!! if page more than 256 in a block
-		ret = uffs_WriteDataToNewPage(dev, node->u.list.block, i, tag, buf);
-		if (ret == U_SUCC) {
+
+		if (i == 0 && (type == UFFS_TYPE_FILE || type == UFFS_TYPE_DIR)) {
+			fi = (uffs_FileInfo *)(buf->data);
+			data_sum = uffs_MakeSum16(fi->name, fi->name_len);
+		}
+
+		uffs_BlockInfoLoad(dev, bc, i);
+		tag = GET_TAG(bc, i);
+		TAG_BLOCK_TS(tag) = uffs_GetFirstBlockTimeStamp();
+		TAG_DATA_LEN(tag) = buf->data_len;
+		//tag->data_sum = _GetDirOrFileNameSum(dev, buf);
+		TAG_TYPE(tag) = type;
+		TAG_PARENT(tag) = buf->parent;
+		TAG_SERIAL(tag) = buf->serial;
+		TAG_PAGE_ID(tag) = (u8)(buf->page_id);
+
+		ret = uffs_FlashWritePageCombine(dev, node->u.list.block, i, buf, tag);
+
+		if (ret != UFFS_FLASH_IO_ERR) {
 			if (_BreakFromDirty(dev, buf) == U_SUCC) {
 				buf->mark = UFFS_BUF_VALID;
 				_MoveNodeToHead(dev, buf);
@@ -651,7 +652,7 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 		}
 		else {
 			uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error <2>?\n");
-			uffs_PutBlockInfo(dev, bc);
+			uffs_BlockInfoPut(dev, bc);
 			return U_FAIL;
 		}
 	}
@@ -664,14 +665,14 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 		node->u.dir.serial = serial;
 		//node->u.dir.pagID = 0;		//dir stored in page 0,  ??
 		//node->u.dir.ofs = 0;		//TODO!!, for dir, the ofs should be ... ?
-		node->u.dir.checksum = bc->spares[0].tag.data_sum; //for dir, the checksum should be the same as file
+		node->u.dir.checksum = data_sum;
 								//FIXME: if we support more than one dir in one block
 		break;
 	case UFFS_TYPE_FILE:
 		node->u.file.block = bc->block;
 		node->u.file.parent = parent;
 		node->u.file.serial = serial;
-		node->u.file.checksum = bc->spares[0].tag.data_sum; //for file, the page0 is where fileinfo ...
+		node->u.file.checksum = data_sum; //for file, the page0 is where fileinfo ...
 		break;
 	case UFFS_TYPE_DATA:
 		node->u.data.block = bc->block;
@@ -684,7 +685,7 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 	}
 
 	uffs_InsertNodeToTree(dev, type, node);
-	uffs_PutBlockInfo(dev, bc);
+	uffs_BlockInfoPut(dev, bc);
 
 	return U_SUCC;
 }
@@ -714,22 +715,23 @@ static URET _BufFlush_Exist_With_BlockCover(
 	TreeNode *newNode;
 	uffs_BlockInfo *newBc;
 	uffs_Tags *tag, *oldTag;
-	URET ret = U_SUCC;
+	int ret;
 	u16 newBlock;
 	UBOOL succRecover = U_TRUE; //TRUE: recover successful, erase old block,
 								//FALSE: fail to recover, erase new block
+	u16 data_sum;
 
 	type = dev->buf.dirtyGroup[slot].dirty->type;
 	parent = dev->buf.dirtyGroup[slot].dirty->parent;
 	serial = dev->buf.dirtyGroup[slot].dirty->serial;
 
-	newNode = uffs_GetErased(dev);
+	newNode = uffs_TreeGetErasedNode(dev);
 	if (newNode == NULL) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"no enough erased block!\n");
 		return U_FAIL;
 	}
 	newBlock = newNode->u.list.block;
-	newBc = uffs_GetBlockInfo(dev, newBlock);
+	newBc = uffs_BlockInfoGet(dev, newBlock);
 	if (newBc == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"get block info fail!\n");
 		uffs_InsertToErasedListHead(dev, newNode);  //put node back to erased list
@@ -737,26 +739,28 @@ static URET _BufFlush_Exist_With_BlockCover(
 		return U_FAIL;
 	}
 
-	uffs_LoadBlockInfo(dev, newBc, UFFS_ALL_PAGES);
+	uffs_BlockInfoLoad(dev, newBc, UFFS_ALL_PAGES);
 	timeStamp = uffs_GetNextBlockTimeStamp(uffs_GetBlockTimeStamp(dev, bc));
 
 //	uffs_Perror(UFFS_ERR_NOISY, PFX"Flush buffers with Block Recover, from %d to %d\n", 
 //					bc->block, newBc->block);
 
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		tag = &(newBc->spares[i].tag);
-		tag->block_ts = timeStamp;
-		tag->parent = parent;
-		tag->serial = serial;
-		tag->type = type;
-		tag->page_id = (u8)i; //now, page_id = page, FIX ME!! if more than 256 pages in a block
+		tag = GET_TAG(newBc, i);
+		TAG_BLOCK_TS(tag) = timeStamp;
+		TAG_PARENT(tag) = parent;
+		TAG_SERIAL(tag) = serial;
+		TAG_TYPE(tag) = type;
+		TAG_PAGE_ID(tag) = (u8)i; //now, page_id = page, FIX ME!! if more than 256 pages in a block
 		
 		buf = _FindBufInDirtyList(dev->buf.dirtyGroup[slot].dirty, i);
 		if (buf != NULL) {
-			tag->data_len = buf->data_len;
-			tag->data_sum = _GetDataSum(dev, buf);
-			ret = uffs_WriteDataToNewPage(dev, newBlock, i, tag, buf);
-			if (ret == U_SUCC) {
+			if (i == 0)
+				data_sum = _GetDirOrFileNameSum(dev, buf);
+
+			TAG_DATA_LEN(tag) = buf->data_len;
+			ret = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
+			if (ret != UFFS_FLASH_IO_ERR) {
 				if (_BreakFromDirty(dev, buf) == U_SUCC) {
 					buf->mark = UFFS_BUF_VALID;
 					_MoveNodeToHead(dev, buf);
@@ -769,28 +773,27 @@ static URET _BufFlush_Exist_With_BlockCover(
 			}
 		}
 		else {
-			
 			page = uffs_FindPageInBlockWithPageId(dev, bc, i);
 			if (page == UFFS_INVALID_PAGE) {
-				uffs_ExpireBlockInfo(dev, newBc, i);
+				uffs_BlockInfoExpire(dev, newBc, i);
 				break;  //end of last page, normal break
 			}
 			page = uffs_FindBestPageInBlock(dev, bc, page);
 			
-			oldTag = &(bc->spares[page].tag);
+			oldTag = GET_TAG(bc, page);
 			buf = uffs_BufClone(dev, NULL);
 			if (buf == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't clone a new buf!\n");
 				succRecover = U_FALSE;
 				break;
 			}
-			ret = uffs_LoadPhyDataToBuf(dev, buf, bc->block, page);
+			ret = uffs_BufLoadPhyData(dev, buf, bc->block, page);
 			if (ret == U_FAIL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"I/O error ?\n");
 				uffs_BufFreeClone(dev, buf);
 				break;
 			}
-			buf->data_len = oldTag->data_len;
+			buf->data_len = TAG_DATA_LEN(oldTag);
 			if (buf->data_len > dev->com.pg_data_size) {
 				uffs_Perror(UFFS_ERR_NOISY, PFX"data length over flow!!!\n");
 				buf->data_len = dev->com.pg_data_size;
@@ -799,34 +802,35 @@ static URET _BufFlush_Exist_With_BlockCover(
 			buf->type = type;
 			buf->parent = parent;
 			buf->serial = serial;
-			buf->data_len = oldTag->data_len;
-			buf->page_id = oldTag->page_id; 
+			buf->data_len = TAG_DATA_LEN(oldTag);
+			buf->page_id = TAG_PAGE_ID(oldTag); 
 
-			tag->data_len = buf->data_len;
-			tag->data_sum = _GetDataSum(dev, buf);
+			TAG_DATA_LEN(tag) = buf->data_len;
+			//tag->data_sum = _GetDirOrFileNameSum(dev, buf);
+			if (i == 0)
+				data_sum = _GetDirOrFileNameSum(dev, buf);
 
-			ret = uffs_WriteDataToNewPage(dev, newBlock, i, tag, buf);
+			ret = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
 			uffs_BufFreeClone(dev, buf);
-			if (ret != U_SUCC) {
+			if (ret == UFFS_FLASH_IO_ERR) {
 				uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error <4>?\n");
 				succRecover = U_FALSE;
 				break;
 			}
 		}
-
 	} //end of for
 
 	if (succRecover == U_TRUE) {
 		switch (type) {
 		case UFFS_TYPE_DIR:
 			node->u.dir.block = newBlock;
-			node->u.dir.checksum = newBc->spares[0].tag.data_sum;
+			node->u.dir.checksum = data_sum;
 			//node->u.dir.ofs = 0; //TODO!! fix me!
 			//node->u.dir.pagID = 0; //TODO!! fix me!
 			break;
 		case UFFS_TYPE_FILE:
 			node->u.file.block = newBlock;
-			node->u.file.checksum = newBc->spares[0].tag.data_sum;
+			node->u.file.checksum = data_sum;
 			break;
 		case UFFS_TYPE_DATA:
 			node->u.data.block = newBlock;
@@ -836,7 +840,7 @@ static URET _BufFlush_Exist_With_BlockCover(
 			break;
 		}
 		newNode->u.list.block = bc->block;
-		uffs_ExpireBlockInfo(dev, bc, UFFS_ALL_PAGES);
+		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 
 		if (newNode->u.list.block == dev->bad.block) {
 			// the recovered block is a BAD block, we need to deal with it immediately.
@@ -844,13 +848,13 @@ static URET _BufFlush_Exist_With_BlockCover(
 		}
 		else {
 			// erase recovered block, put it back to erased block list.
-			dev->ops->EraseBlock(dev, bc->block);
+			uffs_FlashEraseBlock(dev, bc->block);
 			uffs_TreeInsertToErasedListTail(dev, newNode);
 		}
 	}
 	else {
-		uffs_ExpireBlockInfo(dev, newBc, UFFS_ALL_PAGES);
-		dev->ops->EraseBlock(dev, newBlock);
+		uffs_BlockInfoExpire(dev, newBc, UFFS_ALL_PAGES);
+		uffs_FlashEraseBlock(dev, newBlock);
 		newNode->u.list.block = newBlock;
 		uffs_TreeInsertToErasedListTail(dev, newNode);
 	}
@@ -859,7 +863,7 @@ static URET _BufFlush_Exist_With_BlockCover(
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"still has dirty buffer ?\n");
 	}
 
-	uffs_PutBlockInfo(dev, newBc);
+	uffs_BlockInfoPut(dev, newBc);
 
 	return U_SUCC;
 }
@@ -891,13 +895,13 @@ URET _BufFlush(struct uffs_DeviceSt *dev, UBOOL force_block_recover, int slot)
 
 	switch (type) {
 	case UFFS_TYPE_DIR:
-		node = uffs_FindDirNodeFromTree(dev, serial);
+		node = uffs_TreeFindDirNode(dev, serial);
 		break;
 	case UFFS_TYPE_FILE:
-		node = uffs_FindFileNodeFromTree(dev, serial);
+		node = uffs_TreeFindFileNode(dev, serial);
 		break;
 	case UFFS_TYPE_DATA:
-		node = uffs_FindDataNode(dev, parent, serial);
+		node = uffs_TreeFindDataNode(dev, parent, serial);
 		break;
 	default:
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"unknown type\n");
@@ -923,12 +927,12 @@ URET _BufFlush(struct uffs_DeviceSt *dev, UBOOL force_block_recover, int slot)
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"unknown type.\n");
 			return U_FAIL;
 		}
-		bc = uffs_GetBlockInfo(dev, block);
+		bc = uffs_BlockInfoGet(dev, block);
 		if(bc == NULL) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"get block info fail.\n");
 			return U_FAIL;
 		}
-		uffs_LoadBlockInfo(dev, bc, UFFS_ALL_PAGES);
+		uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
 		n = uffs_GetFreePagesCount(dev, bc);
 
 		if (n >= dev->buf.dirtyGroup[slot].count && !force_block_recover) {
@@ -938,7 +942,7 @@ URET _BufFlush(struct uffs_DeviceSt *dev, UBOOL force_block_recover, int slot)
 		else {
 			ret = _BufFlush_Exist_With_BlockCover(dev, slot, node, bc);
 		}
-		uffs_PutBlockInfo(dev, bc);
+		uffs_BlockInfoPut(dev, bc);
 	}
 
 	return ret;
@@ -1243,7 +1247,7 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 
 		}
 	}
 
-	bc = uffs_GetBlockInfo(dev, block);
+	bc = uffs_BlockInfoGet(dev, block);
 	if (bc == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't get block info!\n");
 		return NULL;
@@ -1251,12 +1255,12 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 
 	
 	page = uffs_FindPageInBlockWithPageId(dev, bc, page_id);
 	if (page == UFFS_INVALID_PAGE) {
-		uffs_PutBlockInfo(dev, bc);
+		uffs_BlockInfoPut(dev, bc);
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find right page ?\n");
 		return NULL;
 	}
 	page = uffs_FindBestPageInBlock(dev, bc, page);
-	uffs_PutBlockInfo(dev, bc);
+	uffs_BlockInfoPut(dev, bc);
 
 	buf->mark = UFFS_BUF_EMPTY;
 	buf->type = type;
@@ -1264,12 +1268,12 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 
 	buf->serial = serial;
 	buf->page_id = page_id;
 
-	if (uffs_LoadPhyDataToBuf(dev, buf, block, page) == U_FAIL) {
+	if (UFFS_FLASH_HAVE_ERR(uffs_FlashReadPage(dev, block, page, buf))) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't load page from flash !\n");
 		return NULL;
 	}
 
-	buf->data_len = bc->spares[page].tag.data_len;
+	buf->data_len = TAG_DATA_LEN(GET_TAG(bc, page));
 	buf->mark = UFFS_BUF_VALID;
 	buf->ref_count++;
 

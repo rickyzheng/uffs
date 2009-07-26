@@ -52,7 +52,6 @@ extern "C"{
 struct uffs_PageSpareSt {
 	uffs_Tags tag;			//!< page tag
 	u8 expired:1;
-	u8 check_ok:1;
 };
 
 /** 
@@ -69,35 +68,36 @@ struct uffs_BlockInfoSt {
 	int ref_count;						//!< reference counter, it's safe to reuse this block memory when the counter is 0.
 };
 
+/** get tag from block info */
+#define GET_TAG(bc, page) (&(bc)->spares[page].tag)
+
+
 /** initialize block info caches */
-URET uffs_InitBlockInfoCache(uffs_Device *dev, int maxCachedBlocks);
+URET uffs_BlockInfoInitCache(uffs_Device *dev, int maxCachedBlocks);
 
 /** release block info caches */
-URET uffs_ReleaseBlockInfoCache(uffs_Device *dev);
-
-/** check page spare checksum, and set spare->check_ok */
-void uffs_CheckPageSpare(uffs_Device *dev, uffs_PageSpare *spare);
+URET uffs_BlockInfoReleaseCache(uffs_Device *dev);
 
 /** load page spare to block info cache */
-URET uffs_LoadBlockInfo(uffs_Device *dev, uffs_BlockInfo *work, int page);
+URET uffs_BlockInfoLoad(uffs_Device *dev, uffs_BlockInfo *work, int page);
 
 /** find block info cache */
-uffs_BlockInfo * uffs_FindBlockInfoInCache(uffs_Device *dev, int block);
+uffs_BlockInfo * uffs_BlockInfoFindInCache(uffs_Device *dev, int block);
 
 /** get block info cache, load it on demand */
-uffs_BlockInfo * uffs_GetBlockInfo(uffs_Device *dev, int block);
+uffs_BlockInfo * uffs_BlockInfoGet(uffs_Device *dev, int block);
 
-/** put info cache back to pool, should be called with #uffs_GetBlockInfo in pairs. */
-void uffs_PutBlockInfo(uffs_Device *dev, uffs_BlockInfo *p);
+/** put info cache back to pool, should be called with #uffs_BlockInfoGet in pairs. */
+void uffs_BlockInfoPut(uffs_Device *dev, uffs_BlockInfo *p);
 
 /** explicitly expire a block info cache */
-void uffs_ExpireBlockInfo(uffs_Device *dev, uffs_BlockInfo *p, int page);
+void uffs_BlockInfoExpire(uffs_Device *dev, uffs_BlockInfo *p, int page);
 
 /** no one hold any block info cache ? safe to release block info caches */
-UBOOL uffs_IsAllBlockInfoFree(uffs_Device *dev);
+UBOOL uffs_BlockInfoIsAllFree(uffs_Device *dev);
 
 /** explicitly expire all block info caches */
-void uffs_ExpireAllBlockInfo(uffs_Device *dev);
+void uffs_BlockInfoExpireAll(uffs_Device *dev);
 
 #ifdef __cplusplus
 }

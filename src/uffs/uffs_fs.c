@@ -260,12 +260,12 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 
 	if (obj->type == UFFS_TYPE_DIR) {
 		//find out whether have file with the same name
-		node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
+		node = uffs_TreeFindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
 		if (node != NULL) {
 			obj->err = UEEXIST;	// we can't create a dir has the same name with exist file.
 			goto ext_1;
 		}
-		obj->node = uffs_FindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
+		obj->node = uffs_TreeFindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
 		if (obj->node != NULL) {
 			obj->err = UEEXIST; // we can't create a dir already exist.
 			goto ext_1;
@@ -273,12 +273,12 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 	}
 	else {
 		//find out whether have dir with the same name
-		node = uffs_FindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
+		node = uffs_TreeFindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
 		if (node != NULL) {
 			obj->err = UEEXIST;
 			goto ext_1;
 		}
-		obj->node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
+		obj->node = uffs_TreeFindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
 		if (obj->node) {
 			/* file already exist, truncate it to zero length */
 			obj->serial = GET_OBJ_NODE_SERIAL(obj);
@@ -329,9 +329,9 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 
 	//update obj->node: after buf flushed, the NEW node can be found in the tree
 	if (obj->type == UFFS_TYPE_DIR)
-		obj->node = uffs_FindDirNodeFromTree(obj->dev, obj->serial);
+		obj->node = uffs_TreeFindDirNode(obj->dev, obj->serial);
 	else
-		obj->node = uffs_FindFileNodeFromTree(obj->dev, obj->serial);
+		obj->node = uffs_TreeFindFileNode(obj->dev, obj->serial);
 
 	if (obj->node == NULL) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't find the node in the tree ?\n");
@@ -424,10 +424,10 @@ URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev,
 	uffs_ObjectDevLock(obj);
 
 	if (obj->type == UFFS_TYPE_DIR) {
-		obj->node = uffs_FindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
+		obj->node = uffs_TreeFindDirNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
 	}
 	else {
-		obj->node = uffs_FindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
+		obj->node = uffs_TreeFindFileNodeByName(obj->dev, obj->name, obj->name_len, obj->sum, obj->parent);
 	}
 
 	if (obj->node == NULL) {			// dir or file not exist
@@ -513,7 +513,7 @@ URET uffs_ParseObject(uffs_Object *obj, const char *name)
 			while (p - start < d_len) {
 				while (*p != '/') p++;
 				sum = uffs_MakeSum16(start, p - dname);
-				node = uffs_FindDirNodeByName(dev, start, p - dname, sum, dir);
+				node = uffs_TreeFindDirNodeByName(dev, start, p - dname, sum, dir);
 				if (node == NULL) {
 					obj->err = UENOENT;
 					break;
@@ -898,7 +898,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 			if(fdn == 0)
 				dnode = obj->node;
 			else
-				dnode = uffs_FindDataNode(dev, fnode->u.file.serial, fdn);
+				dnode = uffs_TreeFindDataNode(dev, fnode->u.file.serial, fdn);
 
 			if(dnode == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node in tree ?\n");
@@ -985,7 +985,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 		}
 		else {
 			type = UFFS_TYPE_DATA;
-			dnode = uffs_FindDataNode(dev, fnode->u.file.serial, fdn);
+			dnode = uffs_TreeFindDataNode(dev, fnode->u.file.serial, fdn);
 			if (dnode == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get data node in entry!\n");
 				break;
@@ -1172,7 +1172,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 		maxPageID = obj->head_pages;
 	}
 	else {
-		node = uffs_FindDataNode(dev, fnode->u.file.serial, fdn);
+		node = uffs_TreeFindDataNode(dev, fnode->u.file.serial, fdn);
 		if (node == NULL) {
 			obj->err = UEIOERR;
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node when truncate obj\n");
@@ -1184,7 +1184,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 	}
 
 
-	bc = uffs_GetBlockInfo(dev, block);
+	bc = uffs_BlockInfoGet(dev, block);
 	if (bc == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get block info when truncate obj\n");
 		obj->err = UEIOERR;
@@ -1205,14 +1205,14 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 		goto ext;
 	}
 
-	newNode = uffs_GetErased(dev);
+	newNode = uffs_TreeGetErasedNode(dev);
 	if (newNode == NULL) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"insufficient erased block, can't truncate obj.\n");
 		obj->err = UEIOERR;
 		goto _err;
 	}
 	newBlock = newNode->u.list.block;
-	newBc = uffs_GetBlockInfo(dev, newBlock);
+	newBc = uffs_BlockInfoGet(dev, newBlock);
 	if (newBc == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get block info when truncate obj\n");
 		obj->err = UEIOERR;
@@ -1238,7 +1238,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 			goto _err;
 		}
 		tag = &(bc->spares[page].tag);
-		uffs_LoadPhyDataToBuf(dev, buf, bc->block, page);
+		uffs_BufLoadPhyData(dev, buf, bc->block, page);
 
 		buf->parent = tag->parent;
 		buf->serial = tag->serial;
@@ -1298,7 +1298,7 @@ _err:
 		//ok, modify the tree, and erase old block
 		//NOTE: Don't delete the 'old' node from tree, just replace the 'block' with new block,
 		//      so that we don't need to modify obj->node :)
-		uffs_SetTreeNodeBlock(type, node, newNode->u.list.block);
+		uffs_TreeSetNodeBlock(type, node, newNode->u.list.block);
 		newNode->u.list.block = block;
 		dev->ops->EraseBlock(dev, newNode->u.list.block);
 		uffs_TreeInsertToErasedListTail(dev, newNode);
@@ -1311,13 +1311,13 @@ _err:
 	}
 ext:
 	if (bc) {
-		uffs_ExpireBlockInfo(dev, bc, UFFS_ALL_PAGES);
-		uffs_PutBlockInfo(dev, bc);
+		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
+		uffs_BlockInfoPut(dev, bc);
 	}
 
 	if(newBc) {
-		uffs_ExpireBlockInfo(dev, newBc, UFFS_ALL_PAGES);
-		uffs_PutBlockInfo(dev, newBc);
+		uffs_BlockInfoExpire(dev, newBc, UFFS_ALL_PAGES);
+		uffs_BlockInfoPut(dev, newBc);
 	}
 
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
@@ -1380,13 +1380,13 @@ static URET _TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run)
 
 		block_start = _GetStartOfDataBlock(obj, fdn);
 		if (remain <= block_start && fdn > 0) {
-			node = uffs_FindDataNode(dev, obj->serial, fdn);
+			node = uffs_TreeFindDataNode(dev, obj->serial, fdn);
 			if (node == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node when trancate obj.\n");
 				obj->err = UEIOERR;
 				goto ext;
 			}
-			bc = uffs_GetBlockInfo(dev, node->u.data.block);
+			bc = uffs_BlockInfoGet(dev, node->u.data.block);
 			if (bc == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get block info when trancate obj.\n");
 				obj->err = UEIOERR;
@@ -1397,7 +1397,7 @@ static URET _TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run)
 				buf = uffs_BufFind(dev, fnode->u.file.serial, fdn, page);
 				if (buf) {								//!< ok, the buffer was loaded before ...
 					if (uffs_BufIsFree(buf) == U_FALSE) {
-						uffs_PutBlockInfo(dev, bc);
+						uffs_BlockInfoPut(dev, bc);
 						goto ext;						//!< and someone is still holding the buffer, can't truncate it !!!
 					}
 					else if (dry_run == U_FALSE)
@@ -1406,16 +1406,16 @@ static URET _TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run)
 			}
 
 			if (dry_run == U_FALSE) {
-				uffs_ExpireBlockInfo(dev, bc, UFFS_ALL_PAGES);
+				uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 				dev->ops->EraseBlock(dev, node->u.data.block);
 				uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, node);
 				node->u.list.block = bc->block;
-				uffs_PutBlockInfo(dev, bc);
+				uffs_BlockInfoPut(dev, bc);
 				uffs_TreeInsertToErasedListTail(dev, node);
 				fnode->u.file.len = block_start;
 			}
 			else {
-				uffs_PutBlockInfo(dev, bc);
+				uffs_BlockInfoPut(dev, bc);
 			}
 			flen = block_start;
 		}
@@ -1463,10 +1463,10 @@ URET uffs_DeleteObject(const char * name)
 
 	if (obj->type == UFFS_TYPE_DIR) {
 		// if the dir is not empty, can't delete it.
-		node = uffs_FindDirNodeFromTreeWithParent(dev, obj->serial);
+		node = uffs_TreeFindDirNodeWithParent(dev, obj->serial);
 		if (node != NULL) goto err;  //have sub dirs ?
 
-		node = uffs_FindFileNodeFromTreeWithParent(dev, obj->serial);
+		node = uffs_TreeFindFileNodeWithParent(dev, obj->serial);
 		if (node != NULL) goto err;  //have sub files ?
 	}
 

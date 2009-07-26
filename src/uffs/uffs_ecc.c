@@ -115,9 +115,9 @@ static void uffs_MakeEccChunk256(void *data, void *ecc, u16 len)
 		}
 	}
 	// ECC layout:
-	// Byte[0]  P64   | P64'   | P32  | P32'  | P8   | P8'
-	// Byte[1]  P1024 | P1024' | P512 | P512' | P128 | P128'
-	// Byte[2]  P4    | P4'    | P2   | P2'   | 1    | 1
+	// Byte[0]  P64   | P64'   | P32  | P32'  | P16  | P16'  | P8   | P8'
+	// Byte[1]  P1024 | P1024' | P512 | P512' | P256 | P256' | P128 | P128'
+	// Byte[2]  P4    | P4'    | P2   | P2'   | P1   | P1'   | 1    | 1
 	pecc[0] = ~(line_parity_tbl[line_parity & 0xf] | line_parity_prime_tbl[line_parity_prime & 0xf]);
 	pecc[1] = ~(line_parity_tbl[line_parity >> 4] | line_parity_prime_tbl[line_parity_prime >> 4]);
 	pecc[2] = (~col_parity) | 0x03;
@@ -264,12 +264,13 @@ u16 uffs_MakeEcc8(void *data, int data_len)
 	}
 
 	// ECC layout:
-	// Byte[0]:  (1)   |  (1)   | P32  | P32'  | P8   | P8'		-- row
-	// Byte[1]:  P4    | P4'    | P2   | P2'   | (1)  | (1)		-- column
-	ecc = ~(line_parity_tbl[line_parity & 0xf] | line_parity_prime_tbl[line_parity_prime & 0xf]);
-	ecc |= ((~col_parity) | 0x03) << 8;
+	// row:         (1)  | (1)   | P32  | P32'  | P16  | P16'  | P8   | P8'
+	// column:      P4   | P4'   | P2   | P2'   | P1   | P1'   | (1)  | (1)
+	// 12-bit ecc:  P32  | P32'  | P16  | P16'  | P8   | P8'   | P4   | P4'   | P2   | P2'   | P1   | P1'  |
+	ecc = (~(line_parity_tbl[line_parity & 0xf] | line_parity_prime_tbl[line_parity_prime & 0xf])) << 6;
+	ecc |= (((~col_parity) >> 2) & 0x3f);
 
-	return ecc;
+	return ecc & 0xfff;
 }
 
 /**
@@ -284,14 +285,17 @@ int uffs_EccCorrect8(void *data, u16 read_ecc, u16 test_ecc, int errtop)
 	u8 d0, d1;			/* deltas */
 	u8 *p = (u8 *)data;
 
-	d0 = (read_ecc & 0xFF) ^ (test_ecc & 0xFF);
-	d1 = (read_ecc >> 8) ^ (test_ecc >> 8);
-	
+	read_ecc &= 0xfff;
+	test_ecc &= 0xfff;
+
+	d0 = (read_ecc >> 6) ^ (test_ecc >> 6);
+	d1 = (read_ecc & 0x3f) ^ (test_ecc & 0x3f);
+
 	if ((d0 | d1) == 0)
 		return 0;
 	
-	if( ((d0 ^ (d0 >> 1)) & 0x55) == 0x55 &&
-	    ((d1 ^ (d1 >> 1)) & 0x54) == 0x54)
+	if( ((d0 ^ (d0 >> 1)) & 0x15) == 0x15 &&
+	    ((d1 ^ (d1 >> 1)) & 0x15) == 0x15)
 	{
 		// Single bit (recoverable) error in data
 
@@ -300,16 +304,16 @@ int uffs_EccCorrect8(void *data, u16 read_ecc, u16 test_ecc, int errtop)
 		
 		bit = b = 0;		
 		
-		if(d0 & 0x80) b |= 0x08;
 		if(d0 & 0x20) b |= 0x04;
 		if(d0 & 0x08) b |= 0x02;
 		if(d0 & 0x02) b |= 0x01;
 
-		if(d1 & 0x80) bit |= 0x04;
-		if(d1 & 0x20) bit |= 0x02;
-		if(d1 & 0x08) bit |= 0x01;
+		if(d1 & 0x20) bit |= 0x04;
+		if(d1 & 0x08) bit |= 0x02;
+		if(d1 & 0x02) bit |= 0x01;
 
 		if (b >= (u8)errtop) return -1;
+		if (bit >= 8) return -1;
 
 		p[b] ^= (1 << bit);
 		
