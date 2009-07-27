@@ -92,7 +92,6 @@ struct uffs_StorageAttrSt {
 	int ecc_opt;			//!< ecc option ( #UFFS_ECC_[NONE|SOFT|HW|HW_AUTO] )
 	int layout_opt;			//!< layout option
 	const u8 *ecc_layout;	//!< page data ECC layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
-	const u8 *s_ecc_layout;	//!< spare data ECC layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
 	const u8 *data_layout;	//!< spare data layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
 	void *private;			//!< private data for storage attribute
 };

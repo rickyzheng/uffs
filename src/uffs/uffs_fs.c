@@ -433,7 +433,10 @@ URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev,
 	if (obj->node == NULL) {			// dir or file not exist
 		if (obj->oflag & UO_CREATE) {	// expect to create a new one
 			uffs_ObjectDevUnLock(obj);
-			uffs_CreateObjectEx(obj, dev, dir, obj->name, obj->name_len, oflag);
+			if (obj->name == NULL || obj->name_len == 0)
+				obj->err = UEEXIST;
+			else
+				uffs_CreateObjectEx(obj, dev, dir, obj->name, obj->name_len, oflag);
 			goto ext;
 		}
 		else {

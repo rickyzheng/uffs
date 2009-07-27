@@ -52,28 +52,24 @@
 // P256: [D0, D1, D2, D3, ECC1, S, ECC2, ECC3]
 static const u8 P256_sdata_layout[] = {0, 4, 0xFF, 0};
 static const u8 P256_ecc_layout[] = {4, 1, 6, 2, 0xFF, 0};
-static const u8 P256_s_ecc_layout[] = {0xFF, 0};
 
-// P512: [D0, D1, D2, D3, D4, S, D5, SECC1, SECC2, ECC1, ECC2, ECC3, ECC4, ECC5, ECC6, X]
-static const u8 P512_sdata_layout[] = {0, 5, 6, 1, 0xFF, 0};
+// P512: [D0, D1, D2, D3, D4, S, D5, D6, D7, ECC1, ECC2, ECC3, ECC4, ECC5, ECC6, X]
+static const u8 P512_sdata_layout[] = {0, 5, 6, 3, 0xFF, 0};
 static const u8 P512_ecc_layout[] = {9, 6, 0xFF, 0};
-static const u8 P512_s_ecc_layout[] = {7, 2, 0xFF, 0};
 
-// P1K: [D0, D1, D2, D3, D4, S, D5, SECC1, SECC2, ECC1, ..., ECC12, X, ...]
-static const u8 P1K_sdata_layout[] = {0, 5, 6, 1, 0xFF, 0};
+// P1K: [D0, D1, D2, D3, D4, S, D5, D6, D7, ECC1, ..., ECC12, X, ...]
+static const u8 P1K_sdata_layout[] = {0, 5, 6, 3, 0xFF, 0};
 static const u8 P1K_ecc_layout[] = {9, 12, 0xFF, 0};
-static const u8 P1K_s_ecc_layout[] = {7, 2, 0xFF, 0};
 
-// P2K: [D0, D1, D2, D3, D4, S, D5, SECC1, SECC2, ECC1, ..., ECC24, X, ...]
-static const u8 P2K_sdata_layout[] = {0, 5, 6, 1, 0xFF, 0};
+// P2K: [D0, D1, D2, D3, D4, S, D5, D6, D7, ECC1, ..., ECC24, X, ...]
+static const u8 P2K_sdata_layout[] = {0, 5, 6, 3, 0xFF, 0};
 static const u8 P2K_ecc_layout[] = {9, 24, 0xFF, 0};
-static const u8 P2K_s_ecc_layout[] = {7, 2, 0xFF, 0};
 
-static const u8 * layout_sel_tbl[4][3] = {
-	{P256_sdata_layout, P256_ecc_layout, P256_s_ecc_layout},
-	{P512_sdata_layout, P512_ecc_layout, P512_s_ecc_layout},
-	{P1K_sdata_layout, P1K_ecc_layout, P1K_s_ecc_layout},
-	{P2K_sdata_layout, P2K_ecc_layout, P2K_s_ecc_layout},
+static const u8 * layout_sel_tbl[4][2] = {
+	{P256_sdata_layout, P256_ecc_layout},
+	{P512_sdata_layout, P512_ecc_layout},
+	{P1K_sdata_layout, P1K_ecc_layout},
+	{P2K_sdata_layout, P2K_ecc_layout},
 };
 
 static void uffs_TagMakeEcc(struct uffs_TagStoreSt *ts)
@@ -84,14 +80,17 @@ static void uffs_TagMakeEcc(struct uffs_TagStoreSt *ts)
 
 static int uffs_TagEccCorrect(struct uffs_TagStoreSt *ts)
 {
-	struct uffs_TagStoreSt local;
-	u16 ecc;
+	u16 ecc_store, ecc_read;
+	int ret;
 
-	memcpy(&local, ts, sizeof(struct uffs_TagStoreSt));
-	local.tag_ecc = 0xfff;
-	ecc = uffs_MakeEcc8(&local, sizeof(local));
+	ecc_store = ts->tag_ecc;
+	ts->tag_ecc = 0xFFF;
+	ecc_read = uffs_MakeEcc8(ts, sizeof(struct uffs_TagStoreSt));
+	ret = uffs_EccCorrect8(ts, ecc_read, ecc_store, sizeof(struct uffs_TagStoreSt));
+	ts->tag_ecc = ecc_store;	// restore tag ecc
 
-	return uffs_EccCorrect8(ts, ts->tag_ecc, ecc, 8);
+	return ret;
+
 }
 
 static int _calculate_spare_buf_size(uffs_Device *dev)
@@ -139,16 +138,14 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 	int idx;
 	const u8 idx_tbl[] = {0, 1, 2, 3, 3};
 
-	dev->mem.spare_buffer_size = _calculate_spare_buf_size(dev);
-
 	idx = idx_tbl[(attr->page_data_size / 256) >> 1];
 
-	if (attr->ecc_layout == NULL)
-		attr->ecc_layout = layout_sel_tbl[idx][0];
 	if (attr->data_layout == NULL)
-		attr->data_layout = layout_sel_tbl[idx][1];
-	if (attr->s_ecc_layout == NULL)
-		attr->s_ecc_layout = layout_sel_tbl[idx][2];
+		attr->data_layout = layout_sel_tbl[idx][0];
+	if (attr->ecc_layout == NULL)
+		attr->ecc_layout = layout_sel_tbl[idx][1];
+
+	dev->mem.spare_buffer_size = _calculate_spare_buf_size(dev);
 
 	return U_SUCC;
 }
@@ -181,7 +178,7 @@ static void _UnloadSpare(uffs_Device *dev, const u8 *spare, uffs_Tags *tag, u8 *
 		p = dev->attr->data_layout;
 		while (*p != 0xFF && tag_size > 0) {
 			n = (p[1] > tag_size ? tag_size : p[1]);
-			memcpy(p_tag, spare + p[1], n);
+			memcpy(p_tag, spare + p[0], n);
 			tag_size -= n;
 			p_tag += n;
 			p += 2;
@@ -213,6 +210,7 @@ int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *ta
 	int ret = 0;
 	UBOOL is_bad = U_FALSE;
 
+
 	if (attr->layout_opt == UFFS_LAYOUT_FLASH)
 		ret = ops->ReadPageSpareWithLayout(dev, block, page, (u8 *)&tag->s, tag ? TAG_STORE_SIZE : 0, ecc);
 	else
@@ -226,26 +224,30 @@ int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *ta
 		_UnloadSpare(dev, spare_buf, tag, ecc);
 
 	// copy some raw data
-	tag->_dirty = tag->s.dirty;
-	tag->_valid = tag->s.valid;
+	if (tag) {
+		tag->_dirty = tag->s.dirty;
+		tag->_valid = tag->s.valid;
+	}
 
 	if (UFFS_FLASH_HAVE_ERR(ret))
 		goto ext;
 
-	if (tag->_valid == 1) //it's not a valid page ? don't need go further
-		goto ext;
-
-	// do tag ecc correction
-	if (dev->attr->ecc_opt != UFFS_ECC_NONE) {
-		ret = uffs_TagEccCorrect(&tag->s);
-		ret = (ret < 0 ? UFFS_FLASH_ECC_FAIL :
-				(ret > 0 ? UFFS_FLASH_ECC_OK : UFFS_FLASH_NO_ERR));
-
-		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
-			is_bad = U_TRUE;
-
-		if (UFFS_FLASH_HAVE_ERR(ret))
+	if (tag) {
+		if (tag->_valid == 1) //it's not a valid page ? don't need go further
 			goto ext;
+
+		// do tag ecc correction
+		if (dev->attr->ecc_opt != UFFS_ECC_NONE) {
+			ret = uffs_TagEccCorrect(&tag->s);
+			ret = (ret < 0 ? UFFS_FLASH_ECC_FAIL :
+					(ret > 0 ? UFFS_FLASH_ECC_OK : UFFS_FLASH_NO_ERR));
+
+			if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+				is_bad = U_TRUE;
+
+			if (UFFS_FLASH_HAVE_ERR(ret))
+				goto ext;
+		}
 	}
 
 ext:
@@ -343,7 +345,7 @@ static void _MakeSpare(uffs_Device *dev, uffs_TagStore *ts, u8 *ecc, u8* spare)
 	p = dev->attr->data_layout;
 	while (*p != 0xFF && ts_size > 0) {
 		n = (p[1] > ts_size ? ts_size : p[1]);
-		memcpy(p_ts, spare + p[1], n);
+		memcpy(spare + p[0], p_ts, n);
 		ts_size -= n;
 		p_ts += n;
 		p += 2;
@@ -445,7 +447,9 @@ URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block)
 		return U_FAIL;
 	}
 
-	ret = dev->ops->WritePageSpare(dev, block, 0, &status, dev->attr->block_status_offs, 1);
+	ret = dev->ops->EraseBlock(dev, block);
+	if (ret == UFFS_FLASH_NO_ERR)
+		ret = dev->ops->WritePageSpare(dev, block, 0, &status, dev->attr->block_status_offs, 1);
 
 	return ret == UFFS_FLASH_NO_ERR ? U_SUCC : U_FAIL;
 }

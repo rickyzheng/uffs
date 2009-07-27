@@ -50,6 +50,7 @@
 #include "uffs_fileem.h"
 
 extern struct cli_commandset * get_helper_cmds(void);
+extern struct cli_commandset * get_test_cmds(void);
 extern void femu_init_uffs_device(uffs_Device *dev);
 
 #ifdef USE_NATIVE_MEMORY_ALLOCATOR
@@ -69,8 +70,8 @@ const char * conf_emu_filename = DEFAULT_EMU_FILENAME;
 
 /* default basic parameters of the NAND device */
 int conf_pages_per_block = 32;
-int conf_pages_data_size = 256;
-int conf_pages_spare_size = 8;
+int conf_pages_data_size = 512;
+int conf_pages_spare_size = 16;
 int conf_total_blocks =	128;		//2M
 
 #define PAGE_SIZE					(conf_pages_data_size + conf_pages_spare_size)
@@ -129,7 +130,7 @@ BOOL cmdMeminfo(const char *tail)
 #endif
 
 
-static struct cli_commandset cmdset[] = 
+static struct cli_commandset basic_cmdset[] = 
 {
 #ifdef USE_NATIVE_MEMORY_ALLOCATOR
     { cmdMeminfo,	"mem",			"<mount>",			"show native memory allocator infomation" },
@@ -446,7 +447,8 @@ int main(int argc, char *argv[])
 
 	if (uffs_InitObjectBuf() == U_SUCC) {
 		cli_add_commandset(get_helper_cmds());
-		cli_add_commandset(cmdset);
+		cli_add_commandset(get_test_cmds());
+		cli_add_commandset(basic_cmdset);
 		if (conf_command_line_mode) {
 			if (conf_exec_script) {
 				exec_script();
