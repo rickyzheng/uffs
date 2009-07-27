@@ -49,63 +49,6 @@ void uffs_InitBadBlock(uffs_Device *dev)
 	dev->bad.block = UFFS_INVALID_BLOCK;
 }
 
-/** 
- * \brief check ECC in buf, if the data is corrupt, try ECC correction.
- * \param[in] dev uffs device
- * \param[in] buf data in buf
- * \param[in] block num of this buf
- * \return return U_SUCC if data is valid or collected by ECC successful,
- *         return U_FAIL if ECC fail.
- * \note if a bad block is found, it will then be add to dev->bad, so that we can
- *       deal with it later by calling #uffs_RecoverBadBlock.
- */
-URET uffs_CheckBadBlock(uffs_Device *dev, uffs_Buf *buf, int block)
-{
-	u8 ecc[MAX_ECC_LENGTH];
-	int ret;
-
-	dev->flash->MakeEcc(dev, buf->data, ecc);
-	ret = dev->flash->EccCollect(dev, buf->data, buf->ecc, ecc);
-	if (ret > 0) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"bad block(%d) found but corrected by ecc!\n", block);
-
-		if (dev->bad.block == block) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"The bad block %d has been reported before.\n", block);
-			return U_SUCC;
-		}
-
-		if (dev->bad.block != UFFS_INVALID_BLOCK) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"uffs can't handle more than one bad block!\n");
-			return U_FAIL;
-		}
-		/**
-		 * mark this block as a new discovered bad block,
-		 * so that we can deal with this bad block later.(by calling #uffs_RecoverBadBlock)
-		 */
-		dev->bad.block = block;
-		return U_SUCC;
-	}
-	else if (ret < 0) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"bad block(%d) found and can't be corrected by ecc!\n", block);
-		if (dev->bad.block == block) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"The bad block %d has been reported before.\n", block);
-			return U_FAIL;
-		}
-
-		if (dev->bad.block != UFFS_INVALID_BLOCK) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"uffs can't handle more than one bad block!\n");
-			return U_FAIL;
-		}
-		/**
-		 * Don't know how can we do, but set treat it as a new discovered bad block anyway.
-		 */
-		dev->bad.block = block;
-		return U_FAIL;
-	}
-	
-	//no error found
-	return U_SUCC;
-}
 
 /** 
  * \brief process bad block: erase bad block, mark it as 'bad' and put the node to bad block list.
@@ -116,8 +59,8 @@ void uffs_ProcessBadBlock(uffs_Device *dev, TreeNode *node)
 {
 	if (HAVE_BADBLOCK(dev)) {
 		// erase the bad block
-		dev->ops->EraseBlock(dev, dev->bad.block);
-		dev->flash->MakeBadBlockMark(dev, dev->bad.block);
+		uffs_FlashEraseBlock(dev, dev->bad.block);
+		uffs_FlashMarkBadBlock(dev, dev->bad.block);
 
 		// and put it into bad block list
 		uffs_TreeInsertToBadBlockList(dev, node);
@@ -142,7 +85,7 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 	uffs_Tags newTag;
 	UBOOL succRecov;
 	UBOOL goodBlockIsDirty = U_FALSE;
-	URET ret;
+	int ret;
 	int region;
 	u8 type;
 	
@@ -171,7 +114,7 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 			break;  //end of last valid page, normal break
 		}
 		page = uffs_FindBestPageInBlock(dev, bc, page);
-		tag = &(bc->spares[page].tag);
+		tag = GET_TAG(bc, page);
 		buf = uffs_BufClone(dev, NULL);
 		if (buf == NULL) {	
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't clone a new buf!\n");
@@ -186,23 +129,26 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 			succRecov = U_FALSE;
 			break;
 		}
-		buf->data_len = tag->data_len;
+		buf->data_len = TAG_DATA_LEN(tag);
 		if (buf->data_len > dev->com.pg_data_size) {
 			uffs_Perror(UFFS_ERR_NOISY, PFX"data length over flow!!!\n");
 			buf->data_len = dev->com.pg_data_size;
 		}
 
-		buf->parent = tag->parent;
-		buf->serial = tag->serial;
-		buf->type = tag->type;
-		buf->page_id = tag->page_id;
+		buf->parent = TAG_PARENT(tag);
+		buf->serial = TAG_SERIAL(tag);
+		buf->type = TAG_TYPE(tag);
+		buf->page_id = TAG_PAGE_ID(tag);
 		
 		newTag = *tag;
-		newTag.block_ts = uffs_GetNextBlockTimeStamp(tag->block_ts);
-		ret = uffs_WriteDataToNewPage(dev, good->u.list.block, i, &newTag, buf);
+		TAG_BLOCK_TS(&newTag) = uffs_GetNextBlockTimeStamp(TAG_BLOCK_TS(tag));
+
+		ret = uffs_FlashWritePageCombine(dev, good->u.list.block, i, buf->data, &newTag);
+
 		goodBlockIsDirty = U_TRUE;
 		uffs_BufFreeClone(dev, buf);
-		if (ret != U_SUCC) {
+
+		if (ret == UFFS_FLASH_IO_ERR) {
 			uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error ?\n");
 			succRecov = U_FALSE;
 			break;
@@ -258,5 +204,12 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 /** put a new block to the bad block waiting list */
 void uffs_BadBlockAdd(uffs_Device *dev, int block)
 {
-	//TODO: ...
+	if (dev->bad.block == block)
+		return;
+
+	if (dev->bad.block != UFFS_INVALID_BLOCK)
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't add more then one bad block !\n");
+	else
+		dev->bad.block = block;
 }
+

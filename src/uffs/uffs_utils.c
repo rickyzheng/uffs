@@ -49,9 +49,10 @@
 #ifdef ENABLE_BAD_BLOCK_VERIFY
 static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 {
-	u8 *pageBuf;
+	u8 *pageBuf, *p;
 	int pageSize;
 	int i, j;
+	uffs_Tags local_tag;
 
 	pageSize = dev->attr->page_data_size + dev->attr->spare_size;
 	pageBuf = dev->mem.one_page_buffer;
@@ -64,23 +65,38 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 	//step 1: Erase, fully fill with 0x0, and check
 	dev->ops->EraseBlock(dev, block);
 	memset(pageBuf, 0, pageSize);
+	memset(&local_tag, 0, sizeof(local_tag));
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		dev->ops->WritePage(dev, block, i, pageBuf, (u8 *)pageBuf + dev->attr->page_data_size);
+		uffs_FlashWritePageCombine(dev, block, i, pageBuf, &local_tag);
 	}
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		dev->ops->ReadPage(dev, block, i, pageBuf, (u8 *)pageBuf + dev->attr->page_data_size);
+		uffs_FlashReadPage(dev, block, i, pageBuf);
 		for (j = 0; j < pageSize; j++) {
 			if(pageBuf[j] != 0)
+				goto bad_out;
+		}
+		uffs_FlashReadPageSpare(dev, block, i, &local_tag, NULL);
+		p = (u8 *) &local_tag.s;
+		for (j = 0; j < sizeof(local_tag.s); j++) {
+			if(p[j] != 0)
 				goto bad_out;
 		}
 	}
 
 	//step 2: Erase, and check
-	dev->ops->EraseBlock(dev, block);
+	//dev->ops->EraseBlock(dev, block);
+	uffs_FlashEraseBlock(dev, block);
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		dev->ops->ReadPage(dev, block, i, pageBuf, (u8 *)pageBuf + dev->attr->page_data_size);
+		//dev->ops->ReadPage(dev, block, i, pageBuf, (u8 *)pageBuf + dev->attr->page_data_size);
+		uffs_FlashReadPage(dev, block, i, pageBuf);
 		for (j = 0; j < pageSize; j++) {
-			if(pageBuf[j] != 0xff) 
+			if(pageBuf[j] != 0xFF)
+				goto bad_out;
+		}
+		uffs_FlashReadPageSpare(dev, block, i, &local_tag, NULL);
+		p = (u8 *) &local_tag.s;
+		for (j = 0; j < sizeof(local_tag.s); j++) {
+			if(p[j] != 0xFF)
 				goto bad_out;
 		}
 	}
@@ -88,8 +104,8 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 	return;
 
 bad_out:
-	dev->ops->EraseBlock(dev, block);
-	dev->flash->MakeBadBlockMark(dev, block);
+	uffs_FlashEraseBlock(dev, block);
+	uffs_FlashMarkBadBlock(dev, block);
 	return;
 }
 #endif
@@ -103,7 +119,7 @@ URET uffs_FormatDevice(uffs_Device *dev)
 	if (dev == NULL)
 		return U_FAIL;
 
-	if (dev->ops == NULL || dev->flash == NULL) 
+	if (dev->ops == NULL) 
 		return U_FAIL;
 
 
@@ -130,8 +146,8 @@ URET uffs_FormatDevice(uffs_Device *dev)
 	uffs_BlockInfoExpireAll(dev);
 
 	for (i = dev->par.start; i <= dev->par.end; i++) {
-		if (dev->ops->IsBlockBad(dev, i) == U_FALSE) {
-			dev->ops->EraseBlock(dev, i);
+		if (uffs_FlashIsBadBlock(dev, i) == U_FALSE) {
+			uffs_FlashEraseBlock(dev, i);
 		}
 		else {
 #ifdef ENABLE_BAD_BLOCK_VERIFY

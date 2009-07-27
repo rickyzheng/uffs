@@ -139,7 +139,7 @@ struct uffs_FlashOpsSt {
 	/**
 	 * Read page spare, unload to tag and ecc.
 	 *
-	 * \note flash driver must provide this function if layout_opt is UFFS_LAYOUT_FLASH.
+	 * \note flash driver must provide this function if layout_opt is UFFS_LAYOUT_FLASH or .
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
@@ -167,7 +167,7 @@ struct uffs_FlashOpsSt {
 	/**
 	 * Write [len] bytes to page spare from [ofs].
 	 *
-	 * \note flash driver must privide this function when layout_opt is UFFS_LAYOUT_UFFS.
+	 * \note flash driver must privide this function.
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
@@ -220,10 +220,10 @@ struct uffs_FlashOpsSt {
 int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag, u8 *ecc);
 
 /** read page data to page buf and do ECC correct */
-int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf);
+int uffs_FlashReadPage(uffs_Device *dev, int block, int page, u8 *buf);
 
 /** write page data and spare */
-int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *buf, uffs_Tags *tag);
+int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, u8 *buf, uffs_Tags *tag);
 
 /** Mark this block as bad block */
 int uffs_FlashMarkBadBlock(uffs_Device *dev, int block);
@@ -243,6 +243,13 @@ u32 uffs_FlashGetPageInfo(uffs_Device *dev, int block, int page);
 
 /** load uffs_FileInfo from flash storage */
 URET uffs_FlashReadFileinfoPhy(uffs_Device *dev, int block, int page, uffs_FileInfo *info);
+
+/**
+ * Initialize UFFS flash interface
+ */
+URET uffs_FlashInterfaceInit(uffs_Device *dev);
+
+
 
 #ifdef __cplusplus
 }

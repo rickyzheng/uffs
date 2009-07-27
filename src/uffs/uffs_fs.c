@@ -1133,16 +1133,19 @@ static URET _CoverOnePage(uffs_Device *dev,
 						  uffs_Buf *buf,
 						  u32 length)
 {
-	newTag->parent = buf->parent;
-	newTag->serial = buf->serial;
-	newTag->type = buf->type;
-	newTag->block_ts = newTimeStamp;
-	newTag->data_len = length;
-	newTag->data_sum = old->data_sum;
-	newTag->page_id = (u8)(buf->page_id);
+	int ret;
 
+	TAG_PARENT(newTag) = buf->parent;
+	TAG_SERIAL(newTag) = buf->serial;
+	TAG_TYPE(newTag) = buf->type;
+	TAG_BLOCK_TS(newTag) = newTimeStamp;
+	TAG_DATA_LEN(newTag) = length;
+	//newTag->data_sum = old->data_sum;
+	TAG_PAGE_ID(newTag) = (u8)(buf->page_id);
 
-	return uffs_WriteDataToNewPage(dev, newBlock, page, newTag, buf);
+	ret = uffs_FlashWritePageCombine(dev, newBlock, page, buf->data, newTag);
+
+	return ret == UFFS_FLASH_IO_ERR ? U_FAIL : U_SUCC;
 }
 
 static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 remain, UBOOL dry_run)
@@ -1240,13 +1243,14 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 		tag = &(bc->spares[page].tag);
 		uffs_BufLoadPhyData(dev, buf, bc->block, page);
 
-		buf->parent = tag->parent;
-		buf->serial = tag->serial;
-		buf->type = tag->type;
-		buf->page_id = tag->page_id;
-		buf->data_len = tag->data_len;
+		buf->parent = TAG_PARENT(tag);
+		buf->serial = TAG_SERIAL(tag);
+		buf->type = TAG_TYPE(tag);
+		buf->page_id = TAG_PAGE_ID(tag);
+		buf->data_len = TAG_DATA_LEN(tag);
 
-		newTag = &(newBc->spares[page_id].tag);
+		newTag = GET_TAG(newBc, page_id);
+
 		if (fdn == 0 && page_id == 0) {
 			//copy the page file information
 			ret = _CoverOnePage(dev, tag, newTag, newBlock, page_id, timeStamp, buf, buf->data_len);
@@ -1256,11 +1260,11 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 		else {
 			end = ((fdn == 0) ? (page_id - 1) * dev->com.pg_data_size :
 					page_id * dev->com.pg_data_size);
-			end += tag->data_len;
+			end += TAG_DATA_LEN(tag);
 			end += block_start;
 
 			if (remain > end) {
-				if (tag->data_len != dev->com.pg_data_size) {
+				if (TAG_DATA_LEN(tag) != dev->com.pg_data_size) {
 					obj->err = UEIOERR;
 					uffs_Perror(UFFS_ERR_NOISY, PFX" ???? unknown error when truncate. \n");
 					break;
@@ -1275,7 +1279,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 					break;
 			}
 			else if (remain < end) {
-				buf->data_len = tag->data_len - (end - remain);
+				buf->data_len = TAG_DATA_LEN(tag) - (end - remain);
 				if (buf->data_len == 0) {
 					ret = U_SUCC;
 					break;

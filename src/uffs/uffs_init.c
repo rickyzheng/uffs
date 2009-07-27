@@ -62,8 +62,8 @@ URET uffs_InitDevice(uffs_Device *dev)
 	uffs_DeviceInitLock(dev);
 	uffs_InitBadBlock(dev);
 
-	if (uffs_InitFlashClass(dev) != U_SUCC) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't initialize flash class!\n");
+	if (uffs_FlashInterfaceInit(dev) != U_SUCC) {
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't initialize flash interface !\n");
 		goto fail;
 	}
 

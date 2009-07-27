@@ -345,7 +345,7 @@ URET uffs_BufLoadPhyData(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
 {
 	int ret;
 
-	ret = uffs_FlashReadPage(dev, block, page, buf);
+	ret = uffs_FlashReadPage(dev, block, page, buf->data);
 
 	if (UFFS_FLASH_HAVE_ERR(ret)) {
 		buf->mark = UFFS_BUF_EMPTY;
@@ -370,7 +370,7 @@ URET uffs_LoadPhyDataToBufEccUnCare(uffs_Device *dev, uffs_Buf *buf, u32 block, 
 {
 	int ret;
 
-	ret = uffs_FlashReadPage(dev, block, page, buf);
+	ret = uffs_FlashReadPage(dev, block, page, buf->data);
 
 	if (ret == UFFS_FLASH_IO_ERR) {
 		buf->mark = UFFS_BUF_EMPTY;
@@ -560,7 +560,7 @@ URET
 		TAG_SERIAL(tag) = buf->serial;
 		TAG_PAGE_ID(tag) = (u8)(buf->page_id);
 
-		ret = uffs_FlashWritePageCombine(dev, bc->block, page, buf, tag);
+		ret = uffs_FlashWritePageCombine(dev, bc->block, page, buf->data, tag);
 		if (ret != UFFS_FLASH_IO_ERR) {
 			if(_BreakFromDirty(dev, buf) == U_SUCC) {
 				buf->mark = UFFS_BUF_VALID;
@@ -642,7 +642,7 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 		TAG_SERIAL(tag) = buf->serial;
 		TAG_PAGE_ID(tag) = (u8)(buf->page_id);
 
-		ret = uffs_FlashWritePageCombine(dev, node->u.list.block, i, buf, tag);
+		ret = uffs_FlashWritePageCombine(dev, node->u.list.block, i, buf->data, tag);
 
 		if (ret != UFFS_FLASH_IO_ERR) {
 			if (_BreakFromDirty(dev, buf) == U_SUCC) {
@@ -759,7 +759,7 @@ static URET _BufFlush_Exist_With_BlockCover(
 				data_sum = _GetDirOrFileNameSum(dev, buf);
 
 			TAG_DATA_LEN(tag) = buf->data_len;
-			ret = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
+			ret = uffs_FlashWritePageCombine(dev, newBlock, i, buf->data, tag);
 			if (ret != UFFS_FLASH_IO_ERR) {
 				if (_BreakFromDirty(dev, buf) == U_SUCC) {
 					buf->mark = UFFS_BUF_VALID;
@@ -810,7 +810,7 @@ static URET _BufFlush_Exist_With_BlockCover(
 			if (i == 0)
 				data_sum = _GetDirOrFileNameSum(dev, buf);
 
-			ret = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
+			ret = uffs_FlashWritePageCombine(dev, newBlock, i, buf->data, tag);
 			uffs_BufFreeClone(dev, buf);
 			if (ret == UFFS_FLASH_IO_ERR) {
 				uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error <4>?\n");
@@ -1268,7 +1268,7 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 
 	buf->serial = serial;
 	buf->page_id = page_id;
 
-	if (UFFS_FLASH_HAVE_ERR(uffs_FlashReadPage(dev, block, page, buf))) {
+	if (UFFS_FLASH_HAVE_ERR(uffs_FlashReadPage(dev, block, page, buf->data))) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't load page from flash !\n");
 		return NULL;
 	}

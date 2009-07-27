@@ -72,7 +72,6 @@ int conf_pages_per_block = 32;
 int conf_pages_data_size = 256;
 int conf_pages_spare_size = 8;
 int conf_total_blocks =	128;		//2M
-int conf_sim_manid = MAN_ID_SAMSUNG;	//default: simulate Samsung's NAND flash
 
 #define PAGE_SIZE					(conf_pages_data_size + conf_pages_spare_size)
 #define BLOCK_DATA_SIZE				(conf_pages_per_block * conf_pages_data_size)
@@ -141,11 +140,7 @@ static struct cli_commandset cmdset[] =
 
 static void setup_emu_storage(struct uffs_StorageAttrSt *attr)
 {
-	attr->dev_type =	UFFS_DEV_EMU;			/* dev_type */
-	attr->maker = conf_sim_manid;				/* simulate manufacture ID */
-	attr->id = 0xe3;							/* chip id, can be ignored. */
 	attr->total_blocks = conf_total_blocks;			/* total blocks */
-	attr->block_data_size = BLOCK_DATA_SIZE;	/* block data size */
 	attr->page_data_size = conf_pages_data_size;		/* page data size */
 	attr->spare_size = conf_pages_spare_size;			/* page spare size */
 	attr->pages_per_block = conf_pages_per_block;	/* pages per block */
@@ -309,11 +304,6 @@ static int parse_options(int argc, char *argv[])
 				if (conf_total_blocks < 2)
 					usage++;
             }
-			else if (!strcmp(arg, "-i") || !strcmp(arg, "--id-man"))
-			{
-				if (++iarg > argc) usage++;
-				else if (sscanf(argv[iarg], "%x", &conf_sim_manid) < 1) usage++;
-			}
             else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose")) {
 				conf_verbose_mode = 1;
             }

@@ -121,11 +121,7 @@ static void * static_mem_alloc_malloc(struct uffs_DeviceSt *dev, unsigned int si
 
 static void setup_emu_storage(struct uffs_StorageAttrSt *attr)
 {
-	attr->dev_type =	UFFS_DEV_EMU;			/* dev_type */
-	attr->maker = MAN_ID;			        	/* simulate manufacture ID */
-	attr->id = 0xe3;						    /* chip id, can be ignored. */
 	attr->total_blocks = TOTAL_BLOCKS;			/* total blocks */
-	attr->block_data_size = BLOCK_DATA_SIZE;	/* block data size */
 	attr->page_data_size = PAGE_DATA_SIZE;		/* page data size */
 	attr->spare_size = PAGE_SPARE_SIZE;		  	/* page spare size */
 	attr->pages_per_block = PAGES_PER_BLOCK;	/* pages per block */

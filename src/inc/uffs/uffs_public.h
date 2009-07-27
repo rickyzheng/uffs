@@ -196,12 +196,6 @@ UBOOL uffs_IsDataBlockReguFull(uffs_Device *dev, uffs_BlockInfo *bc);
 
 int uffs_GetBlockTimeStamp(uffs_Device *dev, uffs_BlockInfo *bc);
 
-URET uffs_WriteDataToNewPage(uffs_Device *dev, 
-							 u16 block, 
-							 u16 page,
-							 uffs_Tags *tag,
-							 uffs_Buf *buf);
-
 
 int uffs_GetDeviceUsed(uffs_Device *dev);
 int uffs_GetDeviceFree(uffs_Device *dev);

@@ -2,7 +2,6 @@ SET (libuffs_SRCS
 		uffs_badblock.c 
 		uffs_blockinfo.c 
 		uffs_buf.c 
-		uffs_class.c 
 		uffs_debug.c 
 		uffs_device.c 
 		uffs_ecc.c 

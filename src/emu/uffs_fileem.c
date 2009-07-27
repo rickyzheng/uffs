@@ -135,7 +135,6 @@ static URET CheckInit(uffs_Device *dev)
 }
 
 
-
 static URET femu_WritePageData(uffs_Device *dev, u32 block, u32 page_num, const u8 *data, int len, u8 *ecc)
 {
 	int written;
@@ -190,7 +189,7 @@ static URET femu_WritePageData(uffs_Device *dev, u32 block, u32 page_num, const 
 	return U_SUCC;
 }
 
-static URET femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const u8 *spare, int len)
+static URET femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const u8 *spare, int ofs, int len)
 {
 	int written;
 	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
@@ -221,7 +220,7 @@ static URET femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const
 	}
 	
 	if (spare) {
-		fseek(emu->fp, (block*blk_pgs + page_num) * (pgd_size + sp_size) + dev->attr->page_data_size, SEEK_SET);
+		fseek(emu->fp, (block*blk_pgs + page_num) * (pgd_size + sp_size) + dev->attr->page_data_size + ofs, SEEK_SET);
 		written = fwrite(spare, 1, len, emu->fp);
 		if (written != len) {
 			printf("femu: write spare I/O error ?\n");
@@ -286,7 +285,7 @@ static URET femu_ReadPageData(uffs_Device *dev, u32 block, u32 page_num, u8 *dat
 
 
 
-static URET femu_ReadPageSpare(uffs_Device *dev, u32 block, u32 page_num, u8 *spare, int len)
+static URET femu_ReadPageSpare(uffs_Device *dev, u32 block, u32 page_num, u8 *spare, int ofs, int len)
 {
 	int nread;
 	int pos;
@@ -312,7 +311,7 @@ static URET femu_ReadPageSpare(uffs_Device *dev, u32 block, u32 page_num, u8 *sp
 	}
 
 	if (spare) {
-		pos = (block*blk_pgs + page_num) * (pgd_size + sp_size) + dev->attr->page_data_size;
+		pos = (block*blk_pgs + page_num) * (pgd_size + sp_size) + dev->attr->page_data_size + ofs;
 		if (fseek(emu->fp, pos, SEEK_SET) != 0) {
 			printf("femu: seek to %d fail!\n", pos);
 			return U_FAIL;
@@ -329,20 +328,6 @@ static URET femu_ReadPageSpare(uffs_Device *dev, u32 block, u32 page_num, u8 *sp
 		
 	return U_SUCC;
 }
-
-static URET femu_MarkBadBlock(uffs_Device *dev, u32 block)
-{
-	u8 spare[FEMU_MAX_SPARE_SIZE];
-
-	femu_ReadPageSpare(dev, block, 0, spare, dev->attr->spare_size);
-	spare[dev->attr->block_status_offs] = 0;
-	femu_WritePageSpare(dev, block, 0, spare, dev->attr->spare_size);
-
-	printf("Warning: block % is marked as bad!\n", block);
-
-	return U_SUCC;
-}
-
 
 static URET femu_EraseBlock(uffs_Device *dev, u32 blockNumber)
 {
@@ -404,20 +389,20 @@ static uffs_FlashOps emu_flash_ops = {
 	.WritePageData = femu_WritePageData,
 	.WritePageSpare = femu_WritePageSpare,
 	.WritePageSpareLayout = NULL,
-	.IsBadBlock = NULL,					//!< UFFS take care of it
-	.MarkBadBlock = femu_MarkBadBlock,
+	.IsBadBlock = NULL,
+	.MarkBadBlock = NULL,
 	.EraseBlock = femu_EraseBlock,
 };
 #else
 static uffs_FlashOps emu_flash_ops = {
 	femu_ReadPageData,
 	femu_ReadPageSpare,
-	NULL,					//!< ReadPageSpareLayout, using UFFS's layout facility
+	NULL,					//!< ReadPageSpareLayout, let UFFS do layout
 	femu_WritePageData,
 	femu_WritePageSpare,
-	NULL,					//!< WritePageSpareLayout, using UFFS's layout facility
-	NULL,					//!< IsBadBlock(), UFFS take care of it
-	femu_MarkBadBlock,
+	NULL,					//!< WritePageSpareLayout, let UFFS do layout
+	NULL,					//!< IsBadBlock(), let UFFS take care of it.
+	NULL,					//!< MarkBadBlock(), let UFFS take care of it.
 	femu_EraseBlock,
 };
 #endif
