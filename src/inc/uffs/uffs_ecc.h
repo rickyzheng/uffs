@@ -57,7 +57,7 @@ extern "C"{
  * calculate ECC
  * \return length of generated ECC. (3 bytes ECC per 256 data) 
  */
-int uffs_MakeEcc(void *data, int data_len, void *ecc);
+int uffs_EccMake(void *data, int data_len, void *ecc);
 
 /** 
  * correct data by ECC.
@@ -72,7 +72,7 @@ int uffs_EccCorrect(void *data, int data_len, void *read_ecc, const void *test_e
 /**
  * generate 12 bit ecc for maximum 8 bytes data
  */
-u16 uffs_MakeEcc8(void *data, int data_len);
+u16 uffs_EccMake8(void *data, int data_len);
 
 /**
  * correct maximum 8 bytes data from 12 bits ECC

@@ -224,6 +224,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 	u16 block, parent, serial, block_alt, block_save;
 	uffs_BlockInfo *bc_alt;
 	u8 type;
+	int page;
 	UBOOL needToInsertToTree = U_FALSE;
 	uffs_Buf *buf = NULL;
 	uffs_FileInfo *info;
@@ -310,11 +311,15 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 	}
 
 	if (type == UFFS_TYPE_DIR || type == UFFS_TYPE_FILE) {
-		buf = uffs_BufGetEx(dev, type, node, 0);
+		buf = uffs_BufClone(dev, NULL);
 		if (buf == NULL)
 			return U_FAIL;
+		uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
+		page = uffs_FindPageInBlockWithPageId(dev, bc, 0);
+		uffs_FlashReadPage(dev, block, page, buf->data);
 		info = (uffs_FileInfo *) (buf->data);
 		data_sum = uffs_MakeSum16(info->name, info->name_len);
+		uffs_BufFreeClone(dev, buf);
 	}
 
 	switch (type) {

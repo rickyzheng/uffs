@@ -164,14 +164,14 @@ static int CountObjectUnder(const char *dir)
 			uffs_Perror(UFFS_ERR_NOISY, PFX"Can't open dir %s for read.\n", dir);
 		}
 		else {
-			ret = uffs_OpenFindObject(&find, obj);
+			ret = uffs_FindObjectOpen(&find, obj);
 			if (ret == U_SUCC) {
-				ret = uffs_FindFirstObject(NULL, &find);
+				ret = uffs_FindObjectFirst(NULL, &find);
 				while (ret == U_SUCC) {
 					count++;
-					ret = uffs_FindNextObject(NULL, &find);
+					ret = uffs_FindObjectNext(NULL, &find);
 				}
-				uffs_CloseFindObject(&find);
+				uffs_FindObjectClose(&find);
 			}
 			uffs_CloseObject(obj);
 		}
@@ -221,13 +221,13 @@ BOOL cmdLs(const char *tail)
 		return TRUE;
 	}
 
-	ret = uffs_OpenFindObject(&find, obj);
+	ret = uffs_FindObjectOpen(&find, obj);
 	if (ret == U_FAIL) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open '%s'\n", name);
 	}
 	else {
 		uffs_Perror(UFFS_ERR_NORMAL, "------name----size----serial--\n");
-		ret = uffs_FindFirstObject(&info, &find);
+		ret = uffs_FindObjectFirst(&info, &find);
 		while (ret == U_SUCC) {
 			uffs_Perror(UFFS_ERR_NORMAL, "%9s", info.info.name);
 			if (info.info.attr & FILE_ATTR_DIR) {
@@ -243,10 +243,10 @@ BOOL cmdLs(const char *tail)
 			}
 			uffs_Perror(UFFS_ERR_NORMAL, "%d\n", info.serial);
 			count++;
-			ret = uffs_FindNextObject(&info, &find);
+			ret = uffs_FindObjectNext(&info, &find);
 		}
 		
-		uffs_CloseFindObject(&find);
+		uffs_FindObjectClose(&find);
 
 		uffs_Perror(UFFS_ERR_NORMAL, "Total: %d objects.\n", count);
 	}

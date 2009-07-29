@@ -60,7 +60,7 @@ URET uffs_InitDevice(uffs_Device *dev)
 	memset(&(dev->st), 0, sizeof(uffs_FlashStat));
 
 	uffs_DeviceInitLock(dev);
-	uffs_InitBadBlock(dev);
+	uffs_BadBlockInit(dev);
 
 	if (uffs_FlashInterfaceInit(dev) != U_SUCC) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't initialize flash interface !\n");

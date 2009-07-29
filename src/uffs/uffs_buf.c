@@ -844,7 +844,7 @@ static URET _BufFlush_Exist_With_BlockCover(
 
 		if (newNode->u.list.block == dev->bad.block) {
 			// the recovered block is a BAD block, we need to deal with it immediately.
-			uffs_ProcessBadBlock(dev, newNode);
+			uffs_BadBlockProcess(dev, newNode);
 		}
 		else {
 			// erase recovered block, put it back to erased block list.

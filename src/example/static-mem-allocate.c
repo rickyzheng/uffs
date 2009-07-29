@@ -72,7 +72,7 @@ extern struct cli_commandset * get_helper_cmds(void);
 #define MAX_MOUNT_POINT_NAME	32
 
 static uffs_Device demo_device = {0};
-static struct uffs_MountTableSt demo_mount = {
+static struct uffs_MountTableEntrySt demo_mount = {
 	&demo_device,
 	0,    /* start from block 0 */
 	-1,   /* use whole chip */
@@ -136,7 +136,7 @@ static void setup_emu_private(uffs_FileEmu *emu)
 
 static int init_uffs_fs(void)
 {
-	struct uffs_MountTableSt *mtbl = &demo_mount;
+	struct uffs_MountTableEntrySt *mtbl = &demo_mount;
 	struct uffs_memAllocatorSt *mem;
 
 	/* setup emu storage */

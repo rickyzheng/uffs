@@ -75,7 +75,7 @@ static const u8 * layout_sel_tbl[4][2] = {
 static void uffs_TagMakeEcc(struct uffs_TagStoreSt *ts)
 {
 	ts->tag_ecc = 0xFFF;
-	ts->tag_ecc = uffs_MakeEcc8(ts, sizeof(struct uffs_TagStoreSt));
+	ts->tag_ecc = uffs_EccMake8(ts, sizeof(struct uffs_TagStoreSt));
 }
 
 static int uffs_TagEccCorrect(struct uffs_TagStoreSt *ts)
@@ -85,7 +85,7 @@ static int uffs_TagEccCorrect(struct uffs_TagStoreSt *ts)
 
 	ecc_store = ts->tag_ecc;
 	ts->tag_ecc = 0xFFF;
-	ecc_read = uffs_MakeEcc8(ts, sizeof(struct uffs_TagStoreSt));
+	ecc_read = uffs_EccMake8(ts, sizeof(struct uffs_TagStoreSt));
 	ret = uffs_EccCorrect8(ts, ecc_read, ecc_store, sizeof(struct uffs_TagStoreSt));
 	ts->tag_ecc = ecc_store;	// restore tag ecc
 
@@ -290,7 +290,7 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, u8 *buf)
 		goto ext;
 
 	if (dev->attr->ecc_opt == UFFS_ECC_SOFT) {
-		uffs_MakeEcc(buf, size, ecc_buf);
+		uffs_EccMake(buf, size, ecc_buf);
 		ret = uffs_FlashReadPageSpare(dev, block, page, NULL, ecc_store);
 		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 			is_bad = U_TRUE;
@@ -392,7 +392,7 @@ int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, u8 *buf, u
 
 	// setp 2: write page data
 	if (dev->attr->ecc_opt == UFFS_ECC_SOFT)
-		uffs_MakeEcc(buf, size, ecc_buf);
+		uffs_EccMake(buf, size, ecc_buf);
 
 	ret = ops->WritePageData(dev, block, page, buf, size, ecc_buf);
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))

@@ -82,7 +82,7 @@ int conf_total_blocks =	128;		//2M
 
 #define MAX_MOUNT_TABLES		10
 #define MAX_MOUNT_POINT_NAME	32
-static struct uffs_MountTableSt conf_mounts[MAX_MOUNT_TABLES] = {0};
+static struct uffs_MountTableEntrySt conf_mounts[MAX_MOUNT_TABLES] = {0};
 static uffs_Device conf_devices[MAX_MOUNT_TABLES] = {0};
 static char mount_point_name[MAX_MOUNT_TABLES][MAX_MOUNT_POINT_NAME] = {0};
 
@@ -160,7 +160,7 @@ static void setup_emu_private(uffs_FileEmu *emu)
 static int init_uffs_fs(void)
 {
 	static int bIsFileSystemInited = 0;
-	struct uffs_MountTableSt *mtbl = &(conf_mounts[0]);
+	struct uffs_MountTableEntrySt *mtbl = &(conf_mounts[0]);
 
 	if(bIsFileSystemInited) return -4;
 	bIsFileSystemInited = 1;
@@ -168,7 +168,7 @@ static int init_uffs_fs(void)
 #ifdef USE_NATIVE_MEMORY_ALLOCATOR
 	memory_pool = malloc(conf_memory_pool_size_kb * 1024);
 	if (memory_pool)
-		uffs_InitHeapMemory(memory_pool, conf_memory_pool_size_kb * 1024);
+		uffs_MemInitHeap(memory_pool, conf_memory_pool_size_kb * 1024);
 	else {
 		uffs_Perror(UFFS_ERR_SERIOUS, "Can't alloc memory (size = %dKB) for uffs.\n", conf_memory_pool_size_kb);
 		return -1;
@@ -182,7 +182,7 @@ static int init_uffs_fs(void)
 	while (mtbl->dev) {
 		mtbl->dev->attr = &emu_storage;
 #ifdef USE_NATIVE_MEMORY_ALLOCATOR
-		uffs_SetupNativeMemoryAllocator(&mtbl->dev->mem);
+		uffs_MemSetupNativeAllocator(&mtbl->dev->mem);
 #endif
 		uffs_fileem_setup_device(mtbl->dev);
 		uffs_RegisterMountTable(mtbl);
@@ -210,7 +210,7 @@ static int parse_mount_point(char *arg, int m_idx)
 {
 	int start = 0, end = -1;
 	char *p = arg;
-	struct uffs_MountTableSt *mtbl = &(conf_mounts[m_idx]);
+	struct uffs_MountTableEntrySt *mtbl = &(conf_mounts[m_idx]);
 
 	while(*p && *p != ',' && *p != ' ' && *p != '\t')
 		p++;
@@ -375,7 +375,7 @@ static int parse_options(int argc, char *argv[])
 
 static void print_mount_points(void)
 {
-	struct uffs_MountTableSt *m;
+	struct uffs_MountTableEntrySt *m;
 
 	m = &(conf_mounts[0]);
 	while (m->dev) {

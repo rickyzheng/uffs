@@ -89,7 +89,7 @@ static const u8 column_parity_tbl[256] = {
 };
 
 
-static void uffs_MakeEccChunk256(void *data, void *ecc, u16 len)
+static void uffs_EccMakeChunk256(void *data, void *ecc, u16 len)
 {
 	u8 *pecc = (u8 *)ecc;
 	u8 *p = (u8 *)data;
@@ -129,7 +129,7 @@ static void uffs_MakeEccChunk256(void *data, void *ecc, u16 len)
  * calculate ECC
  * \return length of generated ECC. (3 bytes ECC per 256 data) 
  */
-int uffs_MakeEcc(void *data, int data_len, void *ecc)
+int uffs_EccMake(void *data, int data_len, void *ecc)
 {
 	u8 *p_data = (u8 *)data, *p_ecc = (u8 *)ecc;
 
@@ -137,7 +137,7 @@ int uffs_MakeEcc(void *data, int data_len, void *ecc)
 		return 0;
 
 	while (data_len > 0) {
-		uffs_MakeEccChunk256(p_data, p_ecc, data_len > 256 ? 256 : data_len);
+		uffs_EccMakeChunk256(p_data, p_ecc, data_len > 256 ? 256 : data_len);
 		data_len -= 256;
 		p_ecc += 3;
 	}
@@ -235,7 +235,7 @@ int uffs_EccCorrect(void *data, int data_len, void *read_ecc, const void *test_e
 }
 
 /** generate 12 bit ecc for 8 bytes data */
-u16 uffs_MakeEcc8(void *data, int data_len)
+u16 uffs_EccMake8(void *data, int data_len)
 {
 	u8 *p = (u8 *)data;
 	u8 b, col_parity = 0, line_parity = 0, line_parity_prime = 0;

@@ -49,12 +49,12 @@ extern "C"{
 #endif
 
 
-typedef struct uffs_MountTableSt {
+typedef struct uffs_MountTableEntrySt {
 	uffs_Device *dev;
 	int start_block;
 	int end_block;
 	const char *mount;
-	struct uffs_MountTableSt *next;
+	struct uffs_MountTableEntrySt *next;
 } uffs_MountTable;
 
 /** initialize registered mount table */

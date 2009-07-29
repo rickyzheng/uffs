@@ -45,7 +45,7 @@
 
 #define PFX "mtb:  "
 
-static struct uffs_MountTableSt *g_mtb_head = NULL;
+static struct uffs_MountTableEntrySt *g_mtb_head = NULL;
 
 uffs_MountTable * uffs_GetMountTable(void)
 {
@@ -83,8 +83,8 @@ int uffs_RegisterMountTable(uffs_MountTable *mtab)
 
 URET uffs_InitMountTable(void)
 {
-	struct uffs_MountTableSt *tbl = uffs_GetMountTable();
-	struct uffs_MountTableSt *work;
+	struct uffs_MountTableEntrySt *tbl = uffs_GetMountTable();
+	struct uffs_MountTableEntrySt *work;
 
 	for (work = tbl; work; work = work->next) {
 		uffs_Perror(UFFS_ERR_NOISY, PFX"init device for mount point %s ...\n", work->mount);
@@ -114,8 +114,8 @@ URET uffs_InitMountTable(void)
 
 URET uffs_ReleaseMountTable(void)
 {
-	struct uffs_MountTableSt *tbl = uffs_GetMountTable();
-	struct uffs_MountTableSt *work;
+	struct uffs_MountTableEntrySt *tbl = uffs_GetMountTable();
+	struct uffs_MountTableEntrySt *work;
 
 	for (work = tbl; work; work = work->next) {
 		uffs_ReleaseDevice(work->dev);
@@ -168,7 +168,7 @@ int uffs_GetMatchedMountPointSize(const char *path)
  */
 uffs_Device * uffs_GetDeviceFromMountPoint(const char *mount)
 {
-	struct uffs_MountTableSt *devTab = uffs_GetMountTable();
+	struct uffs_MountTableEntrySt *devTab = uffs_GetMountTable();
 
 	while (devTab) {
 		if (strcmp(mount, devTab->mount) == 0) {
@@ -190,7 +190,7 @@ uffs_Device * uffs_GetDeviceFromMountPoint(const char *mount)
  */
 uffs_Device * uffs_GetDeviceFromMountPointEx(const char *mount, int len)
 {
-	struct uffs_MountTableSt *devTab = uffs_GetMountTable();
+	struct uffs_MountTableEntrySt *devTab = uffs_GetMountTable();
 
 	while (devTab) {
 		if (strlen(devTab->mount) == len && strncmp(mount, devTab->mount, len) == 0) {
@@ -212,7 +212,7 @@ uffs_Device * uffs_GetDeviceFromMountPointEx(const char *mount, int len)
  */
 const char * uffs_GetDeviceMountPoint(uffs_Device *dev)
 {
-	struct uffs_MountTableSt * devTab = uffs_GetMountTable();
+	struct uffs_MountTableEntrySt * devTab = uffs_GetMountTable();
 
 	while (devTab) {
 		if (devTab->dev == dev) {

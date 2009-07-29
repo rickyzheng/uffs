@@ -343,7 +343,7 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 		obj->node->u.file.len = 0;	//init the length to 0
 
 	if (HAVE_BADBLOCK(obj->dev))
-		uffs_RecoverBadBlock(obj->dev);
+		uffs_BadBlockRecover(obj->dev);
 
 	obj->open_succ = U_TRUE;
 
@@ -566,7 +566,7 @@ static void _ReleaseObjectResource(uffs_Object *obj)
 	if (obj) {
 		if (obj->dev) {
 			if (HAVE_BADBLOCK(obj->dev))
-				uffs_RecoverBadBlock(obj->dev);
+				uffs_BadBlockRecover(obj->dev);
 			if (obj->dev_lock_count > 0) {
 				uffs_ObjectDevUnLock(obj);
 			}
@@ -923,7 +923,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 	obj->pos += (len - remain);
 
 	if (HAVE_BADBLOCK(dev))
-		uffs_RecoverBadBlock(dev);
+		uffs_BadBlockRecover(dev);
 
 	uffs_ObjectDevUnLock(obj);
 
@@ -1028,7 +1028,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 	obj->pos += (len - remain);
 
-	if (HAVE_BADBLOCK(dev)) uffs_RecoverBadBlock(dev);
+	if (HAVE_BADBLOCK(dev)) uffs_BadBlockRecover(dev);
 
 	uffs_ObjectDevUnLock(obj);
 
@@ -1436,7 +1436,7 @@ static URET _TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run)
 	}
 
 	if (HAVE_BADBLOCK(dev)) 
-		uffs_RecoverBadBlock(dev);
+		uffs_BadBlockRecover(dev);
 ext:
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 
@@ -1484,7 +1484,7 @@ URET uffs_DeleteObject(const char * name)
 	uffs_BufFlushAll(dev);
 
 	if (HAVE_BADBLOCK(dev))
-		uffs_RecoverBadBlock(dev);
+		uffs_BadBlockRecover(dev);
 
 	buf = uffs_BufFind(dev, obj->parent, obj->serial, 0);
 

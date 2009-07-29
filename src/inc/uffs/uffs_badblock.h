@@ -45,13 +45,13 @@
 #define HAVE_BADBLOCK(dev) (dev->bad.block != UFFS_INVALID_BLOCK)
 
 /** initialize bad block management data structures for uffs device */
-void uffs_InitBadBlock(uffs_Device *dev);
+void uffs_BadBlockInit(uffs_Device *dev);
 
 /** processing bad block: erase bad block, mark it as 'bad' and put it to bad block list */
-void uffs_ProcessBadBlock(uffs_Device *dev, TreeNode *node);
+void uffs_BadBlockProcess(uffs_Device *dev, TreeNode *node);
 
 /** try to recover data from a new discovered bad block */
-void uffs_RecoverBadBlock(uffs_Device *dev);
+void uffs_BadBlockRecover(uffs_Device *dev);
 
 /** put a new block to the bad block waiting list */
 void uffs_BadBlockAdd(uffs_Device *dev, int block);

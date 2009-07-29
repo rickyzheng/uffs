@@ -44,7 +44,7 @@
 
 #define PFX "bbl:  "
 
-void uffs_InitBadBlock(uffs_Device *dev)
+void uffs_BadBlockInit(uffs_Device *dev)
 {
 	dev->bad.block = UFFS_INVALID_BLOCK;
 }
@@ -55,7 +55,7 @@ void uffs_InitBadBlock(uffs_Device *dev)
  * \param[in] dev uffs device
  * \param[in] node bad block tree node (before the block turn 'bad', it must belong to something ...)
  */
-void uffs_ProcessBadBlock(uffs_Device *dev, TreeNode *node)
+void uffs_BadBlockProcess(uffs_Device *dev, TreeNode *node)
 {
 	if (HAVE_BADBLOCK(dev)) {
 		// erase the bad block
@@ -74,7 +74,7 @@ void uffs_ProcessBadBlock(uffs_Device *dev, TreeNode *node)
  * \brief recover bad block
  * \param[in] dev uffs device
  */
-void uffs_RecoverBadBlock(uffs_Device *dev)
+void uffs_BadBlockRecover(uffs_Device *dev)
 {
 	TreeNode *good, *bad;
 	uffs_Buf *buf;
@@ -181,7 +181,7 @@ void uffs_RecoverBadBlock(uffs_Device *dev)
 			uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 			//we reuse the 'good' node as bad block node, and process the bad block.
 			good->u.list.block = dev->bad.block;
-			uffs_ProcessBadBlock(dev, good);
+			uffs_BadBlockProcess(dev, good);
 		}
 		else {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find the reported bad block(%d) in the tree???\n", dev->bad.block);

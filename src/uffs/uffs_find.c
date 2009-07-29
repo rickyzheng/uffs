@@ -102,7 +102,7 @@ URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info)
  * \return U_SUCC if success, U_FAIL if invalid param or the dir
  *			is not been openned.
  */
-URET uffs_OpenFindObject(uffs_FindInfo *f, uffs_Object *dir)
+URET uffs_FindObjectOpen(uffs_FindInfo *f, uffs_Object *dir)
 {
 	if (f == NULL || dir == NULL || dir->dev == NULL || dir->open_succ != U_TRUE)
 		return U_FAIL;
@@ -126,7 +126,7 @@ URET uffs_OpenFindObject(uffs_FindInfo *f, uffs_Object *dir)
  * \return U_SUCC if success, U_FAIL if invalid param or the dir
  *			serial number is not valid.
  */
-URET uffs_OpenFindObjectEx(uffs_FindInfo *f, uffs_Device *dev, int dir)
+URET uffs_FindObjectOpenEx(uffs_FindInfo *f, uffs_Device *dev, int dir)
 {
 	TreeNode *node;
 
@@ -153,11 +153,11 @@ URET uffs_OpenFindObjectEx(uffs_FindInfo *f, uffs_Device *dev, int dir)
  *
  * \param[out] info the object information will be filled to info.
  *				if info is NULL, then skip this object.
- * \param[in] f uffs_FindInfo structure, openned by uffs_OpenFindObject().
+ * \param[in] f uffs_FindInfo structure, openned by uffs_FindObjectOpen().
  *
  * \return U_SUCC if an object is found, U_FAIL if no object is found.
  */
-URET uffs_FindFirstObject(uffs_ObjectInfo * info, uffs_FindInfo * f)
+URET uffs_FindObjectFirst(uffs_ObjectInfo * info, uffs_FindInfo * f)
 {
 	uffs_Device *dev = f->dev;
 	TreeNode *node;
@@ -223,13 +223,13 @@ ext:
  *
  * \param[out] info the object information will be filled to info.
  *				if info is NULL, then skip this object.
- * \param[in] f uffs_FindInfo structure, openned by uffs_OpenFindObject().
+ * \param[in] f uffs_FindInfo structure, openned by uffs_FindObjectOpen().
  *
  * \return U_SUCC if an object is found, U_FAIL if no object is found.
  *
- * \note uffs_FindFirstObject() should be called before uffs_FindNextObject().
+ * \note uffs_FindObjectFirst() should be called before uffs_FindObjectNext().
  */
-URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo * f)
+URET uffs_FindObjectNext(uffs_ObjectInfo *info, uffs_FindInfo * f)
 {
 	uffs_Device *dev = f->dev;
 	TreeNode *node;
@@ -322,7 +322,7 @@ ext:
 /**
  * Rewind a find object process.
  *
- * \note After rewind, you can call uffs_FindFirstObject() to start find object process.
+ * \note After rewind, you can call uffs_FindObjectFirst() to start find object process.
  */
 URET uffs_FindObjectRewind(uffs_FindInfo *f)
 {
@@ -339,11 +339,11 @@ URET uffs_FindObjectRewind(uffs_FindInfo *f)
 /**
  * Close Find Object.
  *
- * \param[in] f uffs_FindInfo structure, openned by uffs_OpenFindObject().
+ * \param[in] f uffs_FindInfo structure, openned by uffs_FindObjectOpen().
  *
  * \return U_SUCC if success, U_FAIL if invalid param.
  */
-URET uffs_CloseFindObject(uffs_FindInfo * f)
+URET uffs_FindObjectClose(uffs_FindInfo * f)
 {
 	if (f == NULL)
 		return U_FAIL;

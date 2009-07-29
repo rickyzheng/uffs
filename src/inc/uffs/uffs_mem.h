@@ -60,11 +60,11 @@ typedef struct HeapManagementNodeSt{
 
 typedef HeapMm* HeapHashTable;
 
-/** \note: uffs_InitHeapMemory should be called before using native memory allocator on each device */
-void uffs_InitHeapMemory(void *addr, int size);
+/** \note: uffs_MemInitHeap should be called before using native memory allocator on each device */
+void uffs_MemInitHeap(void *addr, int size);
 
-URET uffs_initNativeMemAllocator(uffs_Device *dev);
-int uffs_releaseNativeMemAllocator(uffs_Device *dev);
+URET uffs_MemInitNativeAllocator(uffs_Device *dev);
+int uffs_MemReleaseNativeAllocator(uffs_Device *dev);
 
 #endif //USE_NATIVE_MEMORY_ALLOCATOR
 
@@ -108,7 +108,7 @@ typedef struct uffs_memAllocatorSt {
 } uffs_MemAllocator;
 
 #if defined(USE_NATIVE_MEMORY_ALLOCATOR)
-void uffs_SetupNativeMemoryAllocator(uffs_MemAllocator *allocator);
+void uffs_MemSetupNativeAllocator(uffs_MemAllocator *allocator);
 #endif
 
 #ifdef __cplusplus

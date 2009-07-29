@@ -55,12 +55,12 @@ typedef struct uffs_FindInfoSt {
 
 
 URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info);
-URET uffs_OpenFindObject(uffs_FindInfo *find_handle, uffs_Object *dir);
-URET uffs_OpenFindObjectEx(uffs_FindInfo *f, uffs_Device *dev, int dir);
-URET uffs_FindFirstObject(uffs_ObjectInfo *info, uffs_FindInfo *find_handle);
-URET uffs_FindNextObject(uffs_ObjectInfo *info, uffs_FindInfo *find_handle);
+URET uffs_FindObjectOpen(uffs_FindInfo *find_handle, uffs_Object *dir);
+URET uffs_FindObjectOpenEx(uffs_FindInfo *f, uffs_Device *dev, int dir);
+URET uffs_FindObjectFirst(uffs_ObjectInfo *info, uffs_FindInfo *find_handle);
+URET uffs_FindObjectNext(uffs_ObjectInfo *info, uffs_FindInfo *find_handle);
 URET uffs_FindObjectRewind(uffs_FindInfo *find_handle);
-URET uffs_CloseFindObject(uffs_FindInfo * find_handle);
+URET uffs_FindObjectClose(uffs_FindInfo * find_handle);
 
 
 #ifdef __cplusplus

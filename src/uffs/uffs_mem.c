@@ -517,7 +517,7 @@ static int _kfree(void *block)
  * \param addr Start address of the memory region.
  * \param size Number of bytes of the memory region.
  */
-void uffs_InitHeapMemory(void *addr, int size)
+void uffs_MemInitHeap(void *addr, int size)
 {
 	HeapNode *np;
 	
@@ -793,7 +793,7 @@ static URET uffs_free(struct uffs_DeviceSt *dev, void *block)
 	return U_SUCC;
 }
 
-URET uffs_initNativeMemAllocator(uffs_Device *dev)
+URET uffs_MemInitNativeAllocator(uffs_Device *dev)
 {
 	uffs_MemAllocator *mem = &dev->mem;
 
@@ -808,7 +808,7 @@ URET uffs_initNativeMemAllocator(uffs_Device *dev)
 }
 
 
-URET uffs_releaseNativeMemAllocator(uffs_Device *dev)
+URET uffs_MemReleaseNativeAllocator(uffs_Device *dev)
 {
 	int count;
 	URET ret = U_SUCC;
@@ -832,11 +832,11 @@ URET uffs_releaseNativeMemAllocator(uffs_Device *dev)
  *
  * \param allocator memory allocator to be setup
  */
-void uffs_SetupNativeMemoryAllocator(uffs_MemAllocator *allocator)
+void uffs_MemSetupNativeAllocator(uffs_MemAllocator *allocator)
 {
 	memset(allocator, 0, sizeof(uffs_MemAllocator));
-	allocator->init = uffs_initNativeMemAllocator;
-	allocator->release = uffs_releaseNativeMemAllocator;
+	allocator->init = uffs_MemInitNativeAllocator;
+	allocator->release = uffs_MemReleaseNativeAllocator;
 }
 
 #endif //USE_NATIVE_MEMORY_ALLOCATOR
