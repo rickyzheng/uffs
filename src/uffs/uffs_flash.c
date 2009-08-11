@@ -361,6 +361,9 @@ static void _MakeSpare(uffs_Device *dev, uffs_TagStore *ts, u8 *ecc, u8* spare)
  * \param[in] buf contains data to be wrote
  * \param[in] tag tag to be wrote
  *
+ * \return	#UFFS_FLASH_NO_ERR: success.
+ *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
+ *			#UFFS_FLASH_BAD_BLK: a new bad block detected.
  */
 int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, u8 *buf, uffs_Tags *tag)
 {
@@ -488,6 +491,6 @@ URET uffs_FlashEraseBlock(uffs_Device *dev, int block)
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 		uffs_BadBlockAdd(dev, block);
 
-	return ret;
+	return UFFS_FLASH_HAVE_ERR(ret) ? U_FAIL : U_SUCC;
 }
 

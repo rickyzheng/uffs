@@ -72,7 +72,7 @@ const char * conf_emu_filename = DEFAULT_EMU_FILENAME;
 int conf_pages_per_block = 32;
 int conf_pages_data_size = 512;
 int conf_pages_spare_size = 16;
-int conf_total_blocks =	128;		//2M
+int conf_total_blocks =	6;		//2M
 
 #define PAGE_SIZE					(conf_pages_data_size + conf_pages_spare_size)
 #define BLOCK_DATA_SIZE				(conf_pages_per_block * conf_pages_data_size)

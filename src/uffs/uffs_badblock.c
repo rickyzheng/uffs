@@ -58,8 +58,7 @@ void uffs_BadBlockInit(uffs_Device *dev)
 void uffs_BadBlockProcess(uffs_Device *dev, TreeNode *node)
 {
 	if (HAVE_BADBLOCK(dev)) {
-		// erase the bad block
-		uffs_FlashEraseBlock(dev, dev->bad.block);
+		// mark the bad block
 		uffs_FlashMarkBadBlock(dev, dev->bad.block);
 
 		// and put it into bad block list

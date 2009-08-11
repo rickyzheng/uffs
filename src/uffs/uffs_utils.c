@@ -49,13 +49,16 @@
 #ifdef ENABLE_BAD_BLOCK_VERIFY
 static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 {
-	u8 *pageBuf, *p;
+	u8 *pageBuf;
 	int pageSize;
 	int i, j;
-	uffs_Tags local_tag;
 
-	pageSize = dev->attr->page_data_size + dev->attr->spare_size;
+	pageSize = dev->attr->page_data_size;
 	pageBuf = dev->mem.one_page_buffer;
+
+	if (block == 100) {
+		block = block;
+	}
 
 	if (pageBuf == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Alloc page buffer fail ! Format stoped.\n");
@@ -65,38 +68,38 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 	//step 1: Erase, fully fill with 0x0, and check
 	dev->ops->EraseBlock(dev, block);
 	memset(pageBuf, 0, pageSize);
-	memset(&local_tag, 0, sizeof(local_tag));
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		uffs_FlashWritePageCombine(dev, block, i, pageBuf, &local_tag);
+		dev->ops->WritePageData(dev, block, i, pageBuf, pageSize, NULL);
+		dev->ops->WritePageSpare(dev, block, i, pageBuf, 0, dev->attr->spare_size);
 	}
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		uffs_FlashReadPage(dev, block, i, pageBuf);
+		memset(pageBuf, 0xFF, pageSize);
+		dev->ops->ReadPageData(dev, block, i, pageBuf, pageSize, NULL);
 		for (j = 0; j < pageSize; j++) {
 			if(pageBuf[j] != 0)
 				goto bad_out;
 		}
-		uffs_FlashReadPageSpare(dev, block, i, &local_tag, NULL);
-		p = (u8 *) &local_tag.s;
-		for (j = 0; j < sizeof(local_tag.s); j++) {
-			if(p[j] != 0)
+		memset(pageBuf, 0xFF, dev->attr->spare_size);
+		dev->ops->ReadPageSpare(dev, block, i, pageBuf, 0, dev->attr->spare_size);
+		for (j = 0; j < dev->attr->spare_size; j++) {
+			if(pageBuf[j] != 0)
 				goto bad_out;
 		}
 	}
 
 	//step 2: Erase, and check
-	//dev->ops->EraseBlock(dev, block);
-	uffs_FlashEraseBlock(dev, block);
+	dev->ops->EraseBlock(dev, block);
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		//dev->ops->ReadPage(dev, block, i, pageBuf, (u8 *)pageBuf + dev->attr->page_data_size);
-		uffs_FlashReadPage(dev, block, i, pageBuf);
+		memset(pageBuf, 0, pageSize);
+		dev->ops->ReadPageData(dev, block, i, pageBuf, pageSize, NULL);
 		for (j = 0; j < pageSize; j++) {
 			if(pageBuf[j] != 0xFF)
 				goto bad_out;
 		}
-		uffs_FlashReadPageSpare(dev, block, i, &local_tag, NULL);
-		p = (u8 *) &local_tag.s;
-		for (j = 0; j < sizeof(local_tag.s); j++) {
-			if(p[j] != 0xFF)
+		memset(pageBuf, 0, dev->attr->spare_size);
+		dev->ops->ReadPageSpare(dev, block, i, pageBuf, 0, dev->attr->spare_size);
+		for (j = 0; j < dev->attr->spare_size; j++) {
+			if(pageBuf[j] != 0xFF)
 				goto bad_out;
 		}
 	}
@@ -104,7 +107,6 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 	return;
 
 bad_out:
-	uffs_FlashEraseBlock(dev, block);
 	uffs_FlashMarkBadBlock(dev, block);
 	return;
 }
