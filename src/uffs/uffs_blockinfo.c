@@ -73,8 +73,8 @@ URET uffs_BlockInfoInitCache(uffs_Device *dev, int maxCachedBlocks)
 
 	if (dev->mem.blockinfo_pool_size == 0) {
 		if (dev->mem.malloc) {
-			dev->mem.blockinfo_pool = dev->mem.malloc(dev, size);
-			if (dev->mem.blockinfo_pool) dev->mem.blockinfo_pool_size = size;
+			dev->mem.blockinfo_pool_buf = dev->mem.malloc(dev, size);
+			if (dev->mem.blockinfo_pool_buf) dev->mem.blockinfo_pool_size = size;
 		}
 	}
 	if (size > dev->mem.blockinfo_pool_size) {
@@ -84,7 +84,7 @@ URET uffs_BlockInfoInitCache(uffs_Device *dev, int maxCachedBlocks)
 
 	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc info cache %d bytes.\n", size);
 
-	buf = dev->mem.blockinfo_pool;
+	buf = dev->mem.blockinfo_pool_buf;
 
 	memset(buf, 0, size);
 

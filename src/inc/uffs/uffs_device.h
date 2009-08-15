@@ -99,6 +99,7 @@ struct uffs_LockSt {
  */
 struct uffs_DirtyGroupSt {
 	int count;					//!< dirty buffers count
+	int lock;					//!< dirty group lock (0: unlocked, >0: locked)
 	uffs_Buf *dirty;			//!< dirty buffer list
 };
 

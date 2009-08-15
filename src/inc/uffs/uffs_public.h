@@ -179,7 +179,6 @@ URET uffs_PageRecover(uffs_Device *dev,
 					  u16 newPage, 
 					  uffs_Buf *buf);
 int uffs_FindFreePageInBlock(uffs_Device *dev, uffs_BlockInfo *bc);
-u8 uffs_CalTagCheckSum(uffs_Tags *tag);
 u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page);
 u16 uffs_FindFirstValidPage(uffs_Device *dev, uffs_BlockInfo *bc);
 u16 uffs_FindFirstFreePage(uffs_Device *dev, uffs_BlockInfo *bc, u16 pageFrom);

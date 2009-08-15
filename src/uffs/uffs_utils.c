@@ -46,24 +46,24 @@
 
 #define PFX "util: "
 
-#ifdef ENABLE_BAD_BLOCK_VERIFY
+#ifdef CONFIG_ENABLE_BAD_BLOCK_VERIFY
 static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 {
 	u8 *pageBuf;
 	int pageSize;
 	int i, j;
+	uffs_Buf *buf;
+	UBOOL bad = U_TRUE;
+
+	buf = uffs_BufClone(dev, NULL);
+	if (buf == NULL) {
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Alloc page buffer fail ! Format stoped.\n");
+		goto ext;
+	}
 
 	pageSize = dev->attr->page_data_size;
-	pageBuf = dev->mem.one_page_buffer;
+	pageBuf = buf->data;
 
-	if (block == 100) {
-		block = block;
-	}
-
-	if (pageBuf == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Alloc page buffer fail ! Format stoped.\n");
-		return;
-	}
 
 	//step 1: Erase, fully fill with 0x0, and check
 	dev->ops->EraseBlock(dev, block);
@@ -104,10 +104,16 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 		}
 	}
 
-	return;
+	// format succ
+	bad = U_FALSE;
 
 bad_out:
-	uffs_FlashMarkBadBlock(dev, block);
+	if (bad == U_TRUE)
+		uffs_FlashMarkBadBlock(dev, block);
+ext:
+	if (buf) 
+		uffs_BufFreeClone(dev, buf);
+
 	return;
 }
 #endif
@@ -152,17 +158,17 @@ URET uffs_FormatDevice(uffs_Device *dev)
 			uffs_FlashEraseBlock(dev, i);
 		}
 		else {
-#ifdef ENABLE_BAD_BLOCK_VERIFY
+#ifdef CONFIG_ENABLE_BAD_BLOCK_VERIFY
 			_ForceFormatAndCheckBlock(dev, i);
 #endif
 		}
 	}
 
-	if (uffs_ReleaseTreeBuf(dev) == U_FAIL) {
+	if (uffs_TreeRelease(dev) == U_FAIL) {
 		return U_FAIL;
 	}
 
-	if (uffs_InitTreeBuf(dev) == U_FAIL) {
+	if (uffs_TreeInit(dev) == U_FAIL) {
 		return U_FAIL;
 	}
 

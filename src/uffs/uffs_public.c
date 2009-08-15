@@ -78,37 +78,6 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj)
 }
 
 
-//URET uffs_ECCCheck(uffs_Device *dev, uffs_Buf *buf)
-//{
-//	dev = dev;
-//	return U_SUCC;
-//}
-
-/** 
- * \brief Calculate tag checksum
- * \param[in] tag input tag
- * \return checksum of tag
- */
-u8 uffs_CalTagCheckSum(uffs_Tags *tag)
-{
-#if defined(ENABLE_TAG_CHECKSUM) && ENABLE_TAG_CHECKSUM == 1
-	u8 checksum = 0;
-	int i;
-	int ofs;
-
-	ofs = (int)(&(((uffs_Tags *)NULL)->checksum));
-
-	for(i = 0; i < ofs; i++) {
-		checksum += *((u8 *)(tag) + i);
-	}
-	return checksum;
-#else
-	tag = tag;
-	return 0xff;
-#endif
-}
-
-
 /** 
  * \brief find a best page than given page from page.
  * \param[in] dev uffs device

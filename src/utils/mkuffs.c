@@ -53,7 +53,7 @@ extern struct cli_commandset * get_helper_cmds(void);
 extern struct cli_commandset * get_test_cmds(void);
 extern void femu_init_uffs_device(uffs_Device *dev);
 
-#ifdef USE_NATIVE_MEMORY_ALLOCATOR
+#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
 static int conf_memory_pool_size_kb = 100; /* default allocate 100k memory. */
 static void *memory_pool = NULL;
 #endif
@@ -91,7 +91,7 @@ static struct uffs_FileEmuSt emu_private = {0};
 
 
 
-#ifdef USE_NATIVE_MEMORY_ALLOCATOR
+#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
 BOOL cmdMeminfo(const char *tail)
 {
 	const char *mount = "/";
@@ -132,7 +132,7 @@ BOOL cmdMeminfo(const char *tail)
 
 static struct cli_commandset basic_cmdset[] = 
 {
-#ifdef USE_NATIVE_MEMORY_ALLOCATOR
+#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
     { cmdMeminfo,	"mem",			"<mount>",			"show native memory allocator infomation" },
 #endif
     { NULL, NULL, NULL, NULL }
@@ -165,7 +165,7 @@ static int init_uffs_fs(void)
 	if(bIsFileSystemInited) return -4;
 	bIsFileSystemInited = 1;
 
-#ifdef USE_NATIVE_MEMORY_ALLOCATOR
+#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
 	memory_pool = malloc(conf_memory_pool_size_kb * 1024);
 	if (memory_pool)
 		uffs_MemInitHeap(memory_pool, conf_memory_pool_size_kb * 1024);
@@ -181,7 +181,7 @@ static int init_uffs_fs(void)
 	
 	while (mtbl->dev) {
 		mtbl->dev->attr = &emu_storage;
-#ifdef USE_NATIVE_MEMORY_ALLOCATOR
+#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
 		uffs_MemSetupNativeAllocator(&mtbl->dev->mem);
 #endif
 		uffs_fileem_setup_device(mtbl->dev);
@@ -196,7 +196,7 @@ static int release_uffs_fs(void)
 {
 	int ret;
 	ret = uffs_ReleaseMountTable();
-#ifdef USE_NATIVE_MEMORY_ALLOCATOR
+#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
 	if (memory_pool) {
 		free(memory_pool);
 		memory_pool = NULL;
@@ -323,7 +323,7 @@ static int parse_options(int argc, char *argv[])
 					conf_exec_script = 1;
 				}
 			}
-#ifdef USE_NATIVE_MEMORY_ALLOCATOR			
+#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR			
 			else if (!strcmp(arg, "-a") || !strcmp(arg, "--alloc")) {
 				if (++iarg > argc) 
 					usage++;
@@ -357,7 +357,7 @@ static int parse_options(int argc, char *argv[])
         printf("  -m  --mount          <mount_point,start,end> , for example: -m /,0,-1\n");
 		printf("  -i  --id-man         <id>         set manufacture ID, default=0xEC\n");
         printf("  -e  --exec           <file>       execute a script file\n");
-#ifdef USE_NATIVE_MEMORY_ALLOCATOR		
+#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR		
 		printf("  -a  --alloc          <size>       allocate size(KB) of memory for uffs, default 100\n");
 #endif		
         printf("\n");

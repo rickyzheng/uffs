@@ -633,7 +633,7 @@ ext:
 URET uffs_CloseObject(uffs_Object *obj)
 {
 	uffs_Device *dev;
-#ifdef CHANGE_MODIFY_TIME
+#ifdef CONFIG_CHANGE_MODIFY_TIME
 	uffs_Buf *buf;
 	uffs_FileInfo fi;
 #endif
@@ -648,7 +648,7 @@ URET uffs_CloseObject(uffs_Object *obj)
 
 	if (obj->oflag & (UO_WRONLY|UO_RDWR|UO_APPEND|UO_CREATE|UO_TRUNC)) {
 
-#ifdef CHANGE_MODIFY_TIME
+#ifdef CONFIG_CHANGE_MODIFY_TIME
 		if (obj->node) {
 			//need to change the last modify time stamp
 			if (obj->type == UFFS_TYPE_DIR)
@@ -910,7 +910,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 			size = _WriteInternalBlock(obj, dnode, fdn,
 									(u8 *)data + len - remain, remain,
 									write_start - _GetStartOfDataBlock(obj, fdn));
-#ifdef FLUSH_BUF_AFTER_WRITE
+#ifdef CONFIG_FLUSH_BUF_AFTER_WRITE
 			uffs_BufFlushGroup(dev, fnode->u.file.serial, fdn);
 #endif
 			if (size == 0)
@@ -1127,79 +1127,44 @@ int uffs_EndOfFile(uffs_Object *obj)
 	return -1;
 }
 
-static URET _CoverOnePage(uffs_Device *dev,
-						  uffs_Tags *old,
-						  uffs_Tags *newTag,
-						  u16 newBlock,
-						  u16 page,
-						  int newTimeStamp,
-						  uffs_Buf *buf,
-						  u32 length)
-{
-	int ret;
-
-	TAG_PARENT(newTag) = buf->parent;
-	TAG_SERIAL(newTag) = buf->serial;
-	TAG_TYPE(newTag) = buf->type;
-	TAG_BLOCK_TS(newTag) = newTimeStamp;
-	TAG_DATA_LEN(newTag) = length;
-	//newTag->data_sum = old->data_sum;
-	TAG_PAGE_ID(newTag) = (u8)(buf->page_id);
-
-	ret = uffs_FlashWritePageCombine(dev, newBlock, page, buf->data, newTag);
-
-	return ret == UFFS_FLASH_IO_ERR ? U_FAIL : U_SUCC;
-}
-
 static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 remain, UBOOL dry_run)
 {
 	uffs_Device *dev = obj->dev;
 	TreeNode *fnode = obj->node;
-	u16 page_id, maxPageID;
-	TreeNode *node, *newNode = NULL;
-	u16 block = UFFS_INVALID_BLOCK, newBlock = UFFS_INVALID_BLOCK;
-	uffs_BlockInfo *bc = NULL, *newBc = NULL;
+	u16 page_id, max_page_id;
+	TreeNode *node;
 	uffs_Buf *buf = NULL;
-	uffs_Tags *tag, *newTag;
-	URET ret = U_FAIL;
 	u8 type;
 	u32 block_start;
-	u32 end;
-	int timeStamp;
-	u16 page;
-
-	if (dry_run == U_FALSE)
-		uffs_BufFlushGroup(dev, obj->serial, fdn);	//!< need to flush buffer before block recovery
+	u16 parent, serial;
+	int slot;
 
 	if (fdn == 0) {
 		node = fnode;
-		block = node->u.file.block;
 		type = UFFS_TYPE_FILE;
-		maxPageID = obj->head_pages;
+		max_page_id = obj->head_pages;
+		block_start = 0;
+		parent = node->u.file.parent;
+		serial = node->u.file.serial;
 	}
 	else {
 		node = uffs_TreeFindDataNode(dev, fnode->u.file.serial, fdn);
 		if (node == NULL) {
 			obj->err = UEIOERR;
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node when truncate obj\n");
-			goto _err;
+			goto ext;
 		}
-		block = node->u.data.block;
 		type = UFFS_TYPE_DATA;
-		maxPageID = dev->attr->pages_per_block - 1;
-	}
-
-
-	bc = uffs_BlockInfoGet(dev, block);
-	if (bc == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get block info when truncate obj\n");
-		obj->err = UEIOERR;
-		goto _err;
+		max_page_id = dev->attr->pages_per_block - 1;
+		block_start = obj->head_pages * dev->attr->page_data_size +  (fdn - 1) * dev->attr->page_data_size * dev->attr->pages_per_block;
+		parent = node->u.data.parent;
+		serial = node->u.data.serial;
 	}
 
 	if (dry_run == U_TRUE) {
-		for (page_id = 0; page_id < maxPageID; page_id++) {
-			buf = uffs_BufFind(dev, fnode->u.file.serial, fdn, page_id);
+		// checking the buffer. this is the main reason why we need the 'dry run' mode.
+		for (page_id = 0; page_id <= max_page_id; page_id++) {
+			buf = uffs_BufFind(dev, parent, serial, page_id);
 			if (buf) {								//!< ok, the buffer was loaded before ...
 				if (uffs_BufIsFree(buf) == U_FALSE) {
 					obj->err = UEEXIST;
@@ -1210,122 +1175,60 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 		buf = NULL;
 		goto ext;
 	}
-
-	newNode = uffs_TreeGetErasedNode(dev);
-	if (newNode == NULL) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"insufficient erased block, can't truncate obj.\n");
-		obj->err = UEIOERR;
-		goto _err;
-	}
-	newBlock = newNode->u.list.block;
-	newBc = uffs_BlockInfoGet(dev, newBlock);
-	if (newBc == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get block info when truncate obj\n");
-		obj->err = UEIOERR;
-		goto _err;
-	}
-
-	block_start = _GetStartOfDataBlock(obj, fdn);
-	timeStamp = uffs_GetBlockTimeStamp(dev, bc);
-	timeStamp = uffs_GetNextBlockTimeStamp(timeStamp);
-
-	for (page_id = 0; page_id <= maxPageID; page_id++) {
-		page = uffs_FindPageInBlockWithPageId(dev, bc, page_id);
-		if (page == UFFS_INVALID_PAGE) {
-			obj->err = UEIOERR;
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"unknown error, truncate\n");
+	
+	// find the last page after truncate
+	for (page_id = (fdn == 0 ? 1 : 0); page_id <= max_page_id; page_id++) {
+		if (block_start + (page_id + 1) * dev->attr->page_data_size >= remain)
 			break;
-		}
-		page = uffs_FindBestPageInBlock(dev, bc, page);
-		buf = uffs_BufClone(dev, NULL);
-		if (buf == NULL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't clone page buffer\n");
-			obj->err = UEIOERR;
-			goto _err;
-		}
-		tag = &(bc->spares[page].tag);
-		uffs_BufLoadPhyData(dev, buf, bc->block, page);
-
-		buf->parent = TAG_PARENT(tag);
-		buf->serial = TAG_SERIAL(tag);
-		buf->type = TAG_TYPE(tag);
-		buf->page_id = TAG_PAGE_ID(tag);
-		buf->data_len = TAG_DATA_LEN(tag);
-
-		newTag = GET_TAG(newBc, page_id);
-
-		if (fdn == 0 && page_id == 0) {
-			//copy the page file information
-			ret = _CoverOnePage(dev, tag, newTag, newBlock, page_id, timeStamp, buf, buf->data_len);
-			if (ret != U_SUCC)
-				break;
-		}
-		else {
-			end = ((fdn == 0) ? (page_id - 1) * dev->com.pg_data_size :
-					page_id * dev->com.pg_data_size);
-			end += TAG_DATA_LEN(tag);
-			end += block_start;
-
-			if (remain > end) {
-				if (TAG_DATA_LEN(tag) != dev->com.pg_data_size) {
-					obj->err = UEIOERR;
-					uffs_Perror(UFFS_ERR_NOISY, PFX" ???? unknown error when truncate. \n");
-					break;
-				}
-				ret = _CoverOnePage(dev, tag, newTag, newBlock, page_id, timeStamp, buf, buf->data_len);
-				if (ret != U_SUCC)
-					break;
-			}
-			else if (remain == end) {
-				ret = _CoverOnePage(dev, tag, newTag, newBlock, page_id, timeStamp, buf, buf->data_len);
-				if (ret != U_SUCC)
-					break;
-			}
-			else if (remain < end) {
-				buf->data_len = TAG_DATA_LEN(tag) - (end - remain);
-				if (buf->data_len == 0) {
-					ret = U_SUCC;
-					break;
-				}
-				memset(buf->data + buf->data_len, 0, dev->com.pg_data_size - buf->data_len);
-				ret = _CoverOnePage(dev, tag, newTag, newBlock, page_id, timeStamp, buf, buf->data_len);
-				break;
-			}
-		}
-		uffs_BufFreeClone(dev, buf);
-		buf = NULL;
 	}
 
-_err:
-	if (buf != NULL) {
-		uffs_BufFreeClone(dev, buf);
-		buf = NULL;
+	if (page_id > max_page_id) {
+		obj->err = UEUNKNOWN;
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Overflow\n");
+		goto ext;
 	}
-	if (ret == U_SUCC) {
-		//ok, modify the tree, and erase old block
-		//NOTE: Don't delete the 'old' node from tree, just replace the 'block' with new block,
-		//      so that we don't need to modify obj->node :)
-		uffs_TreeSetNodeBlock(type, node, newNode->u.list.block);
-		newNode->u.list.block = block;
-		dev->ops->EraseBlock(dev, newNode->u.list.block);
-		uffs_TreeInsertToErasedListTail(dev, newNode);
+
+	// flush buffer before performing block recovery
+	uffs_BufFlushGroup(dev, parent, serial);
+
+	// load the last page
+	buf = uffs_BufGetEx(dev, type, node, page_id);
+	if (buf == NULL) {
+		obj->err = UENOMEM;
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't get buf\n");
+		goto ext;
 	}
+
+	uffs_BufWrite(dev, buf, NULL, 0, 0); // just make this buf dirty
+
+	// lock the group
+	slot = uffs_BufFindGroupSlot(dev, parent, serial);
+	uffs_BufLockGroup(dev, slot);
+
+	if (remain == 0)
+		buf->data_len = 0;
 	else {
-		//fail to cover block, so erase new block
-		dev->ops->EraseBlock(dev, newBlock);
-		uffs_TreeInsertToErasedListTail(dev, newNode);
-		obj->err = UEIOERR;
+		remain = (remain % dev->attr->page_data_size);
+		buf->data_len = (remain == 0 ? dev->attr->page_data_size : 0);
 	}
-ext:
-	if (bc) {
-		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
-		uffs_BlockInfoPut(dev, bc);
+	buf->ext_mark |= UFFS_BUF_EXT_MARK_TRUNC_TAIL;
+	uffs_BufPut(dev, buf);
+
+	// invalidatwe the rest page buf
+	page_id++;
+	for (; page_id <= max_page_id; page_id++) {
+		buf = uffs_BufFind(dev, parent, serial, page_id);
+		if (buf)
+			uffs_BufMarkEmpty(dev, buf);
 	}
 
-	if(newBc) {
-		uffs_BlockInfoExpire(dev, newBc, UFFS_ALL_PAGES);
-		uffs_BlockInfoPut(dev, newBc);
-	}
+	// flush dirty buffer immediately, force block recovery.
+	uffs_BufFlushGroupEx(dev, parent, serial, U_TRUE);
+
+	// unlock the group
+	uffs_BufUnLockGroup(dev, slot);
+
+ext:
 
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }

@@ -80,7 +80,7 @@ URET uffs_InitDevice(uffs_Device *dev)
 		goto fail;
 	}
 
-	ret = uffs_InitTreeBuf(dev);
+	ret = uffs_TreeInit(dev);
 	if (ret != U_SUCC) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"fail to init tree buffers\n");
 		goto fail;
@@ -107,19 +107,25 @@ URET uffs_ReleaseDevice(uffs_Device *dev)
 	ret = uffs_BlockInfoReleaseCache(dev);
 	if (ret != U_SUCC) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX "fail to release block info.\n");
-		return U_FAIL;
+		goto ext;
 	}
 
 	ret = uffs_BufReleaseAll(dev);
 	if (ret != U_SUCC) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX "fail to release page buffers\n");
-		return U_FAIL;
+		goto ext;
 	}
 
-	ret = uffs_ReleaseTreeBuf(dev);
+	ret = uffs_TreeRelease(dev);
 	if (ret != U_SUCC) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"fail to release tree buffers!\n");
-		return U_FAIL;
+		goto ext;
+	}
+
+	ret = uffs_FlashInterfaceRelease(dev);
+	if (ret != U_SUCC) {
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"fail to release tree buffers!\n");
+		goto ext;
 	}
 
 	if (dev->mem.release)
@@ -131,6 +137,7 @@ URET uffs_ReleaseDevice(uffs_Device *dev)
 
 	uffs_DeviceReleaseLock(dev);
 
+ext:
 	return ret;
 
 }

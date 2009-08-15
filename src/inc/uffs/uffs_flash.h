@@ -248,7 +248,10 @@ URET uffs_FlashReadFileinfoPhy(uffs_Device *dev, int block, int page, uffs_FileI
  */
 URET uffs_FlashInterfaceInit(uffs_Device *dev);
 
-
+/**
+ * Release UFFS flash interface
+ */
+URET uffs_FlashInterfaceRelease(uffs_Device *dev);
 
 #ifdef __cplusplus
 }

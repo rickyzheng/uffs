@@ -35,7 +35,7 @@
  * \brief UFFS flash interface
  * \author Ricky Zheng, created 17th July, 2009
  */
-
+#include "uffs/uffs_config.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_ecc.h"
 #include "uffs/uffs_flash.h"
@@ -44,6 +44,8 @@
 #include <string.h>
 
 #define PFX "Flash: "
+
+#define SPOOL(dev) &((dev)->mem.spare_pool)
 
 
 #define ECC_SIZE(dev) (3 * (dev)->attr->page_data_size / 256)
@@ -93,7 +95,7 @@ static int uffs_TagEccCorrect(struct uffs_TagStoreSt *ts)
 
 }
 
-static int _calculate_spare_buf_size(uffs_Device *dev)
+static int _calculate_spare_data_size(uffs_Device *dev)
 {
 	const u8 *p;
 	int ecc_last = 0, tag_last = 0;
@@ -129,6 +131,7 @@ static int _calculate_spare_buf_size(uffs_Device *dev)
 	return n;
 }
 
+
 /**
  * Initialize UFFS flash interface
  */
@@ -138,6 +141,25 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 	int idx;
 	const u8 idx_tbl[] = {0, 1, 2, 3, 3};
 
+	uffs_Pool *pool = SPOOL(dev);
+
+	if (dev->mem.spare_pool_size == 0) {
+		if (dev->mem.malloc) {
+			dev->mem.spare_pool_buf = dev->mem.malloc(dev, UFFS_SPARE_BUFFER_SIZE);
+			if (dev->mem.spare_pool_buf)
+				dev->mem.spare_pool_size = UFFS_SPARE_BUFFER_SIZE;
+		}
+	}
+
+	if (UFFS_SPARE_BUFFER_SIZE > dev->mem.spare_pool_size) {
+		uffs_Perror(UFFS_ERR_DEAD, PFX"Spare buffer require %d but only %d available.\n", UFFS_SPARE_BUFFER_SIZE, dev->mem.spare_pool_size);
+		memset(pool, 0, sizeof(uffs_Pool));
+		return U_FAIL;
+	}
+
+	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc spare buffers %d bytes.\n", UFFS_SPARE_BUFFER_SIZE);
+	uffs_PoolInit(pool, dev->mem.spare_pool_buf, dev->mem.spare_pool_size, UFFS_MAX_SPARE_SIZE, MAX_SPARE_BUFFERS);
+
 	idx = idx_tbl[(attr->page_data_size / 256) >> 1];
 
 	if (attr->data_layout == NULL)
@@ -145,7 +167,26 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 	if (attr->ecc_layout == NULL)
 		attr->ecc_layout = layout_sel_tbl[idx][1];
 
-	dev->mem.spare_buffer_size = _calculate_spare_buf_size(dev);
+	dev->mem.spare_data_size = _calculate_spare_data_size(dev);
+
+	return U_SUCC;
+}
+
+/**
+ * Release UFFS flash interface
+ */
+URET uffs_FlashInterfaceRelease(uffs_Device *dev)
+{
+	uffs_Pool *pool;
+	
+	pool = SPOOL(dev);
+	if (pool->mem && dev->mem.free) {
+		dev->mem.free(dev, pool->mem);
+		pool->mem = NULL;
+		dev->mem.spare_pool_size = 0;
+	}
+	uffs_PoolRelease(pool);
+	memset(pool, 0, sizeof(uffs_Pool));
 
 	return U_SUCC;
 }
@@ -206,15 +247,18 @@ int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *ta
 {
 	uffs_FlashOps *ops = dev->ops;
 	struct uffs_StorageAttrSt *attr = dev->attr;
-	u8 * spare_buf = dev->mem.spare_buffer;
-	int ret = 0;
+	u8 * spare_buf;
+	int ret = UFFS_FLASH_UNKNOWN_ERR;
 	UBOOL is_bad = U_FALSE;
 
+	spare_buf = (u8 *) uffs_PoolGet(SPOOL(dev));
+	if (spare_buf == NULL)
+		goto ext;
 
 	if (attr->layout_opt == UFFS_LAYOUT_FLASH)
 		ret = ops->ReadPageSpareWithLayout(dev, block, page, (u8 *)&tag->s, tag ? TAG_STORE_SIZE : 0, ecc);
 	else
-		ret = ops->ReadPageSpare(dev, block, page, spare_buf, 0, dev->mem.spare_buffer_size);
+		ret = ops->ReadPageSpare(dev, block, page, spare_buf, 0, dev->mem.spare_data_size);
 
 
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
@@ -255,6 +299,9 @@ ext:
 		uffs_BadBlockAdd(dev, block);
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"A new bad block (%d) is detected.\n", block);
 	}
+
+	if (spare_buf)
+		uffs_PoolPut(SPOOL(dev), spare_buf);
 
 	return ret;
 }
@@ -328,7 +375,7 @@ static void _MakeSpare(uffs_Device *dev, uffs_TagStore *ts, u8 *ecc, u8* spare)
 	int n;
 	const u8 *p;
 
-	memset(spare, 0xFF, dev->mem.spare_buffer_size);	// initialize as 0xFF.
+	memset(spare, 0xFF, dev->mem.spare_data_size);	// initialize as 0xFF.
 
 	// load ecc
 	p = dev->attr->ecc_layout;
@@ -370,10 +417,16 @@ int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, u8 *buf, u
 	uffs_FlashOps *ops = dev->ops;
 	int size = dev->attr->page_data_size;
 	u8 ecc_buf[MAX_ECC_SIZE];
-	u8 *spare = dev->mem.spare_buffer;
-	int ret;
+	u8 *spare;
+	int ret = UFFS_FLASH_UNKNOWN_ERR;
 	UBOOL is_bad = U_FALSE;
 	uffs_TagStore local_ts;
+
+	uffs_Buf *verify_buf;
+
+	spare = (u8 *) uffs_PoolGet(SPOOL(dev));
+	if (spare == NULL)
+		goto ext;
 
 	// setp 1: write only the dirty bit to the spare
 	memset(&local_ts, 0xFF, sizeof(local_ts));
@@ -381,7 +434,7 @@ int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, u8 *buf, u
 
 	if (dev->attr->layout_opt == UFFS_LAYOUT_UFFS) {
 		_MakeSpare(dev, &local_ts, NULL, spare);
-		ret = ops->WritePageSpare(dev, block, page, spare, 0, dev->mem.spare_buffer_size);
+		ret = ops->WritePageSpare(dev, block, page, spare, 0, dev->mem.spare_data_size);
 	}
 	else {
 		ret = ops->WritePageSpareWithLayout(dev, block, page, (u8 *)&local_ts, 1, NULL);
@@ -404,7 +457,7 @@ int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, u8 *buf, u
 	if (UFFS_FLASH_HAVE_ERR(ret))
 		goto ext;
 
-	// setep 3: write full tag to spare, with ECC
+	// step 3: write full tag to spare, with ECC
 	tag->s.dirty = TAG_DIRTY;		//!< set dirty bit
 	tag->s.valid = TAG_VALID;		//!< set valid bit
 	if (dev->attr->ecc_opt != UFFS_ECC_NONE)
@@ -420,7 +473,7 @@ int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, u8 *buf, u
 		else
 			_MakeSpare(dev, &tag->s, NULL, spare);
 
-		ret = ops->WritePageSpare(dev, block, page, spare, 0, dev->mem.spare_buffer_size);
+		ret = ops->WritePageSpare(dev, block, page, spare, 0, dev->mem.spare_data_size);
 	}
 	else {
 		ret = ops->WritePageSpareWithLayout(dev, block, page, (u8 *)(&tag->s), TAG_STORE_SIZE, ecc_buf);
@@ -429,9 +482,26 @@ int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, u8 *buf, u
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 		is_bad = U_TRUE;
 
+#ifdef CONFIG_PAGE_WRITE_VERIFY
+	if (!UFFS_FLASH_HAVE_ERR(ret)) {
+		verify_buf = uffs_BufClone(dev, NULL);
+		if (verify_buf) {
+			ret = uffs_FlashReadPage(dev, block, page, verify_buf->data);
+			if (!UFFS_FLASH_HAVE_ERR(ret))
+				if (memcmp(buf, verify_buf->data, dev->attr->page_data_size) != 0) {
+					uffs_Perror(UFFS_ERR_NORMAL, PFX"Page write verify fail (block %d page %d)\n", block, page);
+					ret = UFFS_FLASH_BAD_BLK;
+				}
+			uffs_BufFreeClone(dev, verify_buf);
+		}
+	}
+#endif
 ext:
 	if (is_bad)
 		uffs_BadBlockAdd(dev, block);
+
+	if (spare)
+		uffs_PoolPut(SPOOL(dev), spare);
 
 	return ret;
 }

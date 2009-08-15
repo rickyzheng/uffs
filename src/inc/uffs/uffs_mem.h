@@ -41,9 +41,10 @@ extern "C"{
 
 #define MAX_ECC_SIZE	(3 * UFFS_MAX_PAGE_SIZE / 256)
 #define MAX_SPARE_SIZE	(8 * UFFS_MAX_PAGE_SIZE / 256)
+#define MAX_SPARE_BUF	10
 
 
-#if defined(USE_NATIVE_MEMORY_ALLOCATOR)
+#if defined(CONFIG_USE_NATIVE_MEMORY_ALLOCATOR)
 
 #define HEAP_HASH_BIT	6							/* hash table bit */
 #define HEAP_HASH_SIZE (1 << (HEAP_HASH_BIT - 1))	/* hash table size */
@@ -66,7 +67,7 @@ void uffs_MemInitHeap(void *addr, int size);
 URET uffs_MemInitNativeAllocator(uffs_Device *dev);
 int uffs_MemReleaseNativeAllocator(uffs_Device *dev);
 
-#endif //USE_NATIVE_MEMORY_ALLOCATOR
+#endif //CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
 
 
 /** uffs native memory allocator */
@@ -77,29 +78,29 @@ typedef struct uffs_memAllocatorSt {
 	void * (*malloc)(struct uffs_DeviceSt *dev, unsigned int size); /* allocate memory (for dynamic memory allocation) */
 	URET (*free)(struct uffs_DeviceSt *dev, void *p);   /* free memory (for dynamic memory allocation) */
 
-	void * blockinfo_pool;				//!< block info cache buffers
-	void * pagebuf_pool;				//!< page buffers
-	void * tree_nodes_pool;				//!< tree nodes buffer
+	void * blockinfo_pool_buf;				//!< block info cache buffers
+	void * pagebuf_pool_buf;				//!< page buffers
+	void * tree_nodes_pool_buf;				//!< tree nodes buffer
+	void * spare_pool_buf;					//!< spare buffers
 
 	int blockinfo_pool_size;			//!< block info cache buffers size
 	int pagebuf_pool_size;				//!< page buffers size
 	int tree_nodes_pool_size;			//!< tree nodes buffer size
+	int spare_pool_size;				//!< spare buffer pool size
 
-#ifdef ENABLE_BAD_BLOCK_VERIFY
-	u8 one_page_buffer[UFFS_MAX_PAGE_SIZE];		//!< one page data buffer
-#endif
-	u8 spare_buffer[MAX_SPARE_SIZE];
-	int spare_buffer_size;				//!< calculated page spare buffer size
+	uffs_Pool tree_pool;
+	uffs_Pool spare_pool;
+
+	int spare_data_size;				//!< spare data size, calculated by UFFS.
 
 
-
-#if defined(USE_NATIVE_MEMORY_ALLOCATOR)
+#if defined(CONFIG_USE_NATIVE_MEMORY_ALLOCATOR)
 	HeapHashTable tbl[HEAP_HASH_SIZE];
 	int count;
 	int maxused;
 #endif
 
-#if defined(USE_STATIC_MEMORY_ALLOCATOR)
+#if defined(CONFIG_USE_STATIC_MEMORY_ALLOCATOR)
 	char *buf_start;
 	int buf_size;
 	int pos;
@@ -107,7 +108,8 @@ typedef struct uffs_memAllocatorSt {
 
 } uffs_MemAllocator;
 
-#if defined(USE_NATIVE_MEMORY_ALLOCATOR)
+
+#if defined(CONFIG_USE_NATIVE_MEMORY_ALLOCATOR)
 void uffs_MemSetupNativeAllocator(uffs_MemAllocator *allocator);
 #endif
 

@@ -40,6 +40,8 @@
 #include <stdio.h>
 #include "uffs/uffs_find.h"
 
+#define TPOOL(dev) &((dev)->mem.tree_pool)
+
 
 static URET _LoadObjectInfo(uffs_Device *dev, TreeNode *node, uffs_ObjectInfo *info, int type)
 {
@@ -175,7 +177,7 @@ URET uffs_FindObjectFirst(uffs_ObjectInfo * info, uffs_FindInfo * f)
 			x = dev->tree.dir_entry[f->hash];
 
 			while (x != EMPTY_NODE) {
-				node = FROM_IDX(x, &(dev->tree.pool));
+				node = FROM_IDX(x, TPOOL(dev));
 				if(node->u.dir.parent == f->serial) {
 					f->work = node;
 					if (info) 
@@ -198,7 +200,7 @@ URET uffs_FindObjectFirst(uffs_ObjectInfo * info, uffs_FindInfo * f)
 			x = dev->tree.file_entry[f->hash];
 
 			while (x != EMPTY_NODE) {
-				node = FROM_IDX(x, &(dev->tree.pool));
+				node = FROM_IDX(x, TPOOL(dev));
 				if (node->u.file.parent == f->serial) {
 					f->work = node;
 					if (info)
@@ -247,7 +249,7 @@ URET uffs_FindObjectNext(uffs_ObjectInfo *info, uffs_FindInfo * f)
 
 	if (f->step == 0) { //!< working on dirs
 		while (x != EMPTY_NODE) {
-			node = FROM_IDX(x, &(dev->tree.pool));
+			node = FROM_IDX(x, TPOOL(dev));
 			if (node->u.dir.parent == f->serial) {
 				f->work = node;
 				if (info)
@@ -262,7 +264,7 @@ URET uffs_FindObjectNext(uffs_ObjectInfo *info, uffs_FindInfo * f)
 		for (; f->hash < DIR_NODE_ENTRY_LEN; f->hash++) {
 			x = dev->tree.dir_entry[f->hash];
 			while (x != EMPTY_NODE) {
-				node = FROM_IDX(x, &(dev->tree.pool));
+				node = FROM_IDX(x, TPOOL(dev));
 				if (node->u.dir.parent == f->serial) {
 					f->work = node;
 					if (info)
@@ -282,7 +284,7 @@ URET uffs_FindObjectNext(uffs_ObjectInfo *info, uffs_FindInfo * f)
 	if (f->step == 1) {
 
 		while (x != EMPTY_NODE) {
-			node = FROM_IDX(x, &(dev->tree.pool));
+			node = FROM_IDX(x, TPOOL(dev));
 			if (node->u.file.parent == f->serial) {
 				f->work = node;
 				if (info)
@@ -297,7 +299,7 @@ URET uffs_FindObjectNext(uffs_ObjectInfo *info, uffs_FindInfo * f)
 		for (; f->hash < FILE_NODE_ENTRY_LEN; f->hash++) {
 			x = dev->tree.file_entry[f->hash];
 			while (x != EMPTY_NODE) {
-				node = FROM_IDX(x, &(dev->tree.pool));
+				node = FROM_IDX(x, TPOOL(dev));
 				if (node->u.file.parent == f->serial) {
 					f->work = node;
 					if (info) 

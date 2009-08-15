@@ -46,6 +46,11 @@
 #define UFFS_MAX_PAGE_SIZE		2048
 
 /**
+ * \def UFFS_MAX_SPARE_SIZE
+ */
+#define UFFS_MAX_SPARE_SIZE ((UFFS_MAX_PAGE_SIZE / 256) * 8)
+
+/**
  * \def MAX_CACHED_BLOCK_INFO
  * \note uffs cache the block info for opened directories and files,
  *       a practical value is 5 ~ MAX_OBJECT_HANDLE
@@ -59,6 +64,13 @@
  *       value is become larger than 'max pages per block'
  */
 #define MAX_PAGE_BUFFERS		33
+
+/**
+ * \def MAX_SPARE_BUFFERS
+ * \note spare buffers are used for lower level flash operations, 5 should be enough.
+ */
+#define MAX_SPARE_BUFFERS		5
+
 
 /**
  * \def MAX_DIRTY_PAGES_IN_A_BLOCK 
@@ -75,40 +87,40 @@
 
 
 /**
- * \def USE_STATIC_MEMORY_ALLOCATOR
+ * \def CONFIG_USE_STATIC_MEMORY_ALLOCATOR
  * \note uffs will use static memory allocator if this is defined.
  *       to use static memory allocator, you need to provide memory
  *       buffer when creating uffs_Device.
  *
  *       use UFFS_MAIN_BUFFER_SIZE() to calculate memory buffer size.
  */
-#define USE_STATIC_MEMORY_ALLOCATOR
+#define CONFIG_USE_STATIC_MEMORY_ALLOCATOR
 
 /**
- * \def USE_NATIVE_MEMORY_ALLOCATOR
+ * \def CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
  * \note  the native memory allocator should only be used for
  *        tracking memory leak bugs or tracking memory consuming.
  *        In your final product, you either disable the native memory
  *        allocator or use the system heap as the memory pool for the
  *        native memory allocator.
  */
-#define USE_NATIVE_MEMORY_ALLOCATOR
+#define CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
 
 /** 
- * \def FLUSH_BUF_AFTER_WRITE
+ * \def CONFIG_FLUSH_BUF_AFTER_WRITE
  * \note UFFS will write all data directly into flash in 
  *       each 'write' call if you enable this option.
  *       (which means lesser data lost when power failue but
  *		 pooer writing performance).
  *		 It's not recommented to open this define for normal applications.
  */
-//#define FLUSH_BUF_AFTER_WRITE
+//#define CONFIG_FLUSH_BUF_AFTER_WRITE
 
 /**
- * \def TREE_NODE_USE_DOUBLE_LINK
+ * \def CONFIG_TREE_NODE_USE_DOUBLE_LINK
  * \note: enable double link tree node will speed up insert/delete operation,
  */
-#define TREE_NODE_USE_DOUBLE_LINK
+#define CONFIG_TREE_NODE_USE_DOUBLE_LINK
 
 /** 
  * \def MAX_OBJECT_HANDLE
@@ -124,26 +136,27 @@
 #define MINIMUN_ERASED_BLOCK 2
 
 /**
- * \def CHANGE_MODIFY_TIME
- * If defined, closing a file which is opened for writing/appending will
- * update the file's modify time as well. Disable this feature will save a
- * lot of writing activities if you frequently open files for write and close it.
+ * \def CONFIG_CHANGE_MODIFY_TIME
+ * \note If defined, closing a file which is opened for writing/appending will
+ *       update the file's modify time as well. Disable this feature will save a
+ *       lot of writing activities if you frequently open files for write and close it.
  */
-//#define CHANGE_MODIFY_TIME
-
-/**
- * \def ENABLE_TAG_CHECKSUM 
- * \note do not set it to 1 if your NAND flash only have 8 bytes spare !
- */
-#define ENABLE_TAG_CHECKSUM 0
+//#define CONFIG_CHANGE_MODIFY_TIME
 
 
 /**
- * \def ENABLE_BAD_BLOCK_VERIFY
+ * \def CONFIG_ENABLE_BAD_BLOCK_VERIFY
  * \note allow erase and verify block marked as 'bad' when format UFFS partition.
  *		it's not recommented for most NAND flash.
  */
-#define ENABLE_BAD_BLOCK_VERIFY
+#define CONFIG_ENABLE_BAD_BLOCK_VERIFY
+
+
+/**
+ * \def CONFIG_PAGE_WRITE_VERIFY
+ * \note verify page data after write, for extra safe data storage.
+ */
+#define CONFIG_PAGE_WRITE_VERIFY
 
 
 /** micros for calculating buffer sizes */
@@ -177,6 +190,10 @@
  */
 #define UFFS_TREE_BUFFER_SIZE(n_blocks) (sizeof(TreeNode) * n_blocks)
 
+
+#define UFFS_SPARE_BUFFER_SIZE (MAX_SPARE_BUFFERS * UFFS_MAX_SPARE_SIZE)
+
+
 /**
  *	\def UFFS_STATIC_BUFF_SIZE
  *	\brief calculate total memory usage of uffs system
@@ -186,7 +203,7 @@
 				UFFS_BLOCK_INFO_BUFFER_SIZE(n_pages_per_block) + \
 				UFFS_PAGE_BUFFER_SIZE(n_page_size) + \
 				UFFS_TREE_BUFFER_SIZE(n_blocks) + \
-				n_page_size \
+				UFFS_SPARE_BUFFER_SIZE \
 			 )
 
 

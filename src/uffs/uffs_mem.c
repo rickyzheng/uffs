@@ -43,7 +43,7 @@
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_mem.h"
 
-#if defined(USE_NATIVE_MEMORY_ALLOCATOR)
+#if defined(CONFIG_USE_NATIVE_MEMORY_ALLOCATOR)
 
 #define PFX "mem: "
 
@@ -839,5 +839,5 @@ void uffs_MemSetupNativeAllocator(uffs_MemAllocator *allocator)
 	allocator->release = uffs_MemReleaseNativeAllocator;
 }
 
-#endif //USE_NATIVE_MEMORY_ALLOCATOR
+#endif //CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
 

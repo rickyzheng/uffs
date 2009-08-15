@@ -48,11 +48,15 @@
 extern "C"{
 #endif
 	
-#define CLONE_BUF_MARK		0xffff		//!< set uffs_BufSt.ref_count to this for a 'cloned' buffer
+#define CLONE_BUF_MARK		0xffff		//!< set uffs_BufSt::ref_count to this for a 'cloned' buffer
 
+/** for uffs_BufSt::mark */
 #define UFFS_BUF_EMPTY		0			//!< buffer is empty
 #define UFFS_BUF_VALID		1			//!< buffer is holding valid data
 #define UFFS_BUF_DIRTY		2			//!< buffer data is modified
+
+/** for uffs_BufSt::ext_mark */
+#define UFFS_BUF_EXT_MARK_TRUNC_TAIL		1	//!<
 
 /** uffs page buffer */
 struct uffs_BufSt{
@@ -69,6 +73,7 @@ struct uffs_BufSt{
 	u16 data_len;						//!< length of data
 	u16 check_sum;						//!< checksum field
 	u8 * data;							//!< data buffer
+	int ext_mark;						//!< extension mark. 
 };
 
 #define uffs_BufIsFree(buf) (buf->ref_count == 0 ? U_TRUE : U_FALSE)
@@ -121,6 +126,12 @@ int uffs_BufFindFreeGroupSlot(struct uffs_DeviceSt *dev);
 /** find the dirty group slot */
 int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, u16 parent, u16 serial);
 
+/** lock dirty group */
+URET uffs_BufLockGroup(struct uffs_DeviceSt *dev, int slot);
+
+/** unlock dirty group */
+URET uffs_BufUnLockGroup(struct uffs_DeviceSt *dev, int slot);
+
 /** flush most dirty group */
 URET uffs_BufFlushMostDirtyGroup(struct uffs_DeviceSt *dev);
 
@@ -143,7 +154,7 @@ URET uffs_BufSetAllEmpty(struct uffs_DeviceSt *dev);
 uffs_Buf * uffs_BufClone(struct uffs_DeviceSt *dev, uffs_Buf *buf);
 
 /** release a cloned page buffer, call in pair with #uffs_BufClone */
-void uffs_BufFreeClone(uffs_Device *dev, uffs_Buf *buf);
+URET uffs_BufFreeClone(uffs_Device *dev, uffs_Buf *buf);
 
 /** load physical storage data to page buffer */
 URET uffs_BufLoadPhyData(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page);

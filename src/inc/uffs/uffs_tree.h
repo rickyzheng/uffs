@@ -87,7 +87,7 @@ typedef struct uffs_TreeNodeSt {
 		struct FdataSt data;
 	} u;
 	u16 hash_next;		
-#ifdef TREE_NODE_USE_DOUBLE_LINK
+#ifdef CONFIG_TREE_NODE_USE_DOUBLE_LINK
 	u16 hash_prev;			
 #endif
 } TreeNode;
@@ -160,13 +160,12 @@ struct uffs_TreeSt {
 	u16 dir_entry[DIR_NODE_ENTRY_LEN];
 	u16 file_entry[FILE_NODE_ENTRY_LEN];
 	u16 data_entry[DATA_NODE_ENTRY_LEN];
-	uffs_Pool pool;
 	u16 max_serial;
 };
 
 
-URET uffs_InitTreeBuf(uffs_Device *dev);
-URET uffs_ReleaseTreeBuf(uffs_Device *dev);
+URET uffs_TreeInit(uffs_Device *dev);
+URET uffs_TreeRelease(uffs_Device *dev);
 URET uffs_BuildTree(uffs_Device *dev);
 u16 uffs_FindFreeFsnSerial(uffs_Device *dev);
 TreeNode * uffs_TreeFindFileNode(uffs_Device *dev, u16 serial);
