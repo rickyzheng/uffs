@@ -74,14 +74,15 @@ int conf_pages_data_size = 512;
 int conf_pages_spare_size = 16;
 int conf_total_blocks =	6;		//2M
 
-#define PAGE_SIZE					(conf_pages_data_size + conf_pages_spare_size)
+#define PAGE_SIZE				(conf_pages_data_size + conf_pages_spare_size)
 #define BLOCK_DATA_SIZE				(conf_pages_per_block * conf_pages_data_size)
 #define TOTAL_DATA_SIZE				(conf_total_blocks * BLOCK_DATA_SIZE)
-#define BLOCK_SIZE					(conf_pages_per_block * PAGE_SIZE)
-#define TOTAL_SIZE					(BLOCK_SIZE * conf_total_blocks)
+#define BLOCK_SIZE				(conf_pages_per_block * PAGE_SIZE)
+#define TOTAL_SIZE				(BLOCK_SIZE * conf_total_blocks)
 
-#define MAX_MOUNT_TABLES		10
-#define MAX_MOUNT_POINT_NAME	32
+#define MAX_MOUNT_TABLES			10
+#define MAX_MOUNT_POINT_NAME			32
+
 static struct uffs_MountTableEntrySt conf_mounts[MAX_MOUNT_TABLES] = {0};
 static uffs_Device conf_devices[MAX_MOUNT_TABLES] = {0};
 static char mount_point_name[MAX_MOUNT_TABLES][MAX_MOUNT_POINT_NAME] = {0};

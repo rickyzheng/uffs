@@ -532,10 +532,11 @@ UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block)
 {
 	u8 status = 0xFF;
 
-	if (dev->ops->IsBadBlock)
+	if (dev->ops->IsBadBlock) /* if flash driver provide 'IsBadBlock' function, then use it. */
 		return dev->ops->IsBadBlock(dev, block) == 1 ? U_TRUE : U_FALSE;
 
-	if (dev->ops->WritePageSpare == NULL) {
+	/* otherwise we check the 'status' byte of spare */
+	if (dev->ops->ReadPageSpare == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"flash driver must provide 'ReadPageSpare' function!\n");
 		return U_FALSE;
 	}

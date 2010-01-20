@@ -52,7 +52,7 @@ extern "C"{
 /** ECC options (uffs_StorageAttrSt.ecc_opt) */
 #define UFFS_ECC_NONE		0	//!< do not use ECC
 #define UFFS_ECC_SOFT		1	//!< UFFS calculate the ECC
-#define UFFS_ECC_HW			2	//!< Flash driver(or by hardware) calculate the ECC
+#define UFFS_ECC_HW		2	//!< Flash driver(or by hardware) calculate the ECC
 #define UFFS_ECC_HW_AUTO	3	//!< Hardware calculate the ECC and automatically write to spare.
 
 
@@ -87,12 +87,12 @@ struct uffs_StorageAttrSt {
 	u32 total_blocks;		//!< total blocks in this chip
 	u16 page_data_size;		//!< page data size (physical page data size, e.g. 512)
 	u16 spare_size;			//!< page spare size (physical page spare size, e.g. 16)
-	u16 pages_per_block;	//!< pages per block
-	u16 block_status_offs;	//!< block status byte offset in spare
+	u16 pages_per_block;		//!< pages per block
+	u16 block_status_offs;		//!< block status byte offset in spare
 	int ecc_opt;			//!< ecc option ( #UFFS_ECC_[NONE|SOFT|HW|HW_AUTO] )
 	int layout_opt;			//!< layout option
-	const u8 *ecc_layout;	//!< page data ECC layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
-	const u8 *data_layout;	//!< spare data layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
+	const u8 *ecc_layout;		//!< page data ECC layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
+	const u8 *data_layout;		//!< spare data layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
 	void *private;			//!< private data for storage attribute
 };
 
