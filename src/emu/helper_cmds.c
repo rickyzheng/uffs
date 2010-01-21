@@ -855,6 +855,51 @@ fail_exit:
 	return TRUE;
 }
 
+/* test appending file */
+BOOL cmdTest5(const char *tail)
+{
+	uffs_Object *f;
+	URET ret;
+	char buf[100];
+	const char *name;
+
+	if (!tail) {
+		return FALSE;
+	}
+
+	name = cli_getparam(tail, NULL);
+
+	f = uffs_GetObject();
+	if (f == NULL) {
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"Fail to get object.\n");
+		return TRUE;	
+	}
+
+	ret = uffs_OpenObject(f, name, UO_RDWR|UO_APPEND);
+	if (ret != U_SUCC) {
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open %s\n", name);
+		goto fail;
+	}
+
+	sprintf(buf, "append test...");
+	ret = uffs_WriteObject(f, buf, strlen(buf));
+	if (ret != strlen(buf)) {
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"write file failed, %d/%d\n", ret, strlen(buf));
+	}
+	else {
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"write %d bytes to file, content: %s\n", ret, buf);
+	}
+
+	uffs_CloseObject(f);
+
+fail:
+	uffs_PutObject(f);
+
+	return TRUE;
+}
+
+
+
 BOOL cmdMount(const char *tail)
 {
 	uffs_MountTable *tab = uffs_GetMountTable();
@@ -881,6 +926,7 @@ static struct cli_commandset cmdset[] =
     { cmdTest2,		"t2",			NULL,				"test 2" },
     { cmdTest3,		"t3",			"<name>",			"test 3" },
     { cmdTest4,		"t4",			NULL,				"test 4" },
+    { cmdTest5,		"t5",			"<name>",			"test 5" },
     { cmdCp,		"cp",			"<src> <des>",		"copy files. the local file name start with '::'" },
     { cmdCat,		"cat",			"<name>",			"show file content" },
     { cmdPwd,		"pwd",			NULL,				"show current dir" },
