@@ -88,7 +88,13 @@ static const u8 column_parity_tbl[256] = {
 	0x00, 0x55, 0x59, 0x0c, 0x65, 0x30, 0x3c, 0x69, 0x69, 0x3c, 0x30, 0x65, 0x0c, 0x59, 0x55, 0x00, 
 };
 
-
+/**
+ * calculate 3 bytes ECC for 256 bytes data.
+ *
+ * \param[in] data input data
+ * \param[out] ecc output ecc
+ * \param[in] length of data in bytes
+ */
 static void uffs_EccMakeChunk256(void *data, void *ecc, u16 len)
 {
 	u8 *pecc = (u8 *)ecc;
@@ -126,8 +132,13 @@ static void uffs_EccMakeChunk256(void *data, void *ecc, u16 len)
 
 
 /**
- * calculate ECC
- * \return length of generated ECC. (3 bytes ECC per 256 data) 
+ * calculate ECC. (3 bytes ECC per 256 data)
+ *
+ * \param[in] data input data
+ * \param[in] data_len length of data in byte
+ * \param[out] ecc output ecc
+ *
+ * \return length of ECC in byte. (3 bytes ECC per 256 data) 
  */
 int uffs_EccMake(void *data, int data_len, void *ecc)
 {
@@ -145,6 +156,18 @@ int uffs_EccMake(void *data, int data_len, void *ecc)
 	return p_ecc - (u8 *)ecc;
 }
 
+/**
+ * perform ECC error correct for 256 bytes data chunk.
+ *
+ * \param[in|out] data input data to be corrected
+ * \param[in] read_ecc 3 bytes ECC read from storage
+ * \param[in] test_ecc 3 bytes ECC calculated from data
+ * \param[in] errtop top position of error
+ *
+ * \return:  0 -- no error
+ *			-1 -- can not be corrected
+ *			>0 -- how many bits corrected
+ */
 static int uffs_EccCorrectChunk256(void *data, void *read_ecc, const void *test_ecc, int errtop)
 {
 	u8 d0, d1, d2;		/* deltas */
@@ -189,7 +212,7 @@ static int uffs_EccCorrectChunk256(void *data, void *read_ecc, const void *test_
 		return 1;
 	}
 	
-	if ((bits_tbl[d0]+bits_tbl[d1]+bits_tbl[d2]) == 1) {
+	if ((bits_tbl[d0] + bits_tbl[d1] + bits_tbl[d2]) == 1) {
 		// error in ecc, no action need		
 		return 1;
 	}
@@ -198,13 +221,19 @@ static int uffs_EccCorrectChunk256(void *data, void *read_ecc, const void *test_
 	return -1;
 }
 
-/** 
- * correct data by ECC.
+/**
+ * perform ECC error correct
  *
- * return:   0 -- no error
- *			-1 -- can not be correct
+ * \param[in|out] data input data to be corrected
+ * \param[in] data_len length of data in byte
+ * \param[in] read_ecc ECC read from storage
+ * \param[in] test_ecc ECC calculated from data
+ *
+ * \return:  0 -- no error
+ *			-1 -- can not be corrected
  *			>0 -- how many bits corrected
  */
+
 int uffs_EccCorrect(void *data, int data_len, void *read_ecc, const void *test_ecc)
 {
 	u8 *p_data = (u8 *)data, *p_read_ecc = (u8 *)read_ecc, *p_test_ecc = (u8 *)test_ecc;
@@ -234,7 +263,15 @@ int uffs_EccCorrect(void *data, int data_len, void *read_ecc, const void *test_e
 
 }
 
-/** generate 12 bit ecc for 8 bytes data */
+/** 
+ * generate 12 bit ecc for 8 bytes data. 
+ *	(use 0xFF padding if the data length is less then 8 bytes)
+ *
+ * \param[in] data input data
+ * \param[in] data_len length of data in byte
+ *
+ * \return 12 bits ECC data (lower 12 bits).
+ */
 u16 uffs_EccMake8(void *data, int data_len)
 {
 	u8 *p = (u8 *)data;
@@ -276,8 +313,13 @@ u16 uffs_EccMake8(void *data, int data_len)
 /**
  * correct 8 bytes data from 12 bits ECC
  *
- * return:   0 -- no error
- *			-1 -- can not be correct
+ * \param[in|out] data input data
+ * \param[in] read_ecc ecc read from storage
+ * \param[in] test_ecc ecc calculated from data
+ * \param[in] errtop top position of error.
+ *
+ * \return:  0 -- no error
+ *			-1 -- can not be corrected
  *			>0 -- how many bits corrected
  */
 int uffs_EccCorrect8(void *data, u16 read_ecc, u16 test_ecc, int errtop)
@@ -320,7 +362,7 @@ int uffs_EccCorrect8(void *data, u16 read_ecc, u16 test_ecc, int errtop)
 		return 1;
 	}
 	
-	if ((bits_tbl[d0]+bits_tbl[d1]) == 1) {
+	if ((bits_tbl[d0] + bits_tbl[d1]) == 1) {
 		// error in ecc, no action need		
 		return 1;
 	}

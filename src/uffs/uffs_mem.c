@@ -127,11 +127,11 @@ typedef struct HeapNodeSt {
 
 */
 
-static HeapNode* volatile _k_heapFreeList = NULL;
-static HeapNode * _k_heapTail_ = NULL; 
-static u32 _k_heap_available = 0;
-static u32 _minimu_heap_avaiable = 0x0fffffff;
-static u32 _kernel_heap_total = 0;
+static HeapNode* volatile m_heapFreeList = NULL;
+static HeapNode * m_heapTail = NULL; 
+static u32 m_heap_available = 0;
+static u32 m_min_heap_avaiable = 0x0fffffff;
+static u32 m_kernel_heap_total = 0;
 
 static void HeapDeleteFromFreeList(HeapNode *node);
 static void HeapChainToFreeList(HeapNode *node);
@@ -149,8 +149,8 @@ static void HeapDeleteFromFreeList(HeapNode *node)
 		node->next_free->prev_free = node->prev_free;
 	if(node->prev_free)
 		node->prev_free->next_free = node->next_free;
-	if(node == _k_heapFreeList)
-		_k_heapFreeList = node->next_free;
+	if(node == m_heapFreeList)
+		m_heapFreeList = node->next_free;
 }
 
 /*
@@ -160,14 +160,14 @@ static void HeapChainToFreeList(HeapNode *node)
 {
 	node->next_free = NULL;
 	node->prev_free = NULL;
-	if(_k_heapFreeList == NULL){
-		_k_heapFreeList = node;
+	if(m_heapFreeList == NULL){
+		m_heapFreeList = node;
 		return;
 	}
 	else{
-		_k_heapFreeList->prev_free = node;
-		node->next_free = _k_heapFreeList;
-		_k_heapFreeList = node;
+		m_heapFreeList->prev_free = node;
+		node->next_free = m_heapFreeList;
+		m_heapFreeList = node;
 	}
 }
 
@@ -216,9 +216,9 @@ static void *_k_allock_node(HeapNode *node, int size)
 	 */
 	HeapDeleteFromFreeList(node);
 
-	_k_heap_available -= node->size;
-	if(_minimu_heap_avaiable > _k_heap_available)
-		_minimu_heap_avaiable = _k_heap_available;
+	m_heap_available -= node->size;
+	if(m_min_heap_avaiable > m_heap_available)
+		m_min_heap_avaiable = m_heap_available;
 	
 	uffs_CriticalExit();	/* exit critical */
 	
@@ -254,7 +254,7 @@ static void *_k_allock_node(HeapNode *node, int size)
  *
  * \return Pointer to the allocated memory block if the
  *         function is successful or NULL if the requested
- *         amount of memory is not _k_heap_available.
+ *         amount of memory is not m_heap_available.
  */
 static void *_kmalloc(int size)
 {
@@ -276,7 +276,7 @@ static void *_kmalloc(int size)
 
 	uffs_CriticalEnter();	/* enter critical */
 	
-	node = _k_heapFreeList;
+	node = m_heapFreeList;
 	
 #if defined(K_HEAP_ALLOCK_BEST_FIT)
     /*
@@ -467,10 +467,10 @@ static int _kfree(void *block)
 	node = (HeapNode *)((u32)block - ALLOC_OFFSET);
 	if(node->mark != (int)HEAP_NODE_ALLOCED || node->size <= ALLOC_OFFSET) {
 		uffs_CriticalExit();/* exit critical */
-		return -1;	/*!!!! at this moment, the heap 
+		return -1;	/*!!!! at this point, the heap 
 						management info must be damaged !!!!!*/
 	}
-	_k_heap_available += node->size;
+	m_heap_available += node->size;
 	
 	prev = node->prev_node;
 	next = (HeapNode *)((u32)node + node->size);
@@ -542,7 +542,7 @@ void uffs_MemInitHeap(void *addr, int size)
 	np->mark = HEAP_NODE_ALLOCED;
 	np->size = -1;
 	np->prev_node = (HeapNode *)((u32)addr + ALLOC_PAGE_SIZE);
-	_k_heapTail_ = np;
+	m_heapTail = np;
 
 	/* Free list head */
     np = (HeapNode *)((u32)addr + ALLOC_PAGE_SIZE);
@@ -551,11 +551,11 @@ void uffs_MemInitHeap(void *addr, int size)
     np->size = size - 2 * ALLOC_PAGE_SIZE;
     np->next_free = NULL;
     np->prev_free = NULL;
-	_k_heapFreeList = np;
-	_k_heap_available = np->size;
-	_minimu_heap_avaiable = _k_heap_available;
+	m_heapFreeList = np;
+	m_heap_available = np->size;
+	m_min_heap_avaiable = m_heap_available;
 	
-	_kernel_heap_total += size;
+	m_kernel_heap_total += size;
 
 	uffs_CriticalExit();
 }
