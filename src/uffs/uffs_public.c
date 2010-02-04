@@ -79,11 +79,13 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj)
 
 
 /** 
- * \brief find a best page than given page from page.
+ * \brief given a page, search the block to find a better page with the same page id
+ *
  * \param[in] dev uffs device
  * \param[in] bc block info
  * \param[in] page page number to be compared with
- * \return the better page number, could be the same with given page
+ *
+ * \return the better page number, could be the same with the given page
  */
 u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 {
@@ -101,7 +103,9 @@ u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 		//well, try to speed up by probing the last page ....
 		uffs_BlockInfoLoad(dev, bc, dev->attr->pages_per_block - 1);
 		tag = GET_TAG(bc, dev->attr->pages_per_block - 1);
-		if (TAG_PAGE_ID(tag) == dev->attr->pages_per_block - 1) {
+		if (TAG_IS_VALID(tag) &&
+			TAG_IS_DIRTY(tag) &&
+			TAG_PAGE_ID(tag) == dev->attr->pages_per_block - 1) {
 			return page;
 		}
 	}
