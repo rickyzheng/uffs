@@ -72,7 +72,8 @@ const char * conf_emu_filename = DEFAULT_EMU_FILENAME;
 int conf_pages_per_block = 32;
 int conf_pages_data_size = 512;
 int conf_pages_spare_size = 16;
-int conf_total_blocks =	6;		//2M
+int conf_status_byte_offset = 5;
+int conf_total_blocks =	128;
 
 #define PAGE_SIZE				(conf_pages_data_size + conf_pages_spare_size)
 #define BLOCK_DATA_SIZE				(conf_pages_per_block * conf_pages_data_size)
@@ -142,12 +143,12 @@ static struct cli_commandset basic_cmdset[] =
 
 static void setup_emu_storage(struct uffs_StorageAttrSt *attr)
 {
-	attr->total_blocks = conf_total_blocks;			/* total blocks */
+	attr->total_blocks = conf_total_blocks;				/* total blocks */
 	attr->page_data_size = conf_pages_data_size;		/* page data size */
 	attr->spare_size = conf_pages_spare_size;			/* page spare size */
-	attr->pages_per_block = conf_pages_per_block;	/* pages per block */
+	attr->pages_per_block = conf_pages_per_block;		/* pages per block */
 
-	attr->block_status_offs = 5;                /* block status offset is 5th byte in spare */
+	attr->block_status_offs = conf_status_byte_offset;	/* block status offset is 5th byte in spare */
 	attr->ecc_opt = UFFS_ECC_SOFT;				/* let UFFS handle the ECC */
 	attr->layout_opt = UFFS_LAYOUT_UFFS;		/* let UFFS handle layout */
 }
@@ -290,6 +291,14 @@ static int parse_options(int argc, char *argv[])
 				if (conf_pages_spare_size < 16 || (conf_pages_spare_size % 4))
 					usage++;
             }
+            else if (!strcmp(arg, "-o") || !strcmp(arg, "--status-offset")) {
+                if (++iarg >= argc) 
+					usage++;
+                else if (sscanf(argv[iarg], "%i", &conf_status_byte_offset) < 1) 
+					usage++;
+				if (conf_status_byte_offset < 0)
+					usage++;
+            }
             else if (!strcmp(arg, "-b") || !strcmp(arg, "--block-pages")) {
                 if (++iarg >= argc)
 					usage++;
@@ -353,6 +362,7 @@ static int parse_options(int argc, char *argv[])
         printf("  -f  --file           <file>       uffs image file\n");
         printf("  -p  --page-size      <n>          page data size, default=512\n");
         printf("  -s  --spare-size     <n>          page spare size, default=16\n");
+		printf("  -o  --status-offset  <n>          status byte offset, default=5\n");
         printf("  -b  --block-pages    <n>          pages per block\n");
         printf("  -t  --total-blocks   <n>          total blocks\n");
         printf("  -m  --mount          <mount_point,start,end> , for example: -m /,0,-1\n");

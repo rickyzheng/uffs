@@ -245,13 +245,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 	if (!TAG_IS_VALID(tag)) {
 		//first page is invalid ? should be erased now!
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"first page in block %d is invalid, will be erased now!\n", bc->block);
-		
-		uffs_FlashEraseBlock(dev, bc->block);
-		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
-
-		/* now, put this node to erased list to tail */
-		uffs_TreeInsertToErasedListTail(dev, node);
-		return U_SUCC;
+		goto process_invalid_block;		
 	}
 
 	block = bc->block;
@@ -318,6 +312,12 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 			return U_FAIL;
 		uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
 		page = uffs_FindPageInBlockWithPageId(dev, bc, 0);
+		if (page == UFFS_INVALID_PAGE) {
+			uffs_BufFreeClone(dev, buf);
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't find any valid page for page_id=0 ? invalid block !"
+												"this might be caused by the tag layout change.\n");
+			goto process_invalid_block;
+		}
 		uffs_FlashReadPage(dev, block, page, buf->data);
 		info = (uffs_FileInfo *) (buf->data);
 		data_sum = uffs_MakeSum16(info->name, info->name_len);
@@ -349,6 +349,16 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 	if (needToInsertToTree == U_TRUE) {
 		uffs_InsertNodeToTree(dev, type, node);
 	}
+
+	return U_SUCC;
+
+process_invalid_block:
+	/* erase the invalid block */
+	uffs_FlashEraseBlock(dev, bc->block);
+	uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
+
+	/* now, put this node to erased list to tail */
+	uffs_TreeInsertToErasedListTail(dev, node);
 
 	return U_SUCC;
 }

@@ -60,6 +60,8 @@ extern "C"{
 #define UFFS_LAYOUT_UFFS	0	//!< do layout by dev->attr information
 #define UFFS_LAYOUT_FLASH	1	//!< flash driver do the layout
 
+#define UFFS_SPARE_LAYOUT_SIZE	6	//!< maximum spare layout array size, 2 segments
+
 /** flash operation return code */
 #define UFFS_FLASH_NO_ERR		0
 #define UFFS_FLASH_ECC_OK		1
@@ -86,20 +88,22 @@ extern "C"{
 struct uffs_StorageAttrSt {
 	u32 total_blocks;		//!< total blocks in this chip
 	u16 page_data_size;		//!< page data size (physical page data size, e.g. 512)
-	u16 spare_size;			//!< page spare size (physical page spare size, e.g. 16)
-	u16 pages_per_block;		//!< pages per block
-	u16 block_status_offs;		//!< block status byte offset in spare
+	u16 pages_per_block;	//!< pages per block
+	u8 spare_size;			//!< page spare size (physical page spare size, e.g. 16)
+	u8 block_status_offs;	//!< block status byte offset in spare
 	int ecc_opt;			//!< ecc option ( #UFFS_ECC_[NONE|SOFT|HW|HW_AUTO] )
-	int layout_opt;			//!< layout option
-	const u8 *ecc_layout;		//!< page data ECC layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
-	const u8 *data_layout;		//!< spare data layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
+	int layout_opt;			//!< layout option (#UFFS_LAYOUT_UFFS or #UFFS_LAYOUT_FLASH)
+	const u8 *ecc_layout;	//!< page data ECC layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
+	const u8 *data_layout;	//!< spare data layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
+	u8 _uffs_ecc_layout[UFFS_SPARE_LAYOUT_SIZE];	//!< uffs spare ecc layout
+	u8 _uffs_data_layout[UFFS_SPARE_LAYOUT_SIZE];	//!< uffs spare data layout
 	void *private;			//!< private data for storage attribute
 };
 
 
 /**
  * \struct uffs_FlashOpsSt 
- * \brief lower level flash operations, should be implement in flash driver
+ * \brief low level flash operations, should be implement in flash driver
  */
 struct uffs_FlashOpsSt {
 	/**
