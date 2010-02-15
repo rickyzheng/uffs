@@ -176,6 +176,16 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 	struct uffs_StorageAttrSt *attr = dev->attr;
 	uffs_Pool *pool = SPOOL(dev);
 
+	if (!dev->ops->IsBadBlock && !dev->ops->ReadPageSpare) {
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"flash driver must provide 'IsBadBlock' or 'ReadPageSpare' function!\n");
+		return U_FAIL;
+	}
+
+	if (!dev->ops->MarkBadBlock && !dev->ops->WritePageSpare) {
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"flash driver must provide 'MarkBadBlock' or 'WritePageSpare' function!\n");
+		return U_FAIL;
+	}
+
 	if (dev->mem.spare_pool_size == 0) {
 		if (dev->mem.malloc) {
 			dev->mem.spare_pool_buf = dev->mem.malloc(dev, UFFS_SPARE_BUFFER_SIZE);
@@ -553,11 +563,6 @@ URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block)
 	if (dev->ops->MarkBadBlock)
 		return dev->ops->MarkBadBlock(dev, block) == 0 ? U_SUCC : U_FAIL;
 
-	if (dev->ops->WritePageSpare == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"flash driver must provide 'WritePageSpare' function!\n");
-		return U_FAIL;
-	}
-
 	ret = dev->ops->EraseBlock(dev, block);
 	if (ret == UFFS_FLASH_NO_ERR)
 		ret = dev->ops->WritePageSpare(dev, block, 0, &status, dev->attr->block_status_offs, 1);
@@ -571,17 +576,14 @@ UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block)
 	u8 status = 0xFF;
 
 	if (dev->ops->IsBadBlock) /* if flash driver provide 'IsBadBlock' function, then use it. */
-		return dev->ops->IsBadBlock(dev, block) == 1 ? U_TRUE : U_FALSE;
+		return dev->ops->IsBadBlock(dev, block) == 0 ? U_FALSE : U_TRUE;
 
 	/* otherwise we check the 'status' byte of spare */
-	if (dev->ops->ReadPageSpare == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"flash driver must provide 'ReadPageSpare' function!\n");
-		return U_FALSE;
-	}
-
+	/* check the first page */
 	dev->ops->ReadPageSpare(dev, block, 0, &status, dev->attr->block_status_offs, 1);
 
 	if (status == 0xFF) {
+		/* check the second page */
 		dev->ops->ReadPageSpare(dev, block, 1, &status, dev->attr->block_status_offs, 1);
 		if (status == 0xFF)
 			return U_FALSE;
