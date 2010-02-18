@@ -51,9 +51,9 @@
 #define MAXWRITETIME_PAGE 2
 #define MAXWRITETIME_SPARE 2
 
-#define FEMU_MAX_SPARE_SIZE		64
+#define FEMU_MAX_SPARE_SIZE		UFFS_MAX_SPARE_SIZE
 
-static u8 em_page_buf[4096];
+static u8 em_page_buf[UFFS_MAX_PAGE_SIZE + UFFS_MAX_SPARE_SIZE];
 
 
 static URET emu_initDevice(uffs_Device *dev);
@@ -265,7 +265,7 @@ static URET femu_ReadPageData(uffs_Device *dev, u32 block, u32 page_num, u8 *dat
 
 		// for ECC testing.
 		if (1 && block == 2 && page_num == 3) {
-			printf("--- ECC error inject to block 10 page 3 ---\n");
+			printf("--- ECC error inject to block %d page %d ---\n", block, page_num);
 			data[13] = (data[13] & ~0x40) | (~(data[13] & 0x40) & 0x40) ;
 		}
 		

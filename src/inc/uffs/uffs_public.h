@@ -57,13 +57,13 @@ struct uffs_TagStoreSt {
 	u32 valid:1;		//!< 0: valid, 1: invalid
 	u32 type:2;			//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
 	u32 block_ts:2;		//!< time stamp of block;
-	u32 data_len:12;	//!< length of page data
 	u32 serial:14;		//!< serial number
+	u32 tag_ecc:12;		//!< tag ECC
 
 	u32 parent:10;		//!< parent's serial number
 	u32 page_id:6;		//!< page id
-	u32 reserved:4;		//!< reserved, for UFFS2
-	u32 tag_ecc:12;		//!< tag ECC
+	u32 data_len:13;	//!< length of page data
+	u32 reserved:3;		//!< reserved, for UFFS2
 };
 
 /**

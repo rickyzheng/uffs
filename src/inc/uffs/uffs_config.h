@@ -43,7 +43,7 @@
  * \def UFFS_MAX_PAGE_SIZE
  * \note maximum page size UFFS support
  */
-#define UFFS_MAX_PAGE_SIZE		2048
+#define UFFS_MAX_PAGE_SIZE		4096
 
 /**
  * \def UFFS_MAX_SPARE_SIZE

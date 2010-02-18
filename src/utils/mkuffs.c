@@ -54,7 +54,7 @@ extern struct cli_commandset * get_test_cmds(void);
 extern void femu_init_uffs_device(uffs_Device *dev);
 
 #ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
-static int conf_memory_pool_size_kb = 100; /* default allocate 100k memory. */
+static int conf_memory_pool_size_kb = 800; /* default allocate 100k memory. */
 static void *memory_pool = NULL;
 #endif
 
