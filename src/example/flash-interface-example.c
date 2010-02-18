@@ -37,167 +37,78 @@
   
 
 #include "uffs/uffs_device.h"
+#include "uffs/uffs_flash.h"
 
 #define PFX "nand-drv:"
 
 
-static URET nand_write_page(uffs_Device *dev, u32 block, u32 pageNum, const u8 *data, const u8 *spare);
-static URET nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int ofs, int len);
-static URET nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len);
-static URET nand_read_page(uffs_Device *dev, u32 block, u32 pageNum, u8 *data, u8 *spare);
-static URET nand_read_page_data(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int ofs, int len);
-static URET nand_read_page_spare(uffs_Device *dev, u32 block, u32 pageNum, u8 *spare, int ofs, int len);
-static URET nand_erase_block(uffs_Device *dev, u32 blockNumber);
-static URET nand_reset_flash(uffs_Device *dev);
-static UBOOL nand_block_is_bad(uffs_Device *dev, u32 block);
-static URET nand_mark_bad_block(uffs_Device *dev, u32 block);
+static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc);
+static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len);
+
+static int nand_read_page_data(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int len, u8 *ecc);
+static int nand_read_page_spare(uffs_Device *dev, u32 block, u32 pageNum, u8 *spare, int ofs, int len);
+
+static int nand_erase_block(uffs_Device *dev, u32 blockNumber);
+
 static URET nand_init_device(uffs_Device *dev);
 
 
-static URET nand_write_page(uffs_Device *dev, u32 block, u32 pageNum, const u8 *data, const u8 *spare)
-{
-	int ret;
-	int pgSize, pgdSize, spSize, blks, blkPgs, blkSize;
 
-	pgSize = dev->attr.page_data_size + dev->attr.spare_size;
-	pgdSize = dev->attr.page_data_size;
-	spSize = dev->attr.spare_size;
-	blkPgs = dev->attr.pages_per_block;
-	blks = dev->attr.total_blocks;
-	blkSize = dev->attr.block_data_size;
-
-	if(data) {
-		ret = nand_write_page_data(dev, block, pageNum, data, 0, pgdSize);
-		if(ret == U_FAIL) return ret;
-	}
-	
-	if(spare) {
-		ret = nand_write_page_spare(dev, block, pageNum, spare, 0, spSize);
-		if(ret == U_FAIL) return ret;
-	}
-
-	return U_SUCC;	
-
-}
-
-static URET nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int ofs, int len)
+static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc)
 {
   // insert your nand driver codes here ...
 	
 	dev->st.pageWriteCount++;
-	return U_SUCC;
+	return UFFS_FLASH_NO_ERR;
 }
 
 
-static URET nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len)
+static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len)
 {
   // insert your nand driver codes here ...
   
   dev->st.spareWriteCount++;  
-	return U_SUCC;
+	return UFFS_FLASH_NO_ERR;
 }
 
-
-static URET nand_read_page(uffs_Device *dev, u32 block, u32 pageNum, u8 *data, u8 *spare)
-{
-	int ret;
-	int pgSize, pgdSize, spSize, blks, blkPgs, blkSize;
-	pgSize = dev->attr.page_data_size + dev->attr.spare_size;
-	pgdSize = dev->attr.page_data_size;
-	spSize = dev->attr.spare_size;
-	blkPgs = dev->attr.pages_per_block;
-	blks = dev->attr.total_blocks;
-	blkSize = dev->attr.block_data_size;
-
-	if(data)
-	{
-		ret = nand_read_page_data(dev, block, pageNum, data, 0, pgdSize);
-		if(ret == U_FAIL) return U_FAIL;
-	}
-	
-	if(spare)
-	{
-		ret = nand_read_page_spare(dev, block, pageNum, spare, 0, spSize);
-		if(ret == U_FAIL) return U_FAIL;
-	}
-
-	return U_SUCC;	
-}
-
-static URET nand_read_page_data(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int ofs, int len)
+static int nand_read_page_data(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int len, u8 *ecc)
 {
   // insert your nand driver codes here ...
 
 	dev->st.pageReadCount++;
-	return U_SUCC;
+	return UFFS_FLASH_NO_ERR;
 }
 
-static URET nand_read_page_spare(uffs_Device *dev, u32 block, u32 pageNum, u8 *spare, int ofs, int len)
+static int nand_read_page_spare(uffs_Device *dev, u32 block, u32 pageNum, u8 *spare, int ofs, int len)
 {
   // insert your nand driver codes here ...
 
 	dev->st.spareReadCount++;		
-	return U_SUCC;
+	return UFFS_FLASH_NO_ERR;
 }
 
 
-
-static URET nand_erase_block(uffs_Device *dev, u32 blockNumber)
+static int nand_erase_block(uffs_Device *dev, u32 blockNumber)
 {
   // insert your nand driver codes here ...
   
 	dev->st.blockEraseCount++;
-	return U_SUCC;
+	return UFFS_FLASH_NO_ERR;
 }
 
-static URET nand_reset_flash(uffs_Device *dev)
-{
-  // leave it empty ...
-  
-	return U_SUCC;
-}
-
-static UBOOL nand_block_is_bad(uffs_Device *dev, u32 block)
-{
-	// Here is the example implementation for checking bad block.
-	// If nand flash page size is not 512, the block status byte is 
-	// not the 5th byte of page spare, you should change it according
-	// your nand flash data sheet.
-
-	unsigned char mark;
-	mark = 0;
-	nand_read_page_spare(dev, block, 0, &mark, 5, 1);
-	if (mark == 0xff) {
-		nand_read_page_spare(dev, block, 1, &mark, 5, 1);
-		if (mark == 0xff) {
-			return U_FALSE;
-		}
-	}
-
-	return U_TRUE;
-}
-
-static URET nand_mark_bad_block(uffs_Device *dev, u32 block)
-{
-  // insert your nand driver codes here ...
-  // mark a bad block, for example, by writing 0x00 to 5th byte of first page spare ...
-  
-	return U_SUCC;
-}
 
 /////////////////////////////////////////////////////////////////////////////////
 
-static uffs_DevOps my_nand_device_ops = {
-	nand_reset_flash,
-	nand_block_is_bad,
-	nand_mark_bad_block,
-	nand_erase_block,
-	nand_write_page,
-	nand_write_page_data,
-	nand_write_page_spare,
-	nand_read_page,
-	nand_read_page_data,
-	nand_read_page_spare,
+static uffs_FlashOpsSt my_nand_driver_ops = {
+	nand_read_page_data,    //ReadPageData
+	nand_read_page_spare,   //ReadPageSpare
+    NULL,                   //ReadPageSpareWithLayout
+    nand_write_page_data,   //WritePageData
+    nand_write_page_spare,  //WritePageSpare
+    NULL,                   //WritePageSpareWithLayout
+    NULL,                   //IsBadBlock
+    NULL,                   //MarkBadBlock
+    nand_erase_block,       //EraseBlock
 };
 
 // change these parameters to fit your nand flash specification
@@ -218,8 +129,8 @@ static struct uffs_storageAttrSt flash_storage = {0};
 
 /* static alloc the memory for each partition */
 
-static int static_buffer_par1[(UFFS_BLOCK_INFO_BUFFER_SIZE(PAGES_PER_BLOCK) + UFFS_PAGE_BUFFER_SIZE(PAGE_SIZE) + UFFS_TREE_BUFFER_SIZE(PAR_1_BLOCKS) + PAGE_SIZE) / sizeof(int)];
-static int static_buffer_par2[(UFFS_BLOCK_INFO_BUFFER_SIZE(PAGES_PER_BLOCK) + UFFS_PAGE_BUFFER_SIZE(PAGE_SIZE) + UFFS_TREE_BUFFER_SIZE(PAR_2_BLOCKS) + PAGE_SIZE) / sizeof(int)];
+static int static_buffer_par1[UFFS_STATIC_BUFF_SIZE(PAGES_PER_BLOCK, PAGE_SIZE, PAR_1_BLOCKS) / sizeof(int)];
+static int static_buffer_par2[UFFS_STATIC_BUFF_SIZE(PAGES_PER_BLOCK, PAGE_SIZE, PAR_2_BLOCKS) / sizeof(int)];;
 
 /* init memory allocator, setup buffer sizes */
 static URET static_mem_alloc_init_par_1(struct uffs_DeviceSt *dev)
@@ -268,21 +179,20 @@ static void * static_mem_alloc_malloc(struct uffs_DeviceSt *dev, unsigned int si
 
 static void setup_flash_storage(struct uffs_storageAttrSt *attr)
 {
-	attr->dev_type =	UFFS_DEV_EMU;			/* dev_type */
-	attr->maker = MAN_ID;			        	/* simulate manufacture ID */
-	attr->id = 0xe3;							/* chip id, can be ignored. */
 	attr->total_blocks = TOTAL_BLOCKS;			/* total blocks */
-	attr->block_data_size = BLOCK_DATA_SIZE;	/* block data size */
 	attr->page_data_size = PAGE_DATA_SIZE;		/* page data size */
-	attr->spare_size = PAGE_SPARE_SIZE;		  	/* page spare size */
 	attr->pages_per_block = PAGES_PER_BLOCK;	/* pages per block */
-	attr->block_status_offs = 5;				/* block status offset is 5th byte in spare */
+	attr->spare_size = PAGE_SPARE_SIZE;		  	/* page spare size */
+	attr->block_status_offs = 4;				/* block status offset is 5th byte in spare */
+    attr->ecc_opt = UFFS_ECC_SOFT;              /* ecc option */
+    attr->layout_opt = UFFS_LAYOUT_UFFS;        /* let UFFS do the spare layout */    
 }
 
 
 static URET my_initDevice(uffs_Device *dev)
 {
-	dev->ops = &my_nand_device_ops;		
+	dev->ops = &my_nand_driver_ops;
+    
 	return U_SUCC;
 }
 
@@ -291,22 +201,21 @@ static URET my_releaseDevice(uffs_Device *dev)
 	return U_SUCC;
 }
 
-/* define devices and mount table */
+/* define mount table */
 static uffs_Device demo_device_1 = {0};
 static uffs_Device demo_device_2 = {0};
 static struct uffs_mountTableSt demo_mount_table[] = {
 	{ &demo_device_1,  0, PAR_1_BLOCKS - 1, "/data/" },
-	{ &demo_device_2,  0, PAR_1_BLOCKS - 1, "/" },
+	{ &demo_device_2,  PAR_1_BLOCKS, PAR_2_BLOCKS - 1, "/" },
 	{ NULL, NULL, 0, 0 }
 };
-
 
 static int my_init_filesystem(void)
 {
 	struct uffs_mountTableSt *mtbl = &(demo_mount_table[0]);
 	struct uffs_memAllocatorSt *mem;
 
-	/* setup emu storage */
+	/* setup nand storage attributes */
 	setup_flash_storage(&flash_storage);
 
 	/* setup memory allocator */

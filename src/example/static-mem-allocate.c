@@ -60,8 +60,6 @@ extern struct cli_commandset * get_helper_cmds(void);
 #define PAGES_PER_BLOCK   32
 #define TOTAL_BLOCKS      128
 
-#define MAN_ID						MAN_ID_SAMSUNG  // simulate Samsung's NAND flash
-
 #define PAGE_SIZE					(PAGE_DATA_SIZE + PAGE_SPARE_SIZE)
 #define BLOCK_DATA_SIZE				(PAGES_PER_BLOCK * PAGE_DATA_SIZE)
 #define TOTAL_DATA_SIZE				(TOTAL_BLOCKS * BLOCK_DATA_SIZE)
@@ -125,7 +123,10 @@ static void setup_emu_storage(struct uffs_StorageAttrSt *attr)
 	attr->page_data_size = PAGE_DATA_SIZE;		/* page data size */
 	attr->spare_size = PAGE_SPARE_SIZE;		  	/* page spare size */
 	attr->pages_per_block = PAGES_PER_BLOCK;	/* pages per block */
-	attr->block_status_offs = 5;				/* block status offset is 5th byte in spare */
+	attr->block_status_offs = 4;				/* block status offset is 5th byte in spare */
+    attr->ecc_opt = UFFS_ECC_SOFT;              /* ecc option */
+    attr->layout_opt = UFFS_LAYOUT_UFFS;        /* let UFFS do the spare layout */    
+
 }
 
 static void setup_emu_private(uffs_FileEmu *emu)

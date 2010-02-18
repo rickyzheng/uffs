@@ -55,14 +55,6 @@ extern "C"{
 #endif
 
 
-/** UFFS device type: uffs_DeviceSt.dev_type */
-#define UFFS_DEV_NULL		0
-#define UFFS_DEV_NAND		1
-#define UFFS_DEV_SM			2
-#define UFFS_DEV_RAM		3
-#define UFFS_DEV_ROM		4
-#define UFFS_DEV_EMU		5
-
 
 /** 
  * \struct uffs_BlockInfoCacheSt
