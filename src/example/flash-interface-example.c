@@ -42,8 +42,8 @@
 #define PFX "nand-drv:"
 
 
-static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc);
-static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len);
+static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc, UBOOL commit);
+static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len, UBOOL commit);
 
 static int nand_read_page_data(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int len, u8 *ecc);
 static int nand_read_page_spare(uffs_Device *dev, u32 block, u32 pageNum, u8 *spare, int ofs, int len);
@@ -54,7 +54,7 @@ static URET nand_init_device(uffs_Device *dev);
 
 
 
-static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc)
+static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc, UBOOL commit)
 {
   // insert your nand driver codes here ...
 	
@@ -63,7 +63,7 @@ static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const 
 }
 
 
-static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len)
+static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len, UBOOL commit)
 {
   // insert your nand driver codes here ...
   
