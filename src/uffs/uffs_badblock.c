@@ -142,7 +142,7 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 		newTag = *tag;
 		TAG_BLOCK_TS(&newTag) = uffs_GetNextBlockTimeStamp(TAG_BLOCK_TS(tag));
 
-		ret = uffs_FlashWritePageCombine(dev, good->u.list.block, i, buf->data, &newTag);
+		ret = uffs_FlashWritePageCombine(dev, good->u.list.block, i, buf, &newTag);
 
 		goodBlockIsDirty = U_TRUE;
 		uffs_BufFreeClone(dev, buf);

@@ -59,11 +59,17 @@ static BOOL cmdTestPageReadWrite(const char *tail)
 	int ret;
 	u16 block;
 	u16 page;
+	uffs_Buf *buf;
 
-	u8 page_buf[UFFS_MAX_PAGE_SIZE];
 	u32 i;
 
 	dev = uffs_GetDeviceFromMountPoint("/");
+	if (!dev)
+		goto ext;
+
+	buf = uffs_BufClone(dev, NULL);
+	if (!buf)
+		goto ext;
 
 	node = uffs_TreeGetErasedNode(dev);
 	if (!node) {
@@ -72,7 +78,7 @@ static BOOL cmdTestPageReadWrite(const char *tail)
 	}
 
 	for (i = 0; i < dev->com.pg_data_size; i++) {
-		page_buf[i] = i & 0xFF;
+		buf->data[i] = i & 0xFF;
 	}
 
 	block = node->u.list.block;
@@ -85,21 +91,20 @@ static BOOL cmdTestPageReadWrite(const char *tail)
 	TAG_SERIAL(tag) = 10;
 	TAG_BLOCK_TS(tag) = 1;
 
-	ret = uffs_FlashWritePageCombine(dev, block, page, page_buf, tag);
+	ret = uffs_FlashWritePageCombine(dev, block, page, buf, tag);
 	if (UFFS_FLASH_HAVE_ERR(ret)) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Write page error: %d\n", ret);
 		goto ext;
 	}
 
-
-	ret = uffs_FlashReadPage(dev, block, page, page_buf);
+	ret = uffs_FlashReadPage(dev, block, page, buf);
 	if (UFFS_FLASH_HAVE_ERR(ret)) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Read page error: %d\n", ret);
 		goto ext;
 	}
 
 	for (i = 0; i < dev->com.pg_data_size; i++) {
-		if (page_buf[i] != (i & 0xFF)) {
+		if (buf->data[i] != (i & 0xFF)) {
 			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Data verify fail at: %d\n", i);
 			goto ext;
 		}
@@ -143,6 +148,9 @@ ext:
 
 	if (dev)
 		uffs_PutDevice(dev);
+
+	if (buf)
+		uffs_BufFreeClone(dev, buf);
 
 	return TRUE;
 }

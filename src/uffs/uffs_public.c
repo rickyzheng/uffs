@@ -99,6 +99,21 @@ u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 	uffs_BlockInfoLoad(dev, bc, page); //load old page
 	tag_old = GET_TAG(bc, page);
 
+	for (i = dev->attr->pages_per_block - 1; i > page; i--) {
+		uffs_BlockInfoLoad(dev, bc, i);
+		tag = GET_TAG(bc, i);
+		if (TAG_PAGE_ID(tag) == TAG_PAGE_ID(tag_old)) {
+			if (TAG_PARENT(tag) == TAG_PARENT(tag_old) &&
+				TAG_SERIAL(tag) == TAG_SERIAL(tag_old) &&
+				TAG_IS_DIRTY(tag) &&		//0: dirty, 1:clear
+				TAG_IS_VALID(tag_old)) {	//0: valid, 1:invalid
+					break;
+			}
+		}
+	}
+	best = i;
+
+#if 0
 	if (TAG_PAGE_ID(tag_old) == page) {
 		//well, try to speed up by probing the last page ....
 		uffs_BlockInfoLoad(dev, bc, dev->attr->pages_per_block - 1);
@@ -125,6 +140,7 @@ u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 			}
 		}
 	}
+#endif
 
 	return best;
 }
@@ -462,6 +478,16 @@ int uffs_GetDeviceFree(uffs_Device *dev)
 int uffs_GetDeviceTotal(uffs_Device *dev)
 {
 	return (dev->par.end - dev->par.start + 1) * dev->attr->page_data_size * dev->attr->pages_per_block;
+}
+
+/**
+ * load mini hader from flash
+ */
+URET uffs_LoadMiniHeader(uffs_Device *dev, int block, u16 page, struct uffs_MiniHeaderSt *header)
+{
+	int ret = dev->ops->ReadPageData(dev, block, page, (u8 *)header, sizeof(struct uffs_MiniHeaderSt), NULL);
+
+	return UFFS_FLASH_HAVE_ERR(ret) ? U_FAIL : U_SUCC;
 }
 
 #if 0

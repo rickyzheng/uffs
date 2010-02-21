@@ -62,7 +62,7 @@ struct uffs_ObjectSt {
 	uffs_Device *dev;					//!< uffs device
 	u32 oflag;
 	u8 type;
-	int head_pages;						//!< data pages on file head block
+	u16 head_pages;						//!< data pages on file head block
 	u16 parent;
 
 	/******* init level 1 ********/

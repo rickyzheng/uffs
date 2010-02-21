@@ -61,7 +61,7 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 		goto ext;
 	}
 
-	pageSize = dev->attr->page_data_size;
+	pageSize = dev->com.pg_data_size;
 	pageBuf = buf->data;
 
 
@@ -69,8 +69,8 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 	dev->ops->EraseBlock(dev, block);
 	memset(pageBuf, 0, pageSize);
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		dev->ops->WritePageData(dev, block, i, pageBuf, pageSize, NULL);
-		dev->ops->WritePageSpare(dev, block, i, pageBuf, 0, dev->attr->spare_size);
+		dev->ops->WritePageData(dev, block, i, pageBuf, pageSize, NULL, U_FALSE);
+		dev->ops->WritePageSpare(dev, block, i, pageBuf, 0, dev->attr->spare_size, U_TRUE);
 	}
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		memset(pageBuf, 0xFF, pageSize);

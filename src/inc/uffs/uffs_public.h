@@ -57,13 +57,13 @@ struct uffs_TagStoreSt {
 	u32 valid:1;		//!< 0: valid, 1: invalid
 	u32 type:2;			//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
 	u32 block_ts:2;		//!< time stamp of block;
+	u32 data_len:12;	//!< length of page data
 	u32 serial:14;		//!< serial number
-	u32 tag_ecc:12;		//!< tag ECC
 
 	u32 parent:10;		//!< parent's serial number
 	u32 page_id:6;		//!< page id
-	u32 data_len:13;	//!< length of page data
-	u32 reserved:3;		//!< reserved, for UFFS2
+	u32 reserved:4;		//!< reserved, for UFFS2
+	u32 tag_ecc:12;		//!< tag ECC
 };
 
 /**
@@ -100,6 +100,16 @@ struct uffs_TagsSt {
 	/** internal used */
 	u8 _dirty:1;			//!< raw data, before doing ecc correction
 	u8 _valid:1;			//!< raw data, before doing ecc correction
+};
+
+/** 
+ * \struct uffs_MiniHeaderSt
+ * \brief the mini header resides on the head of page data
+ */
+struct uffs_MiniHeaderSt {
+	u8 status;
+	u8 reserved;
+	u16 crc;
 };
 
 
@@ -200,7 +210,7 @@ int uffs_GetDeviceUsed(uffs_Device *dev);
 int uffs_GetDeviceFree(uffs_Device *dev);
 int uffs_GetDeviceTotal(uffs_Device *dev);
 
-
+URET uffs_LoadMiniHeader(uffs_Device *dev, int block, u16 page, struct uffs_MiniHeaderSt *header);
 
 
 /************************************************************************/

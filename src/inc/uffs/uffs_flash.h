@@ -164,7 +164,7 @@ struct uffs_FlashOpsSt {
 	 *
 	 * \note pad 0xFF for calculating ECC if len < page_data_size
 	 */
-	int (*WritePageData)(uffs_Device *dev, u32 block, u32 page, const u8 *data, int len, u8 *ecc);
+	int (*WritePageData)(uffs_Device *dev, u32 block, u32 page, const u8 *data, int len, u8 *ecc, UBOOL commit);
 
 
 	/**
@@ -176,7 +176,7 @@ struct uffs_FlashOpsSt {
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int ofs, int len);
+	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int ofs, int len, UBOOL commit);
 
 	/**
 	 * Write page spare, flash driver do the layout.
@@ -187,7 +187,7 @@ struct uffs_FlashOpsSt {
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WritePageSpareWithLayout)(uffs_Device *dev, u32 block, u32 page, const u8 *tag, int len, const u8 *ecc);
+	int (*WritePageSpareWithLayout)(uffs_Device *dev, u32 block, u32 page, const u8 *tag, int len, const u8 *ecc, UBOOL commit);
 
 	/**
 	 * check block status.
@@ -223,10 +223,10 @@ struct uffs_FlashOpsSt {
 int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag, u8 *ecc);
 
 /** read page data to page buf and do ECC correct */
-int uffs_FlashReadPage(uffs_Device *dev, int block, int page, u8 *buf);
+int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf);
 
 /** write page data and spare */
-int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, u8 *buf, uffs_Tags *tag);
+int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *buf, uffs_Tags *tag);
 
 /** Mark this block as bad block */
 int uffs_FlashMarkBadBlock(uffs_Device *dev, int block);
@@ -236,6 +236,9 @@ UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block);
 
 /** Erase flash block */
 int uffs_FlashEraseBlock(uffs_Device *dev, int block);
+
+/* mark a clean page as 'dirty' (and 'invalid') */
+int uffs_FlashMarkDirtyPage(uffs_Device *dev, int block, int page);
 
 /**
  * get page head info

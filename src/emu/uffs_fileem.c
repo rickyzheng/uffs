@@ -140,7 +140,7 @@ static URET CheckInit(uffs_Device *dev)
 }
 
 
-static int femu_WritePageData(uffs_Device *dev, u32 block, u32 page_num, const u8 *data, int len, u8 *ecc)
+static int femu_WritePageData(uffs_Device *dev, u32 block, u32 page_num, const u8 *data, int len, u8 *ecc, UBOOL commit)
 {
 	int written;
 	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
@@ -183,14 +183,16 @@ static int femu_WritePageData(uffs_Device *dev, u32 block, u32 page_num, const u
 	}
 
 	dev->st.page_write_count++;
-	fflush(emu->fp);
+
+	if (commit == U_TRUE)
+		fflush(emu->fp);
 	
 	return UFFS_FLASH_NO_ERR;
 err:
 	return UFFS_FLASH_IO_ERR;
 }
 
-static int femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const u8 *spare, int ofs, int len)
+static int femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const u8 *spare, int ofs, int len, UBOOL commit)
 {
 	int written;
 	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
@@ -221,6 +223,13 @@ static int femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const 
 	}
 	
 	if (spare) {
+
+		// simulate power lost ! produce an unclean page.
+		if (0 && block == 3 && page_num == 2) {
+			fflush(emu->fp);
+			exit(1);
+		}
+
 		fseek(emu->fp, (block*blk_pgs + page_num) * (pgd_size + sp_size) + dev->attr->page_data_size + ofs, SEEK_SET);
 		written = fwrite(spare, 1, len, emu->fp);
 		if (written != len) {
@@ -229,7 +238,9 @@ static int femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const 
 		}
 	}
 
-	fflush(emu->fp);
+	if (commit == U_TRUE)
+		fflush(emu->fp);
+
 	dev->st.spare_write_count++;
 
 	return UFFS_FLASH_NO_ERR;

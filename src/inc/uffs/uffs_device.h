@@ -112,12 +112,13 @@ struct uffs_PageBufDescSt {
 /** 
  * \struct uffs_PageCommInfoSt
  * \brief common data for device, should be initialized at early
- * \note it is possible that pg_size is smaller than physical page size, but normally they are the same
+ * \note it is possible that pg_size is smaller than physical page size, but normally they are the same.
+ * \note page data layout: [HEADER] + [DATA]
  */
 struct uffs_PageCommInfoSt {
-	u32 pg_data_size;			//!< page data size
-	u32 ecc_size;				//!< ecc size
-	u32 pg_size;				//!< page size
+	u16 pg_data_size;			//!< page data size
+	u16 header_size;			//!< header size
+	u16 pg_size;				//!< page size
 };
 
 /** 

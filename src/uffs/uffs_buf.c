@@ -92,9 +92,9 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 		return U_FAIL;
 
 	//init device common parameters, which are needed by page buffers
-	dev->com.pg_size = dev->attr->page_data_size;
-	dev->com.ecc_size = 0;  //v1.3: ecc in spare, no ecc in page data area
-	dev->com.pg_data_size = dev->attr->page_data_size; //v1.3: pg_data_size is the same as pg_size.
+	dev->com.pg_size = dev->attr->page_data_size;  // we use the whole page.
+	dev->com.header_size = sizeof(struct uffs_MiniHeaderSt);	// mini header
+	dev->com.pg_data_size = dev->com.pg_size - dev->com.header_size;
 
 	if (dev->buf.pool != NULL) {
 		uffs_Perror(UFFS_ERR_NORMAL, PFX"buf.pool is not NULL, buf already inited ?\n");
@@ -125,8 +125,8 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 		memset(buf, 0, sizeof(uffs_Buf));
 		data = (u8 *)pool + (sizeof(uffs_Buf) * buf_max) + (dev->com.pg_size * i);
 
-		buf->data = data;
-		//buf->ecc = data + dev->com.pg_data_size;
+		buf->header = data;
+		buf->data = data + dev->com.header_size;
 		buf->mark = UFFS_BUF_EMPTY;
 		if (i == 0) {
 			buf->prev = NULL;
@@ -305,9 +305,31 @@ static void _LinkToDirtyList(uffs_Device *dev, int slot, uffs_Buf *buf)
 	dev->buf.dirtyGroup[slot].count++;
 }
 
-static uffs_Buf * _FindFreeBuf(uffs_Device *dev)
+static int CountFreeBuf(uffs_Device *dev)
+{
+	int count = 0;
+
+	uffs_Buf *buf = dev->buf.head;
+
+	while (buf) {
+
+		if (buf->ref_count == 0 && 
+			buf->mark != UFFS_BUF_DIRTY)
+			count++;
+
+		buf = buf->next;
+	}
+
+	return count;
+}
+
+static uffs_Buf * _FindFreeBufEx(uffs_Device *dev, int clone)
 {
 	uffs_Buf *buf;
+
+	if (!clone && CountFreeBuf(dev) <= CLONE_BUFFERS_THRESHOLD)
+		return NULL;
+
 #if 1
 	buf = dev->buf.head;
 	while (buf) {
@@ -333,6 +355,12 @@ static uffs_Buf * _FindFreeBuf(uffs_Device *dev)
 	return buf;
 }
 
+static uffs_Buf * _FindFreeBuf(uffs_Device *dev)
+{
+	return _FindFreeBufEx(dev, 0);
+}
+
+
 /** 
  * load psychical page data into buf and do ecc check 
  * \param[in] dev uffs device
@@ -345,7 +373,7 @@ URET uffs_BufLoadPhyData(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
 {
 	int ret;
 
-	ret = uffs_FlashReadPage(dev, block, page, buf->data);
+	ret = uffs_FlashReadPage(dev, block, page, buf);
 
 	if (UFFS_FLASH_HAVE_ERR(ret)) {
 		buf->mark = UFFS_BUF_EMPTY;
@@ -358,11 +386,13 @@ URET uffs_BufLoadPhyData(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
 }
 
 /** 
- * load psychical page data into buf and try ecc check 
+ * \brief load psychical page data into buf and ignore ECC result
+ *
  * \param[in] dev uffs device
  * \param[in] buf buf to be load in
  * \param[in] block psychical block number
  * \param[in] page psychical page number
+ *
  * \return return U_SUCC if no error, return U_FAIL if I/O error
  * \note this function should be only used when doing bad block recover.
  */
@@ -370,7 +400,7 @@ URET uffs_LoadPhyDataToBufEccUnCare(uffs_Device *dev, uffs_Buf *buf, u32 block, 
 {
 	int ret;
 
-	ret = uffs_FlashReadPage(dev, block, page, buf->data);
+	ret = uffs_FlashReadPage(dev, block, page, buf);
 
 	if (ret == UFFS_FLASH_IO_ERR) {
 		buf->mark = UFFS_BUF_EMPTY;
@@ -596,7 +626,7 @@ retry:
 			if (buf->data_len == 0) // this could happen when truncating a file
 				flash_op_err = UFFS_FLASH_NO_ERR;
 			else
-				flash_op_err = uffs_FlashWritePageCombine(dev, newBlock, i, buf->data, tag);
+				flash_op_err = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
 
 			if (flash_op_err == UFFS_FLASH_BAD_BLK) {
 				uffs_Perror(UFFS_ERR_NORMAL, PFX"new bad block %d discovered.\n", newBlock);
@@ -658,7 +688,7 @@ retry:
 			if (i == 0)
 				data_sum = _GetDirOrFileNameSum(dev, buf);
 
-			flash_op_err = uffs_FlashWritePageCombine(dev, newBlock, i, buf->data, tag);
+			flash_op_err = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
 			uffs_BufFreeClone(dev, buf);
 			if (flash_op_err == UFFS_FLASH_BAD_BLK) {
 				uffs_Perror(UFFS_ERR_NORMAL, PFX"new bad block %d discovered.\n", newBlock);
@@ -848,7 +878,7 @@ URET
 		TAG_SERIAL(tag) = buf->serial;
 		TAG_PAGE_ID(tag) = (u8)(buf->page_id);
 
-		x = uffs_FlashWritePageCombine(dev, bc->block, page, buf->data, tag);
+		x = uffs_FlashWritePageCombine(dev, bc->block, page, buf, tag);
 		if (x == UFFS_FLASH_IO_ERR) {
 			uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error <1>?\n");
 			goto ext;
@@ -1305,7 +1335,7 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 
 	buf->serial = serial;
 	buf->page_id = page_id;
 
-	if (UFFS_FLASH_HAVE_ERR(uffs_FlashReadPage(dev, block, page, buf->data))) {
+	if (UFFS_FLASH_HAVE_ERR(uffs_FlashReadPage(dev, block, page, buf))) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't load page from flash !\n");
 		return NULL;
 	}
@@ -1363,16 +1393,11 @@ uffs_Buf * uffs_BufClone(uffs_Device *dev, uffs_Buf *buf)
 {
 	uffs_Buf *p;
 
-	p = _FindFreeBuf(dev);
+	p = _FindFreeBufEx(dev, 1);
 	if (p == NULL) {
-		uffs_BufFlushMostDirtyGroup(dev);
-		p = _FindFreeBuf(dev);
-		if (p == NULL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"no enough free pages for clone!\n");
-		}
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"no enough free pages for clone! Please increase Clone Buffer Count threshold.\n");
 	}
-
-	if (p) {
+	else {
 		_BreakFromBufList(dev, p);
 
 		if (buf) {

@@ -43,7 +43,7 @@
  * \def UFFS_MAX_PAGE_SIZE
  * \note maximum page size UFFS support
  */
-#define UFFS_MAX_PAGE_SIZE		4096
+#define UFFS_MAX_PAGE_SIZE		2048
 
 /**
  * \def UFFS_MAX_SPARE_SIZE
@@ -63,7 +63,14 @@
  *       but few writing performance will be improved when this 
  *       value is become larger than 'max pages per block'
  */
-#define MAX_PAGE_BUFFERS		33
+#define MAX_PAGE_BUFFERS		10
+
+
+/** 
+ * \def CLONE_BUFFER_THRESHOLD
+ * \note reserve buffers for clone. 1 or 2 should be enough.
+ */
+#define CLONE_BUFFERS_THRESHOLD	2
 
 /**
  * \def MAX_SPARE_BUFFERS
@@ -74,10 +81,10 @@
 
 /**
  * \def MAX_DIRTY_PAGES_IN_A_BLOCK 
- * \note this value should be between '2' and 'max pages per block'.
+ * \note this value should be between '2' and the lesser of 'max pages per block' and (MAX_PAGE_BUFFERS - CLONE_BUFFERS_THRESHOLD - 1).
  *       the smaller the value the frequently the buffer will be flushed.
  */
-#define MAX_DIRTY_PAGES_IN_A_BLOCK 32
+#define MAX_DIRTY_PAGES_IN_A_BLOCK	7
 
 /**
  * \def MAX_DIRTY_BUF_GROUPS
@@ -206,6 +213,24 @@
 				UFFS_SPARE_BUFFER_SIZE \
 			 )
 
+
+
+/* config check */
+#if (MAX_PAGE_BUFFERS - CLONE_BUFFERS_THRESHOLD) < 3
+#error "MAX_PAGE_BUFFERS is too small"
+#endif
+
+#if (MAX_DIRTY_PAGES_IN_A_BLOCK < 2)
+#error "MAX_DIRTY_PAGES_IN_A_BLOCK should >= 2"
+#endif
+
+#if (MAX_PAGE_BUFFERS - CLONE_BUFFERS_THRESHOLD - 1 < MAX_DIRTY_PAGES_IN_A_BLOCK)
+#error "MAX_DIRTY_PAGES_IN_A_BLOCK should < (MAX_PAGE_BUFFERS - CLONE_BUFFERS_THRESHOLD)"
+#endif
+
+#if defined(CONFIG_PAGE_WRITE_VERIFY) && (CLONE_BUFFERS_THRESHOLD < 2)
+#error "CLONE_BUFFERS_THRESHOLD should >= 2 when CONFIG_PAGE_WRITE_VERIFY is enabled."
+#endif
 
 #ifdef WIN32
 # pragma warning(disable : 4996)

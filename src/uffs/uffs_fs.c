@@ -683,7 +683,7 @@ static u16 _GetFdnByOfs(uffs_Object *obj, u32 ofs)
 {
 	uffs_Device *dev = obj->dev;
 
-	if (ofs < obj->head_pages * dev->com.pg_data_size) {
+	if (ofs < (u32)(obj->head_pages * dev->com.pg_data_size)) {
 		return 0;
 	}
 	else {
@@ -1156,7 +1156,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 		}
 		type = UFFS_TYPE_DATA;
 		max_page_id = dev->attr->pages_per_block - 1;
-		block_start = obj->head_pages * dev->attr->page_data_size +  (fdn - 1) * dev->attr->page_data_size * dev->attr->pages_per_block;
+		block_start = obj->head_pages * dev->com.pg_data_size +  (fdn - 1) * dev->com.pg_data_size * dev->attr->pages_per_block;
 		parent = node->u.data.parent;
 		serial = node->u.data.serial;
 	}
@@ -1178,7 +1178,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 	
 	// find the last page after truncate
 	for (page_id = (fdn == 0 ? 1 : 0); page_id <= max_page_id; page_id++) {
-		if (block_start + (page_id + 1) * dev->attr->page_data_size >= remain)
+		if (block_start + (page_id + 1) * dev->com.pg_data_size >= remain)
 			break;
 	}
 
@@ -1208,8 +1208,8 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 	if (remain == 0)
 		buf->data_len = 0;
 	else {
-		remain = (remain % dev->attr->page_data_size);
-		buf->data_len = (remain == 0 ? dev->attr->page_data_size : 0);
+		remain = (remain % dev->com.pg_data_size);
+		buf->data_len = (remain == 0 ? dev->com.pg_data_size : 0);
 	}
 	buf->ext_mark |= UFFS_BUF_EXT_MARK_TRUNC_TAIL;
 	uffs_BufPut(dev, buf);

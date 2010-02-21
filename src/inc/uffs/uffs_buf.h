@@ -73,6 +73,7 @@ struct uffs_BufSt{
 	u16 data_len;						//!< length of data
 	u16 check_sum;						//!< checksum field
 	u8 * data;							//!< data buffer
+	u8 * header;						//!< header
 	int ext_mark;						//!< extension mark. 
 };
 

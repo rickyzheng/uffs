@@ -39,6 +39,7 @@
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_pool.h"
 #include "uffs/uffs_config.h"
+#include "uffs/uffs_flash.h"
 
 #include <string.h>
 
@@ -318,7 +319,8 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 												"this might be caused by the tag layout change.\n");
 			goto process_invalid_block;
 		}
-		uffs_FlashReadPage(dev, block, page, buf->data);
+		page = uffs_FindBestPageInBlock(dev, bc, page);
+		uffs_FlashReadPage(dev, block, page, buf);
 		info = (uffs_FileInfo *) (buf->data);
 		data_sum = uffs_MakeSum16(info->name, info->name_len);
 		uffs_BufFreeClone(dev, buf);
@@ -363,6 +365,40 @@ process_invalid_block:
 	return U_SUCC;
 }
 
+
+static URET _ScanAndFixUnCleanPage(uffs_Device *dev, uffs_BlockInfo *bc)
+{
+	int page;
+	uffs_Tags *tag;
+	struct uffs_MiniHeaderSt header;
+
+	/* in most case, the valid block contents fewer free page,
+		so it's better scan from the last page ... to page 1.
+		note: scaning page 0 is not necessary.
+
+		The worse case: read (pages_per_block - 1) * (mini header + spares) !
+		most case: read one spare.
+	*/
+	for (page = dev->attr->pages_per_block - 1; page > 0; page--) {
+		uffs_BlockInfoLoad(dev, bc, page);
+		tag = GET_TAG(bc, page);
+		if (TAG_IS_DIRTY(tag) || TAG_IS_VALID(tag))  // stop if we reach a dirty or valid page
+			break;
+
+		if (uffs_LoadMiniHeader(dev, bc->block, page, &header) == U_FAIL)
+			return U_FAIL;
+
+		if (header.status != 0xFF) {
+			// ok, page data is not clean ! mark it as dirty.
+			uffs_Perror(UFFS_ERR_NORMAL, PFX"unclean page found, block %d page %d\n", bc->block, page);
+			uffs_FlashMarkDirtyPage(dev, bc->block, page);
+		}
+	}
+
+	return U_SUCC;
+}
+
+
 static URET _BuildTreeStepOne(uffs_Device *dev)
 {
 	int block_lt;
@@ -370,6 +406,7 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 	TreeNode *node;
 	struct uffs_TreeSt *tree;
 	uffs_Pool *pool;
+	struct uffs_MiniHeaderSt header;
 	URET ret = U_SUCC;
 	
 	tree = &(dev->tree);
@@ -398,6 +435,7 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 			ret = U_FAIL;
 			break;
 		}
+
 		//Need to check bad block at first !
 		if (uffs_FlashIsBadBlock(dev, block_lt) == U_TRUE) {
 			node->u.list.block = block_lt;
@@ -406,14 +444,35 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 		}
 		else if (uffs_IsPageErased(dev, bc, 0) == U_TRUE) { //@ read one spare: 0
 			//just need to check page 0 to know whether the block is erased
+			// Check the mini header status
+
+			if (uffs_LoadMiniHeader(dev, block_lt, 0, &header) == U_FAIL) {
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX"I/O error when reading mini header ! block %d page %d\n", block_lt, 0);
+				ret = U_FAIL;
+				break;
+			}
+
+			if (header.status != 0xFF) {
+				// page 0 spare is clean but page data is dirty ??? this block should be erased immediately !
+				if (uffs_FlashEraseBlock(dev, block_lt) == U_FAIL) {
+					uffs_Perror(UFFS_ERR_SERIOUS, PFX"Erase I/O error !\n");
+					ret = U_FAIL;
+					break;
+				}
+			}
+
 			node->u.list.block = block_lt;
 			uffs_TreeInsertToErasedListTail(dev, node);
 		}
 		else {
-			//uffs_Perror(UFFS_ERR_NOISY, PFX"find a valid block\n");
+
+			ret = _ScanAndFixUnCleanPage(dev, bc);
+			if (ret == U_FAIL)
+				break;
+
 			ret = _BuildValidTreeNode(dev, node, bc);
 			//uffs_Perror(UFFS_ERR_NOISY, PFX"valid block done!\n");
-			if(ret == U_FAIL)
+			if (ret == U_FAIL)
 				break;
 		}
 		uffs_BlockInfoPut(dev, bc);
