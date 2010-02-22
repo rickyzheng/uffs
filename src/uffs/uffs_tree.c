@@ -51,6 +51,11 @@ static void uffs_InsertToFileEntry(uffs_Device *dev, TreeNode *node);
 static void uffs_InsertToDirEntry(uffs_Device *dev, TreeNode *node);
 static void uffs_InsertToDataEntry(uffs_Device *dev, TreeNode *node);
 
+struct BlockTypeStatSt {
+	int dir;
+	int file;
+	int data;
+};
 
 /** 
  * \brief initialize tree buffers
@@ -220,7 +225,8 @@ TreeNode * uffs_FindFromTree(uffs_Device *dev, u8 type, u16 parent, u16 serial)
 
 static URET _BuildValidTreeNode(uffs_Device *dev,
 								TreeNode *node,		//!< empty node
-								uffs_BlockInfo *bc)
+								uffs_BlockInfo *bc,
+								struct BlockTypeStatSt *st)
 {
 	uffs_Tags *tag;
 	TreeNode *node_alt;
@@ -332,6 +338,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 		node->u.dir.checksum = data_sum;
 		node->u.dir.parent = TAG_PARENT(tag);
 		node->u.dir.serial = TAG_SERIAL(tag);
+		st->dir++;
 		break;
 	case UFFS_TYPE_FILE:
 		node->u.file.block = bc->block;
@@ -339,12 +346,14 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 		node->u.file.parent = TAG_PARENT(tag);
 		node->u.file.serial = TAG_SERIAL(tag);
 		node->u.file.len = uffs_GetBlockFileDataLength(dev, bc, UFFS_TYPE_FILE);  
+		st->file++;
 		break;
 	case UFFS_TYPE_DATA:
 		node->u.data.block = bc->block;
 		node->u.data.parent = TAG_PARENT(tag);
 		node->u.data.serial = TAG_SERIAL(tag);
 		node->u.data.len = uffs_GetBlockFileDataLength(dev, bc, UFFS_TYPE_DATA); 
+		st->data++;
 		break;
 	}
 
@@ -408,6 +417,7 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 	uffs_Pool *pool;
 	struct uffs_MiniHeaderSt header;
 	URET ret = U_SUCC;
+	struct BlockTypeStatSt st = {0};
 	
 	tree = &(dev->tree);
 	pool = TPOOL(dev);
@@ -470,16 +480,19 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 			if (ret == U_FAIL)
 				break;
 
-			ret = _BuildValidTreeNode(dev, node, bc);
+			ret = _BuildValidTreeNode(dev, node, bc, &st);
 			//uffs_Perror(UFFS_ERR_NOISY, PFX"valid block done!\n");
 			if (ret == U_FAIL)
 				break;
+
 		}
 		uffs_BlockInfoPut(dev, bc);
 	} //end of for
 
 	if(ret == U_FAIL) 
 		uffs_BlockInfoPut(dev, bc);
+
+	uffs_Perror(UFFS_ERR_NORMAL, PFX"DIR %d, FILE %d, DATA %d\n", st.dir, st.file, st.data);
 
 	return ret;
 }

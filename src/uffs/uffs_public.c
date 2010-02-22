@@ -487,6 +487,8 @@ URET uffs_LoadMiniHeader(uffs_Device *dev, int block, u16 page, struct uffs_Mini
 {
 	int ret = dev->ops->ReadPageData(dev, block, page, (u8 *)header, sizeof(struct uffs_MiniHeaderSt), NULL);
 
+	dev->st.page_header_read_count++;
+
 	return UFFS_FLASH_HAVE_ERR(ret) ? U_FAIL : U_SUCC;
 }
 

@@ -46,7 +46,9 @@
 
 #define UFFS_CLONE_BLOCK_INFO_NEXT ((uffs_BlockInfo *)(-2))
 
-/** \brief before block info cache is enable, this function should be called to initialize it
+/**
+ * \brief before block info cache is enable, this function should be called to initialize it
+ *
  * \param[in] dev uffs device
  * \param[in] maxCachedBlocks maximum cache buffers to be allocated
  * \return result of initialization

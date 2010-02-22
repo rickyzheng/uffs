@@ -317,19 +317,22 @@ BOOL cmdSt(const char *tail)
 	uffs_Perror(UFFS_ERR_NORMAL, "MaxObjectHandles:      %d\n", MAX_OBJECT_HANDLE);
 
 	uffs_Perror(UFFS_ERR_NORMAL, "----------- statistics for '%s' -----------\n", mount);
-	uffs_Perror(UFFS_ERR_NORMAL, "Block Erased: %d\n", s->block_erase_count);
-	uffs_Perror(UFFS_ERR_NORMAL, "Write Page:   %d\n", s->page_write_count);
-	uffs_Perror(UFFS_ERR_NORMAL, "Write Spare:  %d\n", s->spare_write_count);
-	uffs_Perror(UFFS_ERR_NORMAL, "Read Page:    %d\n", s->page_read_count);
-	uffs_Perror(UFFS_ERR_NORMAL, "Read Spare:   %d\n", s->spare_read_count);
-	uffs_Perror(UFFS_ERR_NORMAL, "Disk total:   %d\n", uffs_GetDeviceTotal(dev));
-	uffs_Perror(UFFS_ERR_NORMAL, "Disk Used:    %d\n", uffs_GetDeviceUsed(dev));
-	uffs_Perror(UFFS_ERR_NORMAL, "Disk Free:    %d\n", uffs_GetDeviceFree(dev));
-	uffs_Perror(UFFS_ERR_NORMAL, "Page Size:    %d\n", dev->attr->page_data_size);
-	uffs_Perror(UFFS_ERR_NORMAL, "Spare Size:   %d\n", dev->attr->spare_size);
-	uffs_Perror(UFFS_ERR_NORMAL, "PagesPerBlock:%d\n", dev->attr->pages_per_block);
-	uffs_Perror(UFFS_ERR_NORMAL, "Block size:   %d\n", dev->attr->page_data_size * dev->attr->pages_per_block);
-	uffs_Perror(UFFS_ERR_NORMAL, "Total blocks: %d of %d\n", (dev->par.end - dev->par.start + 1), dev->attr->total_blocks);
+	uffs_Perror(UFFS_ERR_NORMAL, "Block Erased:          %d\n", s->block_erase_count);
+	uffs_Perror(UFFS_ERR_NORMAL, "Write Page:            %d\n", s->page_write_count);
+	uffs_Perror(UFFS_ERR_NORMAL, "Write Spare:           %d\n", s->spare_write_count);
+	uffs_Perror(UFFS_ERR_NORMAL, "Read Page:             %d\n", s->page_read_count - s->page_header_read_count);
+	uffs_Perror(UFFS_ERR_NORMAL, "Read Header:           %d\n", s->page_header_read_count);
+	uffs_Perror(UFFS_ERR_NORMAL, "Read Spare:            %d\n", s->spare_read_count);
+
+	uffs_Perror(UFFS_ERR_NORMAL, "----------- disk info for '%s' -----------\n", mount);
+	uffs_Perror(UFFS_ERR_NORMAL, "Disk total:            %d\n", uffs_GetDeviceTotal(dev));
+	uffs_Perror(UFFS_ERR_NORMAL, "Disk Used:             %d\n", uffs_GetDeviceUsed(dev));
+	uffs_Perror(UFFS_ERR_NORMAL, "Disk Free:             %d\n", uffs_GetDeviceFree(dev));
+	uffs_Perror(UFFS_ERR_NORMAL, "Page Size:             %d\n", dev->attr->page_data_size);
+	uffs_Perror(UFFS_ERR_NORMAL, "Spare Size:            %d\n", dev->attr->spare_size);
+	uffs_Perror(UFFS_ERR_NORMAL, "Pages Per Block:       %d\n", dev->attr->pages_per_block);
+	uffs_Perror(UFFS_ERR_NORMAL, "Block size:            %d\n", dev->attr->page_data_size * dev->attr->pages_per_block);
+	uffs_Perror(UFFS_ERR_NORMAL, "Total blocks:          %d of %d\n", (dev->par.end - dev->par.start + 1), dev->attr->total_blocks);
 	if (dev->tree.bad) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Bad blocks: ");
 		node = dev->tree.bad;
