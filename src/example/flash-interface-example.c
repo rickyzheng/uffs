@@ -70,7 +70,7 @@ static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const 
 
 static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len, UBOOL eod)
 {
-	if (eod == U_TRUE) {
+	if (eod == U_FALSE) {
 		// send WRITE command
 	}
 	else {
@@ -89,7 +89,11 @@ static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const
 
 static int nand_read_page_data(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int len, u8 *ecc)
 {
-	// insert your nand driver codes here ...
+	// send READ command
+
+	// ... transfer data ...
+
+	// read STATUS
 
 	dev->st.page_read_count++;
 	return UFFS_FLASH_NO_ERR;
@@ -97,7 +101,11 @@ static int nand_read_page_data(uffs_Device *dev, u32 block, u32 pageNum, u8 *pag
 
 static int nand_read_page_spare(uffs_Device *dev, u32 block, u32 pageNum, u8 *spare, int ofs, int len)
 {
-	// insert your nand driver codes here ...
+	// send READ command
+
+	// ... transfer data ...
+
+	// read STATUS
 
 	dev->st.spare_read_count++;		
 	return UFFS_FLASH_NO_ERR;
