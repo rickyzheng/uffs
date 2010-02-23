@@ -59,8 +59,6 @@ static URET nand_init_device(uffs_Device *dev);
 
 static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc)
 {
-	// insert your nand driver codes here ...
-
 	// send WRITE command
 
 	// ... transfer data ...
@@ -72,8 +70,6 @@ static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const 
 
 static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len, UBOOL eod)
 {
-	// insert your nand driver codes here ...
-	
 	if (eod == U_TRUE) {
 		// send WRITE command
 	}
