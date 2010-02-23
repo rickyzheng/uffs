@@ -485,7 +485,7 @@ int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *
 	if (dev->attr->ecc_opt == UFFS_ECC_SOFT)
 		uffs_EccMake(buf->header, size, ecc_buf);
 
-	ret = ops->WritePageData(dev, block, page, buf->header, size, ecc_buf, U_FALSE);
+	ret = ops->WritePageData(dev, block, page, buf->header, size, ecc_buf);
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 		is_bad = U_TRUE;
 
@@ -572,10 +572,10 @@ int uffs_FlashMarkDirtyPage(uffs_Device *dev, int block, int page)
 
 	if (dev->attr->layout_opt == UFFS_LAYOUT_UFFS) {
 		MakeSpare(dev, &s, NULL, spare);
-		ret = ops->WritePageSpare(dev, block, page, spare, 0, dev->mem.spare_data_size, U_TRUE);
+		ret = ops->WritePageSpare(dev, block, page, spare, 0, dev->mem.spare_data_size, U_FALSE);
 	}
 	else {
-		ret = ops->WritePageSpareWithLayout(dev, block, page, (u8 *)(&s), TAG_STORE_SIZE, NULL, U_TRUE);
+		ret = ops->WritePageSpareWithLayout(dev, block, page, (u8 *)(&s), TAG_STORE_SIZE, NULL, U_FALSE);
 	}
 
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
@@ -602,7 +602,7 @@ URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block)
 
 	ret = dev->ops->EraseBlock(dev, block);
 	if (ret == UFFS_FLASH_NO_ERR)
-		ret = dev->ops->WritePageSpare(dev, block, 0, &status, dev->attr->block_status_offs, 1, U_TRUE);
+		ret = dev->ops->WritePageSpare(dev, block, 0, &status, dev->attr->block_status_offs, 1, U_FALSE);
 
 	return ret == UFFS_FLASH_NO_ERR ? U_SUCC : U_FAIL;
 }

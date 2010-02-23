@@ -40,12 +40,13 @@
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_flash.h"
 #include "uffs/uffs_mtb.h"
+#include "uffs/uffs_fs.h"
 
 #define PFX "nand-drv:"
 
 
-static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc, UBOOL commit);
-static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len, UBOOL commit);
+static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc);
+static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len, UBOOL eod);
 
 static int nand_read_page_data(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int len, u8 *ecc);
 static int nand_read_page_spare(uffs_Device *dev, u32 block, u32 pageNum, u8 *spare, int ofs, int len);
@@ -56,28 +57,35 @@ static URET nand_init_device(uffs_Device *dev);
 
 
 
-static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc, UBOOL commit)
+static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc)
 {
 	// insert your nand driver codes here ...
-	
-	if (commit == U_TRUE) {
-		// commit the write command
-		// normally you won't get here because UFFS always try to avoid partial page program
-	}
 
+	// send WRITE command
+
+	// ... transfer data ...
+	
 	dev->st.page_write_count++;
 	return UFFS_FLASH_NO_ERR;
 }
 
 
-static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len, UBOOL commit)
+static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len, UBOOL eod)
 {
 	// insert your nand driver codes here ...
 	
-	if (commit == U_TRUE) {
-		// commit the write command
-		// normally you'll get here at the end of page program.
+	if (eod == U_TRUE) {
+		// send WRITE command
 	}
+	else {
+		// do not need to send WRITE command if eod == U_FALSE because 'nand_write_page_data' is called before.
+	}
+
+	// ... transfer data ...
+
+	// send COMMIT command
+
+	// read STATUS
 
 	dev->st.spare_write_count++;  
 	return UFFS_FLASH_NO_ERR;
@@ -176,7 +184,7 @@ static void * static_mem_alloc_malloc(struct uffs_DeviceSt *dev, unsigned int si
 	struct uffs_memAllocatorSt *mem = &dev->mem;
 	void *p = NULL;
 
-	if (mem->buf_size - mem->pos < size) {
+	if (mem->buf_size - mem->pos < (int)size) {
 		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Memory alloc failed! (alloc %d, free %d)\n", size, mem->buf_size - mem->pos);
 	}
 	else {

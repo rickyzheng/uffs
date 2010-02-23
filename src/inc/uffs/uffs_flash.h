@@ -52,7 +52,7 @@ extern "C"{
 /** ECC options (uffs_StorageAttrSt.ecc_opt) */
 #define UFFS_ECC_NONE		0	//!< do not use ECC
 #define UFFS_ECC_SOFT		1	//!< UFFS calculate the ECC
-#define UFFS_ECC_HW		2	//!< Flash driver(or by hardware) calculate the ECC
+#define UFFS_ECC_HW			2	//!< Flash driver(or by hardware) calculate the ECC
 #define UFFS_ECC_HW_AUTO	3	//!< Hardware calculate the ECC and automatically write to spare.
 
 
@@ -164,7 +164,7 @@ struct uffs_FlashOpsSt {
 	 *
 	 * \note pad 0xFF for calculating ECC if len < page_data_size
 	 */
-	int (*WritePageData)(uffs_Device *dev, u32 block, u32 page, const u8 *data, int len, u8 *ecc, UBOOL commit);
+	int (*WritePageData)(uffs_Device *dev, u32 block, u32 page, const u8 *data, int len, u8 *ecc);
 
 
 	/**
@@ -176,7 +176,7 @@ struct uffs_FlashOpsSt {
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int ofs, int len, UBOOL commit);
+	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int ofs, int len, UBOOL comb);
 
 	/**
 	 * Write page spare, flash driver do the layout.
@@ -187,7 +187,7 @@ struct uffs_FlashOpsSt {
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WritePageSpareWithLayout)(uffs_Device *dev, u32 block, u32 page, const u8 *tag, int len, const u8 *ecc, UBOOL commit);
+	int (*WritePageSpareWithLayout)(uffs_Device *dev, u32 block, u32 page, const u8 *tag, int len, const u8 *ecc, UBOOL comb);
 
 	/**
 	 * check block status.

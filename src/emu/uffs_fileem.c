@@ -140,7 +140,7 @@ static URET CheckInit(uffs_Device *dev)
 }
 
 
-static int femu_WritePageData(uffs_Device *dev, u32 block, u32 page_num, const u8 *data, int len, u8 *ecc, UBOOL commit)
+static int femu_WritePageData(uffs_Device *dev, u32 block, u32 page_num, const u8 *data, int len, u8 *ecc)
 {
 	int written;
 	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
@@ -184,15 +184,12 @@ static int femu_WritePageData(uffs_Device *dev, u32 block, u32 page_num, const u
 
 	dev->st.page_write_count++;
 
-	if (commit == U_TRUE)
-		fflush(emu->fp);
-	
 	return UFFS_FLASH_NO_ERR;
 err:
 	return UFFS_FLASH_IO_ERR;
 }
 
-static int femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const u8 *spare, int ofs, int len, UBOOL commit)
+static int femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const u8 *spare, int ofs, int len, UBOOL eod)
 {
 	int written;
 	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
@@ -238,8 +235,11 @@ static int femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const 
 		}
 	}
 
-	if (commit == U_TRUE)
-		fflush(emu->fp);
+	if (eod == U_TRUE) {
+		// eod: U_TRUE -- single write cycle
+		// eod: U_FALSE -- this is the write after page data
+	}
+	fflush(emu->fp);
 
 	dev->st.spare_write_count++;
 
