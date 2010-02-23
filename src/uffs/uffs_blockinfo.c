@@ -96,7 +96,7 @@ URET uffs_BlockInfoInitCache(uffs_Device *dev, int maxCachedBlocks)
 	blockInfos = (uffs_BlockInfo *)buf;
 	size += sizeof(uffs_BlockInfo) * maxCachedBlocks;
 
-	pageSpares = (uffs_PageSpare *)((int)buf + size);
+	pageSpares = (uffs_PageSpare *)((char *)buf + size);
 
 	//initialize block info
 	work = &(blockInfos[0]);

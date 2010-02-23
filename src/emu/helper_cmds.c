@@ -310,6 +310,7 @@ BOOL cmdSt(const char *tail)
 
 	uffs_Perror(UFFS_ERR_NORMAL, "----------- basic info -----------\n");
 	uffs_Perror(UFFS_ERR_NORMAL, "TreeNode size:         %d\n", sizeof(TreeNode));
+	uffs_Perror(UFFS_ERR_NORMAL, "TagStore size:         %d\n", sizeof(struct uffs_TagStoreSt));
 	uffs_Perror(UFFS_ERR_NORMAL, "MaxCachedBlockInfo:    %d\n", MAX_CACHED_BLOCK_INFO);
 	uffs_Perror(UFFS_ERR_NORMAL, "MaxPageBuffers:        %d\n", MAX_PAGE_BUFFERS);
 	uffs_Perror(UFFS_ERR_NORMAL, "MaxDirtyPagesPerBlock: %d\n", MAX_DIRTY_PAGES_IN_A_BLOCK);

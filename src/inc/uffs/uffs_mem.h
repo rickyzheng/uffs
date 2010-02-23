@@ -49,7 +49,7 @@ extern "C"{
 #define HEAP_HASH_BIT	6							/* hash table bit */
 #define HEAP_HASH_SIZE (1 << (HEAP_HASH_BIT - 1))	/* hash table size */
 #define HEAP_HASH_MASK	(HEAP_HASH_SIZE - 1)		/* hash table mask */
-#define GET_HASH_INDEX(p) ((((u32)(p)) >> 2) & HEAP_HASH_MASK)
+#define GET_HASH_INDEX(p) ((((unsigned long)(p)) >> 2) & HEAP_HASH_MASK)
 
 /* memory alloc node  */
 typedef struct HeapManagementNodeSt{
