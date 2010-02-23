@@ -24,7 +24,7 @@
   this file does not by itself cause the resulting work to be covered
   by the GNU General Public License. However the source code for this
   file must still be made available in accordance with section (3) of
-  the GNU General Public License v2.
+  the GNU General Public License v2.my_application_main_entry
  
   This exception does not invalidate any other reasons why a work based
   on this file might be covered by the GNU General Public License.
@@ -59,6 +59,11 @@ static URET nand_init_device(uffs_Device *dev);
 static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc, UBOOL commit)
 {
 	// insert your nand driver codes here ...
+	
+	if (commit == U_TRUE) {
+		// commit the write command
+		// normally you won't get here because UFFS always try to avoid partial page program
+	}
 
 	dev->st.page_write_count++;
 	return UFFS_FLASH_NO_ERR;
@@ -68,6 +73,11 @@ static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const 
 static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len, UBOOL commit)
 {
 	// insert your nand driver codes here ...
+	
+	if (commit == U_TRUE) {
+		// commit the write command
+		// normally you'll get here at the end of page program.
+	}
 
 	dev->st.spare_write_count++;  
 	return UFFS_FLASH_NO_ERR;
