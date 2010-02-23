@@ -274,7 +274,7 @@ BOOL cmdRm(const char *tail)
 BOOL cmdRen(const char *tail)
 {
 	const char *oldname;
-	char *newname;
+	const char *newname;
 
 	if (tail == NULL) 
 		return FALSE;
@@ -355,7 +355,7 @@ BOOL cmdSt(const char *tail)
 BOOL cmdCp(const char *tail)
 {
 	const char *src;
-	char *des;
+	const char *des;
 	char buf[100];
 	uffs_Object *f1 = NULL, *f2 = NULL;
 	int len;

@@ -498,7 +498,7 @@ int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *
 	if (dev->attr->ecc_opt != UFFS_ECC_NONE)
 		TagMakeEcc(&tag->s);
 	else
-		tag->s.tag_ecc = 0xFFFF;
+		tag->s.tag_ecc = TAG_ECC_DEFAULT;
 
 	if (dev->attr->layout_opt == UFFS_LAYOUT_UFFS) {
 		if (dev->attr->ecc_opt == UFFS_ECC_SOFT ||

@@ -66,6 +66,8 @@ struct uffs_TagStoreSt {
 	u32 tag_ecc:12;		//!< tag ECC
 };
 
+#define TAG_ECC_DEFAULT (0xFFF)	//!< 12-bit '1'
+
 /**
  * \struct uffs_TagStoreSt_8
  * \brief this data structure describes the page status, for 8 bytes page spare.
