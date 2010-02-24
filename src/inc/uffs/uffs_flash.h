@@ -176,7 +176,7 @@ struct uffs_FlashOpsSt {
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int ofs, int len, UBOOL comb);
+	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int ofs, int len, UBOOL eod);
 
 	/**
 	 * Write page spare, flash driver do the layout.
@@ -187,7 +187,7 @@ struct uffs_FlashOpsSt {
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WritePageSpareWithLayout)(uffs_Device *dev, u32 block, u32 page, const u8 *tag, int len, const u8 *ecc, UBOOL comb);
+	int (*WritePageSpareWithLayout)(uffs_Device *dev, u32 block, u32 page, const u8 *tag, int len, const u8 *ecc, UBOOL eod);
 
 	/**
 	 * check block status.
