@@ -80,8 +80,8 @@ struct uffs_PartitionSt {
  * \brief lock stuffs
  */
 struct uffs_LockSt {
-	u32 sem;
-	u32 task_id;
+	int sem;
+	int task_id;
 	int counter;
 };
 
@@ -152,7 +152,7 @@ typedef struct uffs_FlashStatSt {
 struct uffs_DeviceSt {
 	URET (*Init)(uffs_Device *dev);				//!< low level initialization
 	URET (*Release)(uffs_Device *dev);			//!< low level release
-	void *private;								//!< private data for device
+	void *_private;								//!< private data for device
 
 	struct uffs_StorageAttrSt		*attr;		//!< storage attribute
 	struct uffs_PartitionSt			par;		//!< partition information

@@ -124,6 +124,6 @@ void uffs_Perror( int level, const char *errFmt, ...)
  */
 void uffs_AssertCall(const char *file, int line, const char *msg)
 {
-	printf("ASSERT %s:%d - msg\n", file, line, msg);
+	printf("ASSERT %s:%d - msg:%s\n", file, line, msg);
 	while (1);
 }

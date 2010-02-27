@@ -97,7 +97,7 @@ struct uffs_StorageAttrSt {
 	const u8 *data_layout;	//!< spare data layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
 	u8 _uffs_ecc_layout[UFFS_SPARE_LAYOUT_SIZE];	//!< uffs spare ecc layout
 	u8 _uffs_data_layout[UFFS_SPARE_LAYOUT_SIZE];	//!< uffs spare data layout
-	void *private;			//!< private data for storage attribute
+	void *_private;			//!< private data for storage attribute
 };
 
 

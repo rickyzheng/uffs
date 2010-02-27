@@ -85,7 +85,7 @@ URET uffs_PoolInit(uffs_Pool *pool, void *mem, u32 mem_size, u32 buf_size, u32 n
 	uffs_Assert(buf_size % sizeof(void *) == 0, "buffer size not aligned to pointer size");
 	uffs_Assert(mem_size == num_bufs * buf_size, "pool memory size is wrong");
 
-	pool->mem = mem;
+	pool->mem = (u8 *)mem;
 	pool->buf_size = buf_size;
 	pool->num_bufs = num_bufs;
 	pool->sem = uffs_SemCreate(1);
@@ -169,7 +169,7 @@ void *uffs_PoolGetLocked(uffs_Pool *pool)
  */
 int uffs_PoolPut(uffs_Pool *pool, void *p)
 {
-	uffs_PoolEntry *e = p;
+	uffs_PoolEntry *e = (uffs_PoolEntry *)p;
 
 	uffs_Assert(pool, "pool missing");
 
@@ -192,7 +192,7 @@ int uffs_PoolPut(uffs_Pool *pool, void *p)
  */
 int uffs_PoolPutLocked(uffs_Pool *pool, void *p)
 {
-	uffs_PoolEntry *e = p;
+	uffs_PoolEntry *e = (uffs_PoolEntry *)p;
 
 	uffs_Assert(pool, "pool missing");
 

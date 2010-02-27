@@ -75,7 +75,7 @@ static URET CheckInit(uffs_Device *dev)
 	blks = dev->attr->total_blocks;
 	blk_size = dev->attr->page_data_size * dev->attr->pages_per_block;
 	
-	emu = (uffs_FileEmu *)(dev->attr->private);
+	emu = (uffs_FileEmu *)(dev->attr->_private);
 
 	if (emu->initCount > 0) {
 		emu->initCount++;
@@ -146,7 +146,7 @@ static int femu_WritePageData(uffs_Device *dev, u32 block, u32 page_num, const u
 	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
 	uffs_FileEmu *emu;
 
-	emu = (uffs_FileEmu *)(dev->attr->private);
+	emu = (uffs_FileEmu *)(dev->attr->_private);
 
 	if (!emu || !(emu->fp))
 		goto err;
@@ -195,7 +195,7 @@ static int femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const 
 	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
 	uffs_FileEmu *emu;
 
-	emu = (uffs_FileEmu *)(dev->attr->private);
+	emu = (uffs_FileEmu *)(dev->attr->_private);
 	if (!emu || !(emu->fp)) 
 		goto err;
 
@@ -254,7 +254,7 @@ static URET femu_ReadPageData(uffs_Device *dev, u32 block, u32 page_num, u8 *dat
 	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
 	uffs_FileEmu *emu;
 
-	emu = (uffs_FileEmu *)(dev->attr->private);
+	emu = (uffs_FileEmu *)(dev->attr->_private);
 	if (!emu || !(emu->fp))
 		goto err;
 
@@ -302,7 +302,7 @@ static URET femu_ReadPageSpare(uffs_Device *dev, u32 block, u32 page_num, u8 *sp
 	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
 	uffs_FileEmu *emu;
 
-	emu = (uffs_FileEmu *)(dev->attr->private);
+	emu = (uffs_FileEmu *)(dev->attr->_private);
 	if (!emu || !(emu->fp))
 		goto err;
 
@@ -349,7 +349,7 @@ static URET femu_EraseBlock(uffs_Device *dev, u32 blockNumber)
 	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
 	uffs_FileEmu *emu;
 
-	emu = (uffs_FileEmu *)(dev->attr->private);
+	emu = (uffs_FileEmu *)(dev->attr->_private);
 	if (!emu || !(emu->fp))
 		goto err;
 
@@ -454,7 +454,7 @@ static URET femu_releaseDevice(uffs_Device *dev)
 
 	uffs_Perror(UFFS_ERR_NORMAL, PFX "femu device release.\n");
 
-	emu = (uffs_FileEmu *)(dev->attr->private);
+	emu = (uffs_FileEmu *)(dev->attr->_private);
 
 	emu->initCount--;
 	if (emu->initCount == 0) {

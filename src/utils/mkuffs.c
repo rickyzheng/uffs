@@ -179,7 +179,7 @@ static int init_uffs_fs(void)
 
 	setup_emu_storage(&emu_storage);
 	setup_emu_private(&emu_private);
-	emu_storage.private = &emu_private;
+	emu_storage._private = &emu_private;
 	
 	while (mtbl->dev) {
 		mtbl->dev->attr = &emu_storage;
