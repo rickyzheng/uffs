@@ -52,8 +52,16 @@ int main()
 }
 #else
 
+
+#define USE_SINGLE_WRITE_FUN
+
+
+#ifdef USE_SINGLE_WRITE_FUN
+static int nand_write_full_page(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int len, u8 *tag, int tag_len, u8 *ecc);
+#else
 static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc);
 static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len, UBOOL eod);
+#endif
 
 static int nand_read_page_data(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int len, u8 *ecc);
 static int nand_read_page_spare(uffs_Device *dev, u32 block, u32 pageNum, u8 *spare, int ofs, int len);
@@ -63,6 +71,57 @@ static int nand_erase_block(uffs_Device *dev, u32 blockNumber);
 static URET nand_init_device(uffs_Device *dev);
 
 
+#ifdef USE_SINGLE_WRITE_FUN
+// if you want to optimize nand flash driver, or use special nand hardware controller, 
+// or use other NAND driver (for example, eCos NAND lib), you shoud do layout in nand driver.
+static int nand_write_full_page(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int len, u8 *tag, int tag_len, u8 *ecc)
+{
+#define SPOOL(dev) &((dev)->mem.spare_pool)
+
+	u8 *spare_buf = NULL;
+	
+	spare_buf = (u8 *) uffs_PoolGet(SPOOL(dev));  // alloc a spare buffer
+	
+	// ... START WRITE COMMAND ...
+	// ...
+	
+	if (page) {
+		// WRITE page data
+		// ....		
+		if (dev->attr->ecc_opt == UFFS_ECC_HW) {
+			// read ECC from hardware controller to ecc buf,
+			// ...
+		}
+	}
+	
+	if (tag && tag_len > 0) {
+		
+		// now, you can use UFFS's layout function
+			uffs_FlashMakeSpare(dev, tag, ecc, spare_buf);
+		// or, do your own layout
+		//   ....
+		
+		// WRITE spare_buf to page spare ...
+		// ...
+	}
+	
+	// FINISH write command ...
+	// ...
+	// read program status ...
+	// ...
+  
+	if (page)
+		dev->st.page_write_count++;
+	if (tag)
+		dev->st_spare_write_count++;
+	
+	if (spare_buf)
+		uffs_PoolPut(SPOOL(dev), spare_buf);  // release spare buffer
+	
+	return UFFS_FLASH_NO_ERR;
+}
+
+#else
 
 static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc)
 {
@@ -93,6 +152,9 @@ static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const
 	dev->st.spare_write_count++;  
 	return UFFS_FLASH_NO_ERR;
 }
+
+#endif
+
 
 static int nand_read_page_data(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int len, u8 *ecc)
 {

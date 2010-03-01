@@ -111,10 +111,7 @@ struct uffs_FlashOpsSt {
 	 * 
 	 * if ecc_opt is UFFS_ECC_HW, flash driver must calculate and return ecc (if ecc != NULL).
 	 *
-	 * if ecc_opt is UFFS_ECC_HW or UFFS_ECC_HW_AUTO, flash driver do ecc
-	 * correction with stored ecc in spare area.
-	 *
-	 * if ecc_opt is UFFS_ECC_HW_AUTO, not neccessary return ecc.
+	 * if ecc_opt is UFFS_ECC_HW_AUTO, flash driver do ecc correction aganist ecc in spare area.
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success and/or has no flip bits.
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
@@ -142,7 +139,8 @@ struct uffs_FlashOpsSt {
 	/**
 	 * Read page spare, unload to tag and ecc.
 	 *
-	 * \note flash driver must provide this function if layout_opt is UFFS_LAYOUT_FLASH or .
+	 * \note flash driver must provide this function if layout_opt is UFFS_LAYOUT_FLASH.
+	 *       UFFS will use this function (if exist) prio to 'ReadPageSpare()'
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
@@ -177,17 +175,20 @@ struct uffs_FlashOpsSt {
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
 	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int ofs, int len, UBOOL eod);
-
+	
 	/**
-	 * Write page spare, flash driver do the layout.
+	 * Write full page, include page data and spare.
 	 *
-	 * \note flash driver must provide this function if layout_opt is UFFS_LAYOUT_FLASH.
+	 * you need to pack spare within nand driver.
+	 *
+	 * \note if layout_opt is UFFS_LAYOUT_FLASH, flash driver must implement this function.
+	 *       UFFS will use this function (if provided) prio to 'WritePageData() + WritePageSpare()'
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WritePageSpareWithLayout)(uffs_Device *dev, u32 block, u32 page, const u8 *tag, int len, const u8 *ecc, UBOOL eod);
+	int (*WriteFullPage)(uffs_Device *dev, u32 block, u32 page, const u8* data, int len, const u8 *ts, int ts_len, const u8 *ecc);
 
 	/**
 	 * check block status.
@@ -218,6 +219,8 @@ struct uffs_FlashOpsSt {
 	int (*EraseBlock)(uffs_Device *dev, u32 block);
 };
 
+/** make spare from tag store and ecc */
+void uffs_FlashMakeSpare(uffs_Device *dev, uffs_TagStore *ts, u8 *ecc, u8* spare);
 
 /** read page spare, fill tag and ECC */
 int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag, u8 *ecc);
