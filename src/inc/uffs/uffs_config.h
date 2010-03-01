@@ -92,16 +92,15 @@
 #define MAX_DIRTY_BUF_GROUPS	3
 
 
-
 /**
  * \def CONFIG_USE_STATIC_MEMORY_ALLOCATOR
  * \note uffs will use static memory allocator if this is defined.
  *       to use static memory allocator, you need to provide memory
  *       buffer when creating uffs_Device.
  *
- *       use UFFS_MAIN_BUFFER_SIZE() to calculate memory buffer size.
+ *       use UFFS_STATIC_BUFF_SIZE() to calculate memory buffer size.
  */
-#define CONFIG_USE_STATIC_MEMORY_ALLOCATOR
+#define CONFIG_USE_STATIC_MEMORY_ALLOCATOR 0
 
 /**
  * \def CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
@@ -111,7 +110,16 @@
  *        allocator or use the system heap as the memory pool for the
  *        native memory allocator.
  */
-#define CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
+#define CONFIG_USE_NATIVE_MEMORY_ALLOCATOR 0
+
+
+/**
+ * \def CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR
+ * \note  using system platform's 'malloc' and 'free'.
+ */
+#define CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR 1
+
+
 
 /** 
  * \def CONFIG_FLUSH_BUF_AFTER_WRITE
@@ -231,6 +239,15 @@
 #if defined(CONFIG_PAGE_WRITE_VERIFY) && (CLONE_BUFFERS_THRESHOLD < 2)
 #error "CLONE_BUFFERS_THRESHOLD should >= 2 when CONFIG_PAGE_WRITE_VERIFY is enabled."
 #endif
+
+#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR + CONFIG_USE_NATIVE_MEMORY_ALLOCATOR + CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 1
+#error "Please enable ONLY one memory allocator"
+#endif
+
+#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR + CONFIG_USE_NATIVE_MEMORY_ALLOCATOR + CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR == 0
+#error "Please enable ONE of memory allocators"
+#endif
+
 
 #ifdef WIN32
 # pragma warning(disable : 4996)

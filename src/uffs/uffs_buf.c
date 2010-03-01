@@ -118,16 +118,14 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc %d bytes.\n", size);
 	dev->buf.pool = pool;
 
-	data = (u8 *)pool + (sizeof(uffs_Buf) * buf_max);
-
 	for (i = 0; i < buf_max; i++) {
 		buf = (uffs_Buf *)((u8 *)pool + (sizeof(uffs_Buf) * i));
 		memset(buf, 0, sizeof(uffs_Buf));
 		data = (u8 *)pool + (sizeof(uffs_Buf) * buf_max) + (dev->com.pg_size * i);
-
 		buf->header = data;
 		buf->data = data + dev->com.header_size;
 		buf->mark = UFFS_BUF_EMPTY;
+		memset(buf->header, 0, dev->com.pg_size);
 		if (i == 0) {
 			buf->prev = NULL;
 			dev->buf.head = buf;
@@ -136,7 +134,7 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 			buf->prev = (uffs_Buf *)((u8 *)buf - sizeof(uffs_Buf));
 		}
 
-		if (i == buf_max - 1) {
+		if (i == (buf_max - 1)) {
 			buf->next = NULL;
 			dev->buf.tail = buf;
 		}
@@ -147,6 +145,7 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 
 	dev->buf.buf_max = buf_max;
 	dev->buf.dirty_buf_max = (dirty_buf_max > dev->attr->pages_per_block ? dev->attr->pages_per_block : dirty_buf_max);
+
 	for (slot = 0; slot < MAX_DIRTY_BUF_GROUPS; slot++) {
 		dev->buf.dirtyGroup[slot].dirty = NULL;
 		dev->buf.dirtyGroup[slot].count = 0;
@@ -1252,7 +1251,7 @@ uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 parent, u16 serial
 	buf->page_id = page_id;
 	buf->data_len = 0;
 	buf->ref_count++;
-	memset(buf->data, 0xff, dev->com.pg_size);
+	memset(buf->data, 0xff, dev->com.pg_data_size);
 
 	_MoveNodeToHead(dev, buf);
 	
@@ -1408,8 +1407,8 @@ uffs_Buf * uffs_BufClone(uffs_Device *dev, uffs_Buf *buf)
 			
 			p->data_len = buf->data_len;
 			//athough the valid data length is .data_len,
-			//but we still need copy the whole buffer, include ecc
-			memcpy(p->data, buf->data, dev->com.pg_size);
+			//but we still need copy the whole buffer, include header
+			memcpy(p->header, buf->header, dev->com.pg_size);
 		}
 		p->next = p->prev = NULL;			//because the cloned one is not linked to device buffer
 		p->next_dirty = p->prev_dirty = NULL;
@@ -1570,7 +1569,7 @@ URET uffs_BufRead(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs,
 	u32 readSize;
 	u32 pg_data_size = dev->com.pg_data_size;
 
-	readSize = (ofs >= pg_data_size ? 0 :	(ofs + len >= pg_data_size ? pg_data_size - ofs : len));
+	readSize = (ofs >= pg_data_size ? 0 : (ofs + len >= pg_data_size ? pg_data_size - ofs : len));
 
 	if (readSize > 0) 
 		memcpy(data, buf->data + ofs, readSize);

@@ -51,6 +51,14 @@
 
 #define PFX "static-example: "
 
+#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR == 0
+int main()
+{
+	uffs_Perror(UFFS_ERR_NORMAL, PFX"This example need CONFIG_USE_STATIC_MEMORY_ALLOCATOR = 1\n");
+	return 0;
+}
+#else
+
 extern struct cli_commandset * get_helper_cmds(void);
 
 #define DEFAULT_EMU_FILENAME "uffsemfile.bin"
@@ -82,39 +90,7 @@ static struct uffs_StorageAttrSt emu_storage = {0};
 static struct uffs_FileEmuSt emu_private = {0};
 
 /* static alloc the memory */
-static int static_buffer[UFFS_STATIC_BUFF_SIZE(PAGES_PER_BLOCK, PAGE_SIZE, TOTAL_BLOCKS) / sizeof(int)];
-static struct uffs_memAllocatorSt static_allocator = {0};
-
-/* init memory allocator, setup buffer sizes */
-static URET static_mem_alloc_init(struct uffs_DeviceSt *dev)
-{
-	struct uffs_memAllocatorSt *mem = &dev->mem;
-	mem->buf_start = (unsigned char *)static_buffer;
-	mem->buf_size = sizeof(static_buffer);
-	mem->pos = 0;
-
-	uffs_Perror(UFFS_ERR_NOISY, PFX"Total static memory: %d bytes\n", mem->buf_size);
-
-	return U_SUCC;
-}
-  
-/* allocate memory (for dynamic memory allocation) */
-static void * static_mem_alloc_malloc(struct uffs_DeviceSt *dev, unsigned int size)
-{
-	struct uffs_memAllocatorSt *mem = &dev->mem;
-	void *p = NULL;
-
-	if (mem->buf_size - mem->pos < (int)size) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Memory alloc failed! (alloc %d, free %d)\n", size, mem->buf_size - mem->pos);
-	}
-	else {
-		p = mem->buf_start + size;
-		mem->pos += size;
-		uffs_Perror(UFFS_ERR_NOISY, PFX"Allocated %d, free %d\n", size, mem->buf_size - mem->pos);
-	}
-
-	return p;
-}
+static int static_buffer_pool[UFFS_STATIC_BUFF_SIZE(PAGES_PER_BLOCK, PAGE_SIZE, TOTAL_BLOCKS) / sizeof(int)];
 
 
 static void setup_emu_storage(struct uffs_StorageAttrSt *attr)
@@ -138,7 +114,6 @@ static void setup_emu_private(uffs_FileEmu *emu)
 static int init_uffs_fs(void)
 {
 	struct uffs_MountTableEntrySt *mtbl = &demo_mount;
-	struct uffs_memAllocatorSt *mem;
 
 	/* setup emu storage */
 	setup_emu_storage(&emu_storage);
@@ -147,10 +122,7 @@ static int init_uffs_fs(void)
 	mtbl->dev->attr = &emu_storage;
 
 	/* setup memory allocator */
-	mem = &mtbl->dev->mem;
-	memset(mem, 0, sizeof(struct uffs_memAllocatorSt));
-	mem->init = static_mem_alloc_init;
-	mem->malloc = static_mem_alloc_malloc;
+	uffs_MemSetupStaticAllocator(&mtbl->dev->mem, static_buffer_pool, sizeof(static_buffer_pool));
 
 	/* setup device */
 	uffs_fileem_setup_device(mtbl->dev);
@@ -191,4 +163,5 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
+#endif
 

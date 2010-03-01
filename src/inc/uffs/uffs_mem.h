@@ -44,7 +44,7 @@ extern "C"{
 #define MAX_SPARE_BUF	10
 
 
-#if defined(CONFIG_USE_NATIVE_MEMORY_ALLOCATOR)
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 
 #define HEAP_HASH_BIT	6							/* hash table bit */
 #define HEAP_HASH_SIZE (1 << (HEAP_HASH_BIT - 1))	/* hash table size */
@@ -94,13 +94,13 @@ typedef struct uffs_memAllocatorSt {
 	int spare_data_size;				//!< spare data size, calculated by UFFS.
 
 
-#if defined(CONFIG_USE_NATIVE_MEMORY_ALLOCATOR)
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 	HeapHashTable tbl[HEAP_HASH_SIZE];
 	int count;
 	int maxused;
 #endif
 
-#if defined(CONFIG_USE_STATIC_MEMORY_ALLOCATOR)
+#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR > 0
 	char *buf_start;
 	int buf_size;
 	int pos;
@@ -109,8 +109,16 @@ typedef struct uffs_memAllocatorSt {
 } uffs_MemAllocator;
 
 
-#if defined(CONFIG_USE_NATIVE_MEMORY_ALLOCATOR)
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 void uffs_MemSetupNativeAllocator(uffs_MemAllocator *allocator);
+#endif
+
+#if CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 0
+void uffs_MemSetupSystemAllocator(uffs_MemAllocator *allocator);
+#endif
+
+#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR > 0
+void uffs_MemSetupStaticAllocator(uffs_MemAllocator *allocator, void *pool, int size);
 #endif
 
 #ifdef __cplusplus

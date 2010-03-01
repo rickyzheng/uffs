@@ -49,11 +49,19 @@
 #include "cmdline.h"
 #include "uffs_fileem.h"
 
+#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR > 0
+int main()
+{
+	printf("Static memory allocator is not supported.\n");
+	return 0;
+}
+#else
+
 extern struct cli_commandset * get_helper_cmds(void);
 extern struct cli_commandset * get_test_cmds(void);
 extern void femu_init_uffs_device(uffs_Device *dev);
 
-#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 static int conf_memory_pool_size_kb = 800; /* default allocate 100k memory. */
 static void *memory_pool = NULL;
 #endif
@@ -93,7 +101,7 @@ static struct uffs_FileEmuSt emu_private = {0};
 
 
 
-#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 BOOL cmdMeminfo(const char *tail)
 {
 	const char *mount = "/";
@@ -134,7 +142,7 @@ BOOL cmdMeminfo(const char *tail)
 
 static struct cli_commandset basic_cmdset[] = 
 {
-#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
     { cmdMeminfo,	"mem",			"<mount>",			"show native memory allocator infomation" },
 #endif
     { NULL, NULL, NULL, NULL }
@@ -167,7 +175,8 @@ static int init_uffs_fs(void)
 	if(bIsFileSystemInited) return -4;
 	bIsFileSystemInited = 1;
 
-#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
+	// init protected heap for native memory allocator
 	memory_pool = malloc(conf_memory_pool_size_kb * 1024);
 	if (memory_pool)
 		uffs_MemInitHeap(memory_pool, conf_memory_pool_size_kb * 1024);
@@ -183,8 +192,12 @@ static int init_uffs_fs(void)
 	
 	while (mtbl->dev) {
 		mtbl->dev->attr = &emu_storage;
-#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 		uffs_MemSetupNativeAllocator(&mtbl->dev->mem);
+#endif
+
+#if CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 0
+		uffs_MemSetupSystemAllocator(&mtbl->dev->mem);
 #endif
 		uffs_fileem_setup_device(mtbl->dev);
 		uffs_RegisterMountTable(mtbl);
@@ -198,7 +211,7 @@ static int release_uffs_fs(void)
 {
 	int ret;
 	ret = uffs_ReleaseMountTable();
-#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 	if (memory_pool) {
 		free(memory_pool);
 		memory_pool = NULL;
@@ -333,7 +346,7 @@ static int parse_options(int argc, char *argv[])
 					conf_exec_script = 1;
 				}
 			}
-#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR			
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 			else if (!strcmp(arg, "-a") || !strcmp(arg, "--alloc")) {
 				if (++iarg > argc) 
 					usage++;
@@ -368,7 +381,7 @@ static int parse_options(int argc, char *argv[])
         printf("  -m  --mount          <mount_point,start,end> , for example: -m /,0,-1\n");
 		printf("  -i  --id-man         <id>         set manufacture ID, default=0xEC\n");
         printf("  -e  --exec           <file>       execute a script file\n");
-#ifdef CONFIG_USE_NATIVE_MEMORY_ALLOCATOR		
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 		printf("  -a  --alloc          <size>       allocate size(KB) of memory for uffs, default 100\n");
 #endif		
         printf("\n");
@@ -485,6 +498,7 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
+#endif
 
 
 

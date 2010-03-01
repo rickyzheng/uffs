@@ -44,6 +44,13 @@
 
 #define PFX "nand-drv:"
 
+#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR == 0
+int main()
+{
+	uffs_Perror(UFFS_ERR_NORMAL, PFX"This example need CONFIG_USE_STATIC_MEMORY_ALLOCATOR = 1\n");
+	return 0;
+}
+#else
 
 static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc);
 static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len, UBOOL eod);
@@ -156,50 +163,6 @@ static struct uffs_StorageAttrSt flash_storage = {0};
 static int static_buffer_par1[UFFS_STATIC_BUFF_SIZE(PAGES_PER_BLOCK, PAGE_SIZE, PAR_1_BLOCKS) / sizeof(int)];
 static int static_buffer_par2[UFFS_STATIC_BUFF_SIZE(PAGES_PER_BLOCK, PAGE_SIZE, PAR_2_BLOCKS) / sizeof(int)];;
 
-/* init memory allocator, setup buffer sizes */
-static URET static_mem_alloc_init_par_1(struct uffs_DeviceSt *dev)
-{
-	struct uffs_memAllocatorSt *mem = &dev->mem;
-	mem->buf_start = (char *)static_buffer_par1;
-	mem->buf_size = sizeof(static_buffer_par1);
-	mem->pos = 0;
-
-	uffs_Perror(UFFS_ERR_NOISY, PFX"Total static memory: %d bytes\n", mem->buf_size);
-
-	return U_SUCC;
-}
-
-/* init memory allocator, setup buffer sizes */
-static URET static_mem_alloc_init_par_2(struct uffs_DeviceSt *dev)
-{
-	struct uffs_memAllocatorSt *mem = &dev->mem;
-	mem->buf_start = (char *)static_buffer_par2;
-	mem->buf_size = sizeof(static_buffer_par2);
-	mem->pos = 0;
-
-	uffs_Perror(UFFS_ERR_NOISY, PFX"Total static memory: %d bytes\n", mem->buf_size);
-
-	return U_SUCC;
-}
-  
-/* allocate memory (for dynamic memory allocation) */
-static void * static_mem_alloc_malloc(struct uffs_DeviceSt *dev, unsigned int size)
-{
-	struct uffs_memAllocatorSt *mem = &dev->mem;
-	void *p = NULL;
-
-	if (mem->buf_size - mem->pos < (int)size) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Memory alloc failed! (alloc %d, free %d)\n", size, mem->buf_size - mem->pos);
-	}
-	else {
-		p = mem->buf_start + size;
-		mem->pos += size;
-		uffs_Perror(UFFS_ERR_NOISY, PFX"Allocated %d, free %d\n", size, mem->buf_size - mem->pos);
-	}
-
-	return p;
-}
-
 
 static void setup_flash_storage(struct uffs_StorageAttrSt *attr)
 {
@@ -240,21 +203,13 @@ static uffs_MountTable demo_mount_table[] = {
 static int my_init_filesystem(void)
 {
 	uffs_MountTable *mtbl = &(demo_mount_table[0]);
-	struct uffs_memAllocatorSt *mem;
 
 	/* setup nand storage attributes */
 	setup_flash_storage(&flash_storage);
 
 	/* setup memory allocator */
-	mem = &demo_device_1.mem;
-	memset(mem, 0, sizeof(struct uffs_memAllocatorSt));
-	mem->init = static_mem_alloc_init_par_1;
-	mem->malloc = static_mem_alloc_malloc;
-
-	mem = &demo_device_2.mem;
-	memset(mem, 0, sizeof(struct uffs_memAllocatorSt));
-	mem->init = static_mem_alloc_init_par_2;
-	mem->malloc = static_mem_alloc_malloc;
+	uffs_MemSetupStaticAllocator(&demo_device_1.mem, static_buffer_par1, sizeof(static_buffer_par1));
+	uffs_MemSetupStaticAllocator(&demo_device_2.mem, static_buffer_par2, sizeof(static_buffer_par2));
 
 	/* register mount table */
 	while(mtbl->dev) {
@@ -282,6 +237,8 @@ int main()
 
 	return 0;
 }
+
+#endif
 
 
 /////////////////////////////////////////////////////////////////////////////////

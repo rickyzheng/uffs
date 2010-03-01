@@ -43,10 +43,9 @@
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_mem.h"
 
-#if defined(CONFIG_USE_NATIVE_MEMORY_ALLOCATOR)
-
 #define PFX "mem: "
 
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 
 #define HEAP_MAGIC_SIZE	8		/* heap magic size, this block is for memory protection */
 
@@ -840,4 +839,64 @@ void uffs_MemSetupNativeAllocator(uffs_MemAllocator *allocator)
 }
 
 #endif //CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
+
+#if CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 0
+#include <malloc.h>
+static void * sys_malloc(struct uffs_DeviceSt *dev, unsigned int size)
+{
+	uffs_Perror(UFFS_ERR_NORMAL, PFX"system memory alloc %d bytes\n", size);
+	return malloc(size);
+}
+
+static URET sys_free(struct uffs_DeviceSt *dev, void *p)
+{
+	free(p);
+	return U_SUCC;
+}
+
+void uffs_MemSetupSystemAllocator(uffs_MemAllocator *allocator)
+{
+	allocator->malloc = sys_malloc;
+	allocator->free = sys_free;
+}
+#endif //CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR
+
+#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR > 0
+static void * static_malloc(struct uffs_DeviceSt *dev, unsigned int size)
+{
+	struct uffs_memAllocatorSt *mem = &dev->mem;
+	void *p = NULL;
+
+	size += (size % sizeof(long) ? sizeof(long) - (size % sizeof(long)) : 0);
+
+	if (mem->buf_size - mem->pos < (int)size) {
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Memory alloc failed! (alloc %d, free %d)\n", size, mem->buf_size - mem->pos);
+	}
+	else {
+		p = mem->buf_start + mem->pos;
+		mem->pos += size;
+		uffs_Perror(UFFS_ERR_NOISY, PFX"0x%p: Allocated %d, free %d\n", p, size, mem->buf_size - mem->pos);
+	}
+
+	return p;
+}
+
+void uffs_MemSetupStaticAllocator(uffs_MemAllocator *allocator, void *pool, int size)
+{
+	allocator->buf_start = (unsigned char *)pool;
+	allocator->buf_size = size;
+	allocator->pos = 0;
+	allocator->malloc = static_malloc;
+	allocator->free = NULL;  //never free memory for static memory allocator
+
+	uffs_Perror(UFFS_ERR_NOISY, PFX"System static memory: %d bytes\n", allocator->buf_size);
+	
+}
+
+#endif
+
+
+
+
+
 
