@@ -220,7 +220,7 @@ struct uffs_FlashOpsSt {
 };
 
 /** make spare from tag store and ecc */
-void uffs_FlashMakeSpare(uffs_Device *dev, uffs_TagStore *ts, u8 *ecc, u8* spare);
+void uffs_FlashMakeSpare(uffs_Device *dev, uffs_TagStore *ts, const u8 *ecc, u8* spare);
 
 /** read page spare, fill tag and ECC */
 int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag, u8 *ecc);

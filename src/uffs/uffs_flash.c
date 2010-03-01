@@ -429,7 +429,7 @@ ext:
  * \param[out] spare output buffer
  * \note spare buffer size: dev->mem.spare_data_size, all unpacked bytes will be inited 0xFF
  */
-void uffs_FlashMakeSpare(uffs_Device *dev, uffs_TagStore *ts, u8 *ecc, u8* spare)
+void uffs_FlashMakeSpare(uffs_Device *dev, uffs_TagStore *ts, const u8 *ecc, u8* spare)
 {
 	u8 *p_ts = (u8 *)ts;
 	int ts_size = TAG_STORE_SIZE;

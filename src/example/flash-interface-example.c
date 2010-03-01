@@ -57,7 +57,7 @@ int main()
 
 
 #ifdef USE_SINGLE_WRITE_FUN
-static int nand_write_full_page(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int len, u8 *tag, int tag_len, u8 *ecc);
+static int nand_write_full_page(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, const u8 *tag, int tag_len, const u8 *ecc);
 #else
 static int nand_write_page_data(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, u8 *ecc);
 static int nand_write_page_spare(uffs_Device *dev, u32 block, u32 pageNum, const u8 *spare, int ofs, int len, UBOOL eod);
@@ -74,7 +74,7 @@ static URET nand_init_device(uffs_Device *dev);
 #ifdef USE_SINGLE_WRITE_FUN
 // if you want to optimize nand flash driver, or use special nand hardware controller, 
 // or use other NAND driver (for example, eCos NAND lib), you shoud do layout in nand driver.
-static int nand_write_full_page(uffs_Device *dev, u32 block, u32 pageNum, u8 *page, int len, u8 *tag, int tag_len, u8 *ecc)
+static int nand_write_full_page(uffs_Device *dev, u32 block, u32 pageNum, const u8 *page, int len, const u8 *tag, int tag_len, const u8 *ecc)
 {
 #define SPOOL(dev) &((dev)->mem.spare_pool)
 
@@ -97,7 +97,7 @@ static int nand_write_full_page(uffs_Device *dev, u32 block, u32 pageNum, u8 *pa
 	if (tag && tag_len > 0) {
 		
 		// now, you can use UFFS's layout function
-			uffs_FlashMakeSpare(dev, tag, ecc, spare_buf);
+			uffs_FlashMakeSpare(dev, (uffs_TagStore *)tag, ecc, spare_buf);
 		// or, do your own layout
 		//   ....
 		
@@ -113,7 +113,7 @@ static int nand_write_full_page(uffs_Device *dev, u32 block, u32 pageNum, u8 *pa
 	if (page)
 		dev->st.page_write_count++;
 	if (tag)
-		dev->st_spare_write_count++;
+		dev->st.spare_write_count++;
 	
 	if (spare_buf)
 		uffs_PoolPut(SPOOL(dev), spare_buf);  // release spare buffer
@@ -196,9 +196,15 @@ static struct uffs_FlashOpsSt my_nand_driver_ops = {
 	nand_read_page_data,    //ReadPageData
 	nand_read_page_spare,   //ReadPageSpare
 	NULL,                   //ReadPageSpareWithLayout
+#ifdef USE_SINGLE_WRITE_FUN
+	NULL,
+	NULL,
+	nand_write_full_page,   //WriteFullPages
+#else
 	nand_write_page_data,   //WritePageData
 	nand_write_page_spare,  //WritePageSpare
-	NULL,                   //WritePageSpareWithLayout
+	NULL,
+#endif	
 	NULL,                   //IsBadBlock
 	NULL,                   //MarkBadBlock
 	nand_erase_block,       //EraseBlock
