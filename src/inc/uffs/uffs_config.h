@@ -100,7 +100,7 @@
  *
  *       use UFFS_STATIC_BUFF_SIZE() to calculate memory buffer size.
  */
-#define CONFIG_USE_STATIC_MEMORY_ALLOCATOR 0
+#define CONFIG_USE_STATIC_MEMORY_ALLOCATOR 1
 
 /**
  * \def CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
@@ -117,7 +117,7 @@
  * \def CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR
  * \note  using system platform's 'malloc' and 'free'.
  */
-#define CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR 1
+#define CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR 0
 
 
 
