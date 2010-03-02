@@ -39,11 +39,12 @@
 #ifndef __UFFS_POOL_H__
 #define __UFFS_POOL_H__
 
+
+#include "uffs/uffs_types.h"
+
 #ifdef __cplusplus
 extern "C"{
 #endif
-
-#include "uffs/uffs_types.h"
 
 /**
  * \struct uffs_PoolEntrySt

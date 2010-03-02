@@ -42,6 +42,11 @@
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_core.h"
 
+#ifdef __cplusplus
+extern "C"{
+#endif
+
+
 #define HAVE_BADBLOCK(dev) (dev->bad.block != UFFS_INVALID_BLOCK)
 
 /** initialize bad block management data structures for uffs device */
@@ -55,6 +60,11 @@ void uffs_BadBlockRecover(uffs_Device *dev);
 
 /** put a new block to the bad block waiting list */
 void uffs_BadBlockAdd(uffs_Device *dev, int block);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

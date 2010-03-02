@@ -33,7 +33,9 @@
 #ifndef _UFFS_CORE_H_
 #define _UFFS_CORE_H_
 
-
+#ifdef __cplusplus
+extern "C"{
+#endif
 
 /** \typedef uffs_Device */
 typedef struct uffs_DeviceSt		uffs_Device;
@@ -46,6 +48,11 @@ typedef struct uffs_TagsSt			uffs_Tags;		//!< UFFS page tags
 typedef struct uffs_TagStoreSt      uffs_TagStore;  //!< UFFS page tags physical store structure
 
 typedef struct uffs_BufSt uffs_Buf;
+
+
+#ifdef __cplusplus
+}
+#endif
 
 
 
