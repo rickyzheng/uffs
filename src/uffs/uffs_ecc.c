@@ -143,13 +143,16 @@ static void uffs_EccMakeChunk256(void *data, void *ecc, u16 len)
 int uffs_EccMake(void *data, int data_len, void *ecc)
 {
 	u8 *p_data = (u8 *)data, *p_ecc = (u8 *)ecc;
+	int len;
 
 	if (data == NULL || ecc == NULL)
 		return 0;
 
 	while (data_len > 0) {
-		uffs_EccMakeChunk256(p_data, p_ecc, data_len > 256 ? 256 : data_len);
-		data_len -= 256;
+		len = data_len > 256 ? 256 : data_len;
+		uffs_EccMakeChunk256(p_data, p_ecc, len);
+		data_len -= len;
+		p_data += len;
 		p_ecc += 3;
 	}
 
@@ -205,7 +208,7 @@ static int uffs_EccCorrectChunk256(void *data, void *read_ecc, const void *test_
 		if(d2 & 0x20) bit |= 0x02;
 		if(d2 & 0x08) bit |= 0x01;
 
-		if (b >= (u8)errtop) return -1;
+		if (b >= errtop) return -1;
 
 		p[b] ^= (1 << bit);
 		
@@ -253,6 +256,7 @@ int uffs_EccCorrect(void *data, int data_len, void *read_ecc, const void *test_e
 		}
 		else
 			total += ret;
+
 		p_data += 256;
 		p_read_ecc += 3;
 		p_test_ecc += 3;
