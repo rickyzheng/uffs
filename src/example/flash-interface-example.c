@@ -264,7 +264,7 @@ static uffs_Device demo_device_2 = {0};
 
 static uffs_MountTable demo_mount_table[] = {
 	{ &demo_device_1,  0, PAR_1_BLOCKS - 1, "/data/" },
-	{ &demo_device_2,  PAR_1_BLOCKS, PAR_2_BLOCKS - 1, "/" },
+	{ &demo_device_2,  PAR_1_BLOCKS, PAR_1_BLOCKS + PAR_2_BLOCKS - 1, "/" },
 	{ NULL, 0, 0, NULL }
 };
 
