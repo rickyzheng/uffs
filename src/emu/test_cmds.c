@@ -73,7 +73,7 @@ static BOOL cmdTestPageReadWrite(const char *tail)
 
 	node = uffs_TreeGetErasedNode(dev);
 	if (!node) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free block ?");
+		uffs_Perror(UFFS_ERR_SERIOUS, "no free block ?");
 		goto ext;
 	}
 
@@ -93,37 +93,37 @@ static BOOL cmdTestPageReadWrite(const char *tail)
 
 	ret = uffs_FlashWritePageCombine(dev, block, page, buf, tag);
 	if (UFFS_FLASH_HAVE_ERR(ret)) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Write page error: %d", ret);
+		uffs_Perror(UFFS_ERR_SERIOUS, "Write page error: %d", ret);
 		goto ext;
 	}
 
 	ret = uffs_FlashReadPage(dev, block, page, buf);
 	if (UFFS_FLASH_HAVE_ERR(ret)) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Read page error: %d", ret);
+		uffs_Perror(UFFS_ERR_SERIOUS, "Read page error: %d", ret);
 		goto ext;
 	}
 
 	for (i = 0; i < dev->com.pg_data_size; i++) {
 		if (buf->data[i] != (i & 0xFF)) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Data verify fail at: %d", i);
+			uffs_Perror(UFFS_ERR_SERIOUS, "Data verify fail at: %d", i);
 			goto ext;
 		}
 	}
 
 	ret = uffs_FlashReadPageSpare(dev, block, page, tag, NULL);
 	if (UFFS_FLASH_HAVE_ERR(ret)) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Read tag (page spare) error: %d", ret);
+		uffs_Perror(UFFS_ERR_SERIOUS, "Read tag (page spare) error: %d", ret);
 		goto ext;
 	}
 	
 	// verify tag:
 	if (!TAG_IS_DIRTY(tag)) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"not dirty ? Tag verify fail!");
+		uffs_Perror(UFFS_ERR_SERIOUS, "not dirty ? Tag verify fail!");
 		goto ext;
 	}
 
 	if (!TAG_IS_VALID(tag)) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"not valid ? Tag verify fail!");
+		uffs_Perror(UFFS_ERR_SERIOUS, "not valid ? Tag verify fail!");
 		goto ext;
 	}
 
@@ -134,11 +134,11 @@ static BOOL cmdTestPageReadWrite(const char *tail)
 		TAG_SERIAL(tag) != 10 ||
 		TAG_BLOCK_TS(tag) != 1) {
 
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Tag verify fail!");
+		uffs_Perror(UFFS_ERR_SERIOUS, "Tag verify fail!");
 		goto ext;
 	}
 
-	uffs_Perror(UFFS_ERR_SERIOUS, PFX"Page read/write test succ.");
+	uffs_Perror(UFFS_ERR_SERIOUS, "Page read/write test succ.");
 
 ext:
 	if (node) {

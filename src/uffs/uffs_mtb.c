@@ -87,9 +87,9 @@ URET uffs_InitMountTable(void)
 	struct uffs_MountTableEntrySt *work;
 
 	for (work = tbl; work; work = work->next) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"init device for mount point %s ...", work->mount);
+		uffs_Perror(UFFS_ERR_NOISY, "init device for mount point %s ...", work->mount);
 		if (work->dev->Init(work->dev) == U_FAIL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"init device for mount point %s fail", work->mount);
+			uffs_Perror(UFFS_ERR_SERIOUS, "init device for mount point %s fail", work->mount);
 			return U_FAIL;
 		}
 
@@ -100,11 +100,11 @@ URET uffs_InitMountTable(void)
 		else {
 			work->dev->par.end = work->end_block;
 		}
-		uffs_Perror(UFFS_ERR_NOISY, PFX"mount partiton: %d,%d",
+		uffs_Perror(UFFS_ERR_NOISY, "mount partiton: %d,%d",
 			work->dev->par.start, work->dev->par.end);
 
 		if (uffs_InitDevice(work->dev) != U_SUCC) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"init device fail !");
+			uffs_Perror(UFFS_ERR_SERIOUS, "init device fail !");
 			return U_FAIL;
 		}
 	}

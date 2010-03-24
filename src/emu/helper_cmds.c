@@ -62,19 +62,19 @@ BOOL cmdFormat(const char *tail)
 	if (tail) {
 		mount = cli_getparam(tail, NULL);
 	}
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"Formating %s ... ", mount);
+	uffs_Perror(UFFS_ERR_NORMAL, "Formating %s ... ", mount);
 
 	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't get device from mount point.");
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't get device from mount point.");
 	}
 	else {
 		ret = uffs_FormatDevice(dev);
 		if (ret != U_SUCC) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"Format fail.");
+			uffs_Perror(UFFS_ERR_NORMAL, "Format fail.");
 		}
 		else {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"Format succ.");
+			uffs_Perror(UFFS_ERR_NORMAL, "Format succ.");
 		}
 	}
 	return TRUE;	
@@ -95,18 +95,18 @@ BOOL cmdMkf(const char *tail)
 	
 	f = uffs_GetObject();
 	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Fail to get object.");
+		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
 		return TRUE;
 	}
 
 	ret = uffs_CreateObject(f, name, oflags);
 	if (ret == U_FAIL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Create %s fail, err: %d", name, f->err);
+		uffs_Perror(UFFS_ERR_NORMAL, "Create %s fail, err: %d", name, f->err);
 		uffs_PutObject(f);
 		return TRUE;
 	}
 	
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"Create %s succ.", name);
+	uffs_Perror(UFFS_ERR_NORMAL, "Create %s succ.", name);
 	uffs_CloseObject(f);
 	uffs_PutObject(f);
 	
@@ -128,18 +128,18 @@ BOOL cmdMkdir(const char *tail)
 	
 	f = uffs_GetObject();
 	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Fail to get object.");
+		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
 		return TRUE;
 	}
 
 	ret = uffs_CreateObject(f, name, oflags);
 	if (ret == U_FAIL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Create %s fail, err: %d", name, f->err);
+		uffs_Perror(UFFS_ERR_NORMAL, "Create %s fail, err: %d", name, f->err);
 		uffs_PutObject(f);
 		return TRUE;
 	}
 	
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"Create %s succ.", name);
+	uffs_Perror(UFFS_ERR_NORMAL, "Create %s succ.", name);
 	uffs_CloseObject(f);
 	uffs_PutObject(f);
 	
@@ -157,11 +157,11 @@ static int CountObjectUnder(const char *dir)
 	obj = uffs_GetObject();
 
 	if (obj == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't get a new object");
+		uffs_Perror(UFFS_ERR_SERIOUS, "Can't get a new object");
 	}
 	else {
 		if (uffs_OpenObject(obj, dir, UO_RDONLY|UO_DIR) == U_FAIL) {
-			uffs_Perror(UFFS_ERR_NOISY, PFX"Can't open dir %s for read.", dir);
+			uffs_Perror(UFFS_ERR_NOISY, "Can't open dir %s for read.", dir);
 		}
 		else {
 			ret = uffs_FindObjectOpen(&find, obj);
@@ -183,13 +183,13 @@ static int CountObjectUnder(const char *dir)
 
 BOOL cmdPwd(const char *tail)
 {
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"not supported since v1.2.0.");
+	uffs_Perror(UFFS_ERR_NORMAL, "not supported since v1.2.0.");
 	return TRUE;
 }
 
 BOOL cmdCd(const char *tail)
 {
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"Not supported since v1.2.0");
+	uffs_Perror(UFFS_ERR_NORMAL, "Not supported since v1.2.0");
 	return TRUE;
 }
 
@@ -205,25 +205,25 @@ BOOL cmdLs(const char *tail)
 	uffs_Object *obj;
 
 	if (name == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Must provide file/dir name.");
+		uffs_Perror(UFFS_ERR_NORMAL, "Must provide file/dir name.");
 		return FALSE;
 	}
 
 	obj = uffs_GetObject();
 
 	if (obj == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't get a new object");
+		uffs_Perror(UFFS_ERR_SERIOUS, "Can't get a new object");
 		return TRUE;
 	}
 	if (uffs_OpenObject(obj, name, UO_RDONLY|UO_DIR) == U_FAIL) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't open dir %s for read.", name);
+		uffs_Perror(UFFS_ERR_NOISY, "Can't open dir %s for read.", name);
 		uffs_PutObject(obj);
 		return TRUE;
 	}
 
 	ret = uffs_FindObjectOpen(&find, obj);
 	if (ret == U_FAIL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open '%s'", name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open '%s'", name);
 	}
 	else {
 		uffs_PerrorRaw(UFFS_ERR_NORMAL, "------name-----------size---------serial-----" TENDSTR);
@@ -241,7 +241,7 @@ BOOL cmdLs(const char *tail)
 			else {
 				uffs_PerrorRaw(UFFS_ERR_NORMAL, "   \t %8d ", info.len);
 			}
-			uffs_Perror(UFFS_ERR_NORMAL, "\t%6d", info.serial);
+			uffs_PerrorRaw(UFFS_ERR_NORMAL, "\t%6d" TENDSTR, info.serial);
 			count++;
 			ret = uffs_FindObjectNext(&info, &find);
 		}
@@ -263,10 +263,10 @@ BOOL cmdRm(const char *tail)
 	if (tail == NULL) return FALSE;
 	name = cli_getparam(tail, NULL);
 	if (uffs_DeleteObject(name) == U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Delete '%s' succ.", name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Delete '%s' succ.", name);
 	}
 	else {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Delete '%s' fail!", name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Delete '%s' fail!", name);
 	}
 	return TRUE;
 }
@@ -282,10 +282,10 @@ BOOL cmdRen(const char *tail)
 	if (newname == NULL)
 		return FALSE;
 	if (uffs_RenameObject(oldname, newname) == U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Rename from '%s' to '%s' succ.", oldname, newname);
+		uffs_Perror(UFFS_ERR_NORMAL, "Rename from '%s' to '%s' succ.", oldname, newname);
 	}
 	else {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Rename from '%s' to '%s' fail!", oldname, newname);
+		uffs_Perror(UFFS_ERR_NORMAL, "Rename from '%s' to '%s' fail!", oldname, newname);
 	}
 	return TRUE;
 }
@@ -302,38 +302,38 @@ BOOL cmdSt(const char *tail)
 
 	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't get device from mount point %s", mount);
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't get device from mount point %s", mount);
 		return TRUE;
 	}
 
 	s = &(dev->st);
 
-	uffs_Perror(UFFS_ERR_NORMAL, "----------- basic info -----------");
-	uffs_Perror(UFFS_ERR_NORMAL, "TreeNode size:         %d", sizeof(TreeNode));
-	uffs_Perror(UFFS_ERR_NORMAL, "TagStore size:         %d", sizeof(struct uffs_TagStoreSt));
-	uffs_Perror(UFFS_ERR_NORMAL, "MaxCachedBlockInfo:    %d", MAX_CACHED_BLOCK_INFO);
-	uffs_Perror(UFFS_ERR_NORMAL, "MaxPageBuffers:        %d", MAX_PAGE_BUFFERS);
-	uffs_Perror(UFFS_ERR_NORMAL, "MaxDirtyPagesPerBlock: %d", MAX_DIRTY_PAGES_IN_A_BLOCK);
-	uffs_Perror(UFFS_ERR_NORMAL, "MaxPathLength:         %d", MAX_PATH_LENGTH);
-	uffs_Perror(UFFS_ERR_NORMAL, "MaxObjectHandles:      %d", MAX_OBJECT_HANDLE);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "----------- basic info -----------" TENDSTR);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "TreeNode size:         %d" TENDSTR, sizeof(TreeNode));
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "TagStore size:         %d" TENDSTR, sizeof(struct uffs_TagStoreSt));
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxCachedBlockInfo:    %d" TENDSTR, MAX_CACHED_BLOCK_INFO);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxPageBuffers:        %d" TENDSTR, MAX_PAGE_BUFFERS);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxDirtyPagesPerBlock: %d" TENDSTR, MAX_DIRTY_PAGES_IN_A_BLOCK);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxPathLength:         %d" TENDSTR, MAX_PATH_LENGTH);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxObjectHandles:      %d" TENDSTR, MAX_OBJECT_HANDLE);
 
-	uffs_Perror(UFFS_ERR_NORMAL, "----------- statistics for '%s' -----------", mount);
-	uffs_Perror(UFFS_ERR_NORMAL, "Block Erased:          %d", s->block_erase_count);
-	uffs_Perror(UFFS_ERR_NORMAL, "Write Page:            %d", s->page_write_count);
-	uffs_Perror(UFFS_ERR_NORMAL, "Write Spare:           %d", s->spare_write_count);
-	uffs_Perror(UFFS_ERR_NORMAL, "Read Page:             %d", s->page_read_count - s->page_header_read_count);
-	uffs_Perror(UFFS_ERR_NORMAL, "Read Header:           %d", s->page_header_read_count);
-	uffs_Perror(UFFS_ERR_NORMAL, "Read Spare:            %d", s->spare_read_count);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "----------- statistics for '%s' -----------" TENDSTR, mount);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Block Erased:          %d" TENDSTR, s->block_erase_count);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Write Page:            %d" TENDSTR, s->page_write_count);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Write Spare:           %d" TENDSTR, s->spare_write_count);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Read Page:             %d" TENDSTR, s->page_read_count - s->page_header_read_count);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Read Header:           %d" TENDSTR, s->page_header_read_count);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Read Spare:            %d" TENDSTR, s->spare_read_count);
 
-	uffs_Perror(UFFS_ERR_NORMAL, "----------- disk info for '%s' -----------", mount);
-	uffs_Perror(UFFS_ERR_NORMAL, "Disk total:            %d", uffs_GetDeviceTotal(dev));
-	uffs_Perror(UFFS_ERR_NORMAL, "Disk Used:             %d", uffs_GetDeviceUsed(dev));
-	uffs_Perror(UFFS_ERR_NORMAL, "Disk Free:             %d", uffs_GetDeviceFree(dev));
-	uffs_Perror(UFFS_ERR_NORMAL, "Page Size:             %d", dev->attr->page_data_size);
-	uffs_Perror(UFFS_ERR_NORMAL, "Spare Size:            %d", dev->attr->spare_size);
-	uffs_Perror(UFFS_ERR_NORMAL, "Pages Per Block:       %d", dev->attr->pages_per_block);
-	uffs_Perror(UFFS_ERR_NORMAL, "Block size:            %d", dev->attr->page_data_size * dev->attr->pages_per_block);
-	uffs_Perror(UFFS_ERR_NORMAL, "Total blocks:          %d of %d", (dev->par.end - dev->par.start + 1), dev->attr->total_blocks);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "----------- disk info for '%s' -----------" TENDSTR, mount);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Disk total:            %d" TENDSTR, uffs_GetDeviceTotal(dev));
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Disk Used:             %d" TENDSTR, uffs_GetDeviceUsed(dev));
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Disk Free:             %d" TENDSTR, uffs_GetDeviceFree(dev));
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Page Size:             %d" TENDSTR, dev->attr->page_data_size);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Spare Size:            %d" TENDSTR, dev->attr->spare_size);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Pages Per Block:       %d" TENDSTR, dev->attr->pages_per_block);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Block size:            %d" TENDSTR, dev->attr->page_data_size * dev->attr->pages_per_block);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Total blocks:          %d of %d" TENDSTR, (dev->par.end - dev->par.start + 1), dev->attr->total_blocks);
 	if (dev->tree.bad) {
 		uffs_PerrorRaw(UFFS_ERR_NORMAL, "Bad blocks: ");
 		node = dev->tree.bad;
@@ -341,7 +341,7 @@ BOOL cmdSt(const char *tail)
 			uffs_PerrorRaw(UFFS_ERR_NORMAL, "%d, ", node->u.list.block);
 			node = node->u.list.next;
 		}
-		uffs_Perror(UFFS_ERR_NORMAL, "");
+		uffs_PerrorRaw(UFFS_ERR_NORMAL, TENDSTR);
 	}
 
 	uffs_BufInspect(dev);
@@ -387,26 +387,26 @@ BOOL cmdCp(const char *tail)
 	
 	if (src_local) {
 		if ((fp1 = fopen(src, "rb")) == NULL) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open %s for copy.", src);
+			uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s for copy.", src);
 			goto fail_1;
 		}
 	}
 	else {
 		if (uffs_OpenObject(f1, src, UO_RDONLY) != U_SUCC) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open %s for copy.", src);
+			uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s for copy.", src);
 			goto fail_1;
 		}
 	}
 
 	if (des_local) {
 		if ((fp2 = fopen(des, "wb")) == NULL) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open %s for copy.", des);
+			uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s for copy.", des);
 			goto fail_1;
 		}
 	}
 	else {
 		if (uffs_OpenObject(f2, des, UO_RDWR|UO_CREATE|UO_TRUNC) != U_SUCC) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open %s for copy.", des);
+			uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s for copy.", des);
 			goto fail_1;
 		}
 	}
@@ -421,18 +421,18 @@ BOOL cmdCp(const char *tail)
 		if (len == 0) 
 			break;
 		if (len < 0) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"read file %s fail ?", src);
+			uffs_Perror(UFFS_ERR_NORMAL, "read file %s fail ?", src);
 			break;
 		}
 		if (des_local) {
 			if ((int)fwrite(buf, 1, len, fp2) != len) {
-				uffs_Perror(UFFS_ERR_NORMAL, PFX"write file %s fail ? ", des);
+				uffs_Perror(UFFS_ERR_NORMAL, "write file %s fail ? ", des);
 				break;
 			}
 		}
 		else {
 			if (uffs_WriteObject(f2, buf, len) != len) {
-				uffs_Perror(UFFS_ERR_NORMAL, PFX"write file %s fail ? ", des);
+				uffs_Perror(UFFS_ERR_NORMAL, "write file %s fail ? ", des);
 				break;
 			}
 		}
@@ -524,12 +524,12 @@ static URET test_verify_file(const char *file_name)
 
 	f = uffs_GetObject();
 	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Fail to get object.");
+		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
 		goto test_exit;
 	}
 
 	if (uffs_OpenObject(f, file_name, UO_RDONLY) != U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open file %s for read.", file_name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open file %s for read.", file_name);
 		goto test_exit;
 	}
 
@@ -541,18 +541,18 @@ static URET test_verify_file(const char *file_name)
 		for (i = 0; i < len; i++) {
 			if (buf[i] != (pos++ & 0xFF)) {
 				pos--;
-				uffs_Perror(UFFS_ERR_NORMAL, PFX"Verify file %s failed at: %d, expect %x but got %x", file_name, pos, pos & 0xFF, buf[i]);
+				uffs_Perror(UFFS_ERR_NORMAL, "Verify file %s failed at: %d, expect %x but got %x", file_name, pos, pos & 0xFF, buf[i]);
 				goto test_failed;
 			}
 		}
 	}
 
 	if (pos != uffs_SeekObject(f, 0, USEEK_END)) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Verify file %s failed. invalid file length.", file_name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Verify file %s failed. invalid file length.", file_name);
 		goto test_failed;
 	}
 
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"Verify file %s succ.", file_name);
+	uffs_Perror(UFFS_ERR_NORMAL, "Verify file %s succ.", file_name);
 	ret = U_SUCC;
 
 test_failed:
@@ -579,7 +579,7 @@ static URET do_write_test_file(uffs_Object *f, int size)
 			buf[i] = data;
 		}
 		if (uffs_WriteObject(f, buf, len) != len) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"Write file failed, size %d at %d", len, pos);
+			uffs_Perror(UFFS_ERR_NORMAL, "Write file failed, size %d at %d", len, pos);
 			return U_FAIL;
 		}
 		size -= len;
@@ -595,19 +595,19 @@ static URET test_append_file(const char *file_name, int size)
 
 	f = uffs_GetObject();
 	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Fail to get object.");
+		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
 		goto test_exit;
 	}
 
 	if (uffs_OpenObject(f, file_name, UO_RDWR|UO_APPEND|UO_CREATE) != U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open file %s for append.", file_name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open file %s for append.", file_name);
 		goto test_exit;
 	}
 
 	uffs_SeekObject(f, 0, USEEK_END);
 
 	if (do_write_test_file(f, size) == U_FAIL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Write file %s failed.", file_name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Write file %s failed.", file_name);
 		goto test_failed;
 	}
 	ret = U_SUCC;
@@ -629,22 +629,22 @@ static URET test_write_file(const char *file_name, int pos, int size)
 
 	f = uffs_GetObject();
 	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Fail to get object.");
+		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
 		goto test_exit;
 	}
 
 	if (uffs_OpenObject(f, file_name, UO_RDWR|UO_CREATE) != U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open file %s for write.", file_name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open file %s for write.", file_name);
 		goto test_exit;
 	}
 
 	if (uffs_SeekObject(f, pos, USEEK_SET) != pos) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't seek file %s at pos %d", file_name, pos);
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't seek file %s at pos %d", file_name, pos);
 		goto test_failed;
 	}
 
 	if (do_write_test_file(f, size) == U_FAIL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Write file %s failed.", file_name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Write file %s failed.", file_name);
 		goto test_failed;
 	}
 	ret = U_SUCC;
@@ -668,17 +668,17 @@ static URET DoTest2(void)
 
 	f = uffs_GetObject();
 	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Fail to get object.");
+		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
 		goto exit_test;
 	}
 
 	ret = uffs_OpenObject(f, "/abc/", UO_RDWR|UO_DIR);
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open dir abc, err: %d", f->err);
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Try to create a new one...");
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open dir abc, err: %d", f->err);
+		uffs_Perror(UFFS_ERR_NORMAL, "Try to create a new one...");
 		ret = uffs_OpenObject(f, "/abc/", UO_RDWR|UO_CREATE|UO_DIR);
 		if (ret != U_SUCC) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't create new dir /abc/");
+			uffs_Perror(UFFS_ERR_NORMAL, "Can't create new dir /abc/");
 			goto exit_test;
 		}
 		else {
@@ -691,20 +691,20 @@ static URET DoTest2(void)
 	
 	ret = uffs_OpenObject(f, "/abc/test.txt", UO_RDWR|UO_CREATE);
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open /abc/test.txt");
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open /abc/test.txt");
 		goto exit_test;
 	}
 
 	sprintf(buf, "123456789ABCDEF");
 	ret = uffs_WriteObject(f, buf, strlen(buf));
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"write %d bytes to file, content: %s", ret, buf);
+	uffs_Perror(UFFS_ERR_NORMAL, "write %d bytes to file, content: %s", ret, buf);
 
 	ret = uffs_SeekObject(f, 3, USEEK_SET);
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"new file position: %d", ret);
+	uffs_Perror(UFFS_ERR_NORMAL, "new file position: %d", ret);
 
 	memset(buf_1, 0, sizeof(buf_1));
 	ret = uffs_ReadObject(f, buf_1, 5);
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"read %d bytes, content: %s", ret, buf_1);
+	uffs_Perror(UFFS_ERR_NORMAL, "read %d bytes, content: %s", ret, buf_1);
 
 	if (memcmp(buf + 3, buf_1, 5) != 0) {
 		ret = U_FAIL;
@@ -739,26 +739,26 @@ BOOL cmdTest1(const char *tail)
 
 	f = uffs_GetObject();
 	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Fail to get object.");
+		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
 		return TRUE;	
 	}
 
 	ret = uffs_OpenObject(f, name, UO_RDWR|UO_CREATE|UO_TRUNC);
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open %s", name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s", name);
 		goto fail;
 	}
 
 	sprintf(buf, "123456789ABCDEF");
 	ret = uffs_WriteObject(f, buf, strlen(buf));
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"write %d bytes to file, content: %s", ret, buf);
+	uffs_Perror(UFFS_ERR_NORMAL, "write %d bytes to file, content: %s", ret, buf);
 
 	ret = uffs_SeekObject(f, 3, USEEK_SET);
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"new file position: %d", ret);
+	uffs_Perror(UFFS_ERR_NORMAL, "new file position: %d", ret);
 
 	memset(buf, 0, sizeof(buf));
 	ret = uffs_ReadObject(f, buf, 5);
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"read %d bytes, content: %s", ret, buf);
+	uffs_Perror(UFFS_ERR_NORMAL, "read %d bytes, content: %s", ret, buf);
 
 	uffs_CloseObject(f);
 
@@ -880,23 +880,23 @@ BOOL cmdTest5(const char *tail)
 
 	f = uffs_GetObject();
 	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Fail to get object.");
+		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
 		return TRUE;	
 	}
 
 	ret = uffs_OpenObject(f, name, UO_RDWR|UO_APPEND);
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Can't open %s", name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s", name);
 		goto fail;
 	}
 
 	sprintf(buf, "append test...");
 	ret = uffs_WriteObject(f, buf, strlen(buf));
 	if (ret != strlen(buf)) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"write file failed, %d/%d", ret, strlen(buf));
+		uffs_Perror(UFFS_ERR_NORMAL, "write file failed, %d/%d", ret, strlen(buf));
 	}
 	else {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"write %d bytes to file, content: %s", ret, buf);
+		uffs_Perror(UFFS_ERR_NORMAL, "write %d bytes to file, content: %s", ret, buf);
 	}
 
 	uffs_CloseObject(f);
@@ -915,7 +915,7 @@ BOOL cmdMount(const char *tail)
 	tail = tail;
 
 	while (tab) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX" %s : (%d) ~ (%d)", tab->mount, tab->start_block, tab->end_block);
+		uffs_Perror(UFFS_ERR_NORMAL, " %s : (%d) ~ (%d)", tab->mount, tab->start_block, tab->end_block);
 		tab = tab->next;
 	}
 

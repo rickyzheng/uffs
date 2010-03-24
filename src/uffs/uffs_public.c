@@ -61,7 +61,7 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj)
 {
 	switch (src - obj) {
 	case 0:
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX "the two block have the same time stamp ?");
+		uffs_Perror(UFFS_ERR_SERIOUS,  "the two block have the same time stamp ?");
 		break;
 	case 1:
 	case -2:
@@ -70,7 +70,7 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj)
 	case 2:
 		return U_FALSE;
 	default:
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX "time stamp out of range !");
+		uffs_Perror(UFFS_ERR_SERIOUS,  "time stamp out of range !");
 		break;
 	}
 
@@ -327,7 +327,7 @@ URET uffs_CreateNewFile(uffs_Device *dev, u16 parent, u16 serial, uffs_BlockInfo
 
 	buf = uffs_BufGet(dev, parent, serial, 0);
 	if (buf == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"get buf fail.");
+		uffs_Perror(UFFS_ERR_SERIOUS, "get buf fail.");
 		return U_FAIL;
 	}
 

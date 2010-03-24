@@ -784,7 +784,7 @@ static URET uffs_free(struct uffs_DeviceSt *dev, void *block)
 
 	if (hash_tbl) {
 		if (__ufree(&dev->mem, block, hash_tbl) < 0) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Try to free unmanaged memory ?");
+			uffs_Perror(UFFS_ERR_SERIOUS, "Try to free unmanaged memory ?");
 			return U_FAIL;
 		}
 	}
@@ -815,11 +815,11 @@ URET uffs_MemReleaseNativeAllocator(uffs_Device *dev)
 	if (dev) {
 		count = ReleaseHeap(&dev->mem, dev->mem.tbl);
 		if (count < 0) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Release native memory allocator fail!");
+			uffs_Perror(UFFS_ERR_SERIOUS, "Release native memory allocator fail!");
 			ret = U_FAIL;
 		}
 		else if (count > 0) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"Find %d block memory leak!", count);
+			uffs_Perror(UFFS_ERR_NORMAL, "Find %d block memory leak!", count);
 		}
 	}
 
@@ -844,7 +844,7 @@ void uffs_MemSetupNativeAllocator(uffs_MemAllocator *allocator)
 #include <malloc.h>
 static void * sys_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 {
-	uffs_Perror(UFFS_ERR_NORMAL, PFX"system memory alloc %d bytes", size);
+	uffs_Perror(UFFS_ERR_NORMAL, "system memory alloc %d bytes", size);
 	return malloc(size);
 }
 
@@ -870,12 +870,12 @@ static void * static_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 	size += (size % sizeof(long) ? sizeof(long) - (size % sizeof(long)) : 0);
 
 	if (mem->buf_size - mem->pos < (int)size) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Memory alloc failed! (alloc %d, free %d)", size, mem->buf_size - mem->pos);
+		uffs_Perror(UFFS_ERR_SERIOUS, "Memory alloc failed! (alloc %d, free %d)", size, mem->buf_size - mem->pos);
 	}
 	else {
 		p = mem->buf_start + mem->pos;
 		mem->pos += size;
-		uffs_Perror(UFFS_ERR_NOISY, PFX"0x%p: Allocated %d, free %d", p, size, mem->buf_size - mem->pos);
+		uffs_Perror(UFFS_ERR_NOISY, "0x%p: Allocated %d, free %d", p, size, mem->buf_size - mem->pos);
 	}
 
 	return p;
@@ -889,7 +889,7 @@ void uffs_MemSetupStaticAllocator(uffs_MemAllocator *allocator, void *pool, int 
 	allocator->malloc = static_malloc;
 	allocator->free = NULL;  //never free memory for static memory allocator
 
-	uffs_Perror(UFFS_ERR_NOISY, PFX"System static memory: %d bytes", allocator->buf_size);
+	uffs_Perror(UFFS_ERR_NOISY, "System static memory: %d bytes", allocator->buf_size);
 	
 }
 

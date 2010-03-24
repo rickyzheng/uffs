@@ -52,7 +52,7 @@ URET uffs_InitDevice(uffs_Device *dev)
 
 	if (dev->mem.init) {
 		if (dev->mem.init(dev) != U_SUCC) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Init memory allocator fail.");
+			uffs_Perror(UFFS_ERR_SERIOUS, "Init memory allocator fail.");
 			return U_FAIL;
 		}
 	}
@@ -63,32 +63,32 @@ URET uffs_InitDevice(uffs_Device *dev)
 	uffs_BadBlockInit(dev);
 
 	if (uffs_FlashInterfaceInit(dev) != U_SUCC) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't initialize flash interface !");
+		uffs_Perror(UFFS_ERR_SERIOUS, "Can't initialize flash interface !");
 		goto fail;
 	}
 
-	uffs_Perror(UFFS_ERR_NOISY, PFX"init page buf");
+	uffs_Perror(UFFS_ERR_NOISY, "init page buf");
 	ret = uffs_BufInit(dev, MAX_PAGE_BUFFERS, MAX_DIRTY_PAGES_IN_A_BLOCK);
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_DEAD, PFX"Initialize page buffers fail");
+		uffs_Perror(UFFS_ERR_DEAD, "Initialize page buffers fail");
 		goto fail;
 	}
-	uffs_Perror(UFFS_ERR_NOISY, PFX"init block info cache");
+	uffs_Perror(UFFS_ERR_NOISY, "init block info cache");
 	ret = uffs_BlockInfoInitCache(dev, MAX_CACHED_BLOCK_INFO);
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_DEAD, PFX"Initialize block info fail");
+		uffs_Perror(UFFS_ERR_DEAD, "Initialize block info fail");
 		goto fail;
 	}
 
 	ret = uffs_TreeInit(dev);
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"fail to init tree buffers");
+		uffs_Perror(UFFS_ERR_SERIOUS, "fail to init tree buffers");
 		goto fail;
 	}
 
 	ret = uffs_BuildTree(dev);
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"fail to build tree");
+		uffs_Perror(UFFS_ERR_SERIOUS, "fail to build tree");
 		goto fail;
 	}
 
@@ -106,25 +106,25 @@ URET uffs_ReleaseDevice(uffs_Device *dev)
 
 	ret = uffs_BlockInfoReleaseCache(dev);
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX "fail to release block info.");
+		uffs_Perror(UFFS_ERR_SERIOUS,  "fail to release block info.");
 		goto ext;
 	}
 
 	ret = uffs_BufReleaseAll(dev);
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX "fail to release page buffers");
+		uffs_Perror(UFFS_ERR_SERIOUS,  "fail to release page buffers");
 		goto ext;
 	}
 
 	ret = uffs_TreeRelease(dev);
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"fail to release tree buffers!");
+		uffs_Perror(UFFS_ERR_SERIOUS, "fail to release tree buffers!");
 		goto ext;
 	}
 
 	ret = uffs_FlashInterfaceRelease(dev);
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"fail to release tree buffers!");
+		uffs_Perror(UFFS_ERR_SERIOUS, "fail to release tree buffers!");
 		goto ext;
 	}
 
@@ -132,7 +132,7 @@ URET uffs_ReleaseDevice(uffs_Device *dev)
 		ret = dev->mem.release(dev);
 
 	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"fail to release memory allocator!");
+		uffs_Perror(UFFS_ERR_SERIOUS, "fail to release memory allocator!");
 	}
 
 	uffs_DeviceReleaseLock(dev);
