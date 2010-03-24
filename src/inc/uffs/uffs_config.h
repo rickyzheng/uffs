@@ -173,6 +173,15 @@
  */
 #define CONFIG_PAGE_WRITE_VERIFY
 
+/**
+ * \def CONFIG_BAD_BLOCK_POLICY_STRICT
+ * \note If this is enabled, UFFS will report the block as 'bad' if any bit-flips found;
+ *       otherwise, UFFS report bad block only when ECC failed or reported by low level flash driver.
+ *
+ * \note Enable this will ensure your data always be stored on completly good blocks.
+ */
+#define CONFIG_BAD_BLOCK_POLICY_STRICT
+
 
 /** micros for calculating buffer sizes */
 

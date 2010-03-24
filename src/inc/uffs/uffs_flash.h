@@ -63,15 +63,20 @@ extern "C"{
 #define UFFS_SPARE_LAYOUT_SIZE	6	//!< maximum spare layout array size, 2 segments
 
 /** flash operation return code */
-#define UFFS_FLASH_NO_ERR		0
-#define UFFS_FLASH_ECC_OK		1
-#define UFFS_FLASH_IO_ERR		-1
-#define UFFS_FLASH_ECC_FAIL		-2
-#define UFFS_FLASH_BAD_BLK		-3
-#define UFFS_FLASH_UNKNOWN_ERR	-100
+#define UFFS_FLASH_NO_ERR		0		//!< no error
+#define UFFS_FLASH_ECC_OK		1		//!< bit-flip found, but corrected by ECC
+#define UFFS_FLASH_IO_ERR		-1		//!< I/O error
+#define UFFS_FLASH_ECC_FAIL		-2		//!< ECC failed
+#define UFFS_FLASH_BAD_BLK		-3		//!< bad block
+#define UFFS_FLASH_UNKNOWN_ERR	-100	//!< unkown error?
 
 #define UFFS_FLASH_HAVE_ERR(e)		((e) < 0)
-#define UFFS_FLASH_IS_BAD_BLOCK(e)	((e) == UFFS_FLASH_ECC_FAIL || (e) == UFFS_FLASH_BAD_BLK)
+
+#if defined(CONFIG_BAD_BLOCK_POLICY_STRICT)
+# define UFFS_FLASH_IS_BAD_BLOCK(e)	((e) == UFFS_FLASH_ECC_FAIL || (e) == UFFS_FLASH_ECC_OK || (e) == UFFS_FLASH_BAD_BLK)
+#else
+# define UFFS_FLASH_IS_BAD_BLOCK(e)	((e) == UFFS_FLASH_ECC_FAIL || (e) == UFFS_FLASH_BAD_BLK)
+#endif
 
 
 /** defines for page info (data length and data sum) */

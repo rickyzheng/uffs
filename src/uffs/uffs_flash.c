@@ -541,11 +541,12 @@ int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *
 		verify_buf = uffs_BufClone(dev, NULL);
 		if (verify_buf) {
 			ret = uffs_FlashReadPage(dev, block, page, verify_buf);
-			if (!UFFS_FLASH_HAVE_ERR(ret))
+			if (!UFFS_FLASH_HAVE_ERR(ret)) {
 				if (memcmp(buf->header, verify_buf->header, size) != 0) {
 					uffs_Perror(UFFS_ERR_NORMAL, PFX"Page write verify fail (block %d page %d)\n", block, page);
 					ret = UFFS_FLASH_BAD_BLK;
 				}
+			}
 			uffs_BufFreeClone(dev, verify_buf);
 		}
 	}
