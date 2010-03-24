@@ -423,7 +423,7 @@ static uffs_FlashOps emu_flash_ops = {
 
 static URET femu_initDevice(uffs_Device *dev)
 {
-	uffs_Perror(UFFS_ERR_NORMAL, PFX "femu device init.\n");
+	uffs_Perror(UFFS_ERR_NORMAL, PFX "femu device init.");
 
 	dev->ops = &emu_flash_ops;							/* EMU device operations */
 
@@ -452,7 +452,7 @@ static URET femu_releaseDevice(uffs_Device *dev)
 {
 	uffs_FileEmu *emu;
 
-	uffs_Perror(UFFS_ERR_NORMAL, PFX "femu device release.\n");
+	uffs_Perror(UFFS_ERR_NORMAL, PFX "femu device release.");
 
 	emu = (uffs_FileEmu *)(dev->attr->_private);
 

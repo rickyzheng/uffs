@@ -148,10 +148,20 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj);
 #define UFFS_ERR_SERIOUS	1
 #define UFFS_ERR_DEAD		2
 
+#define TENDSTR "\n"
+
 //#define UFFS_DBG_LEVEL	UFFS_ERR_NORMAL	
 #define UFFS_DBG_LEVEL	UFFS_ERR_NOISY	
 
-void uffs_Perror( int level, const char *errFmt, ... );
+void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const char *errFmt, ...);
+
+#define uffs_Perror(level, fmt, ... ) \
+	uffs_DebugMessage(level, PFX, TENDSTR, fmt, __VA_ARGS__)
+
+#define uffs_PerrorRaw(level, fmt, ...) \
+	uffs_DebugMessage(level, NULL, NULL, fmt, __VA_ARGS__)
+
+
 
 void uffs_AssertCall(const char *file, int line, const char *msg);
 

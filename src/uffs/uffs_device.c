@@ -70,7 +70,7 @@ URET uffs_DeviceLock(uffs_Device *dev)
 	uffs_SemWait(dev->lock.sem);
 	
 	if (dev->lock.counter != 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Lock device, counter %d NOT zero?!\n", dev->lock.counter);
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"Lock device, counter %d NOT zero?!", dev->lock.counter);
 	}
 
 	dev->lock.counter++;
@@ -84,7 +84,7 @@ URET uffs_DeviceUnLock(uffs_Device *dev)
 	dev->lock.counter--;
 
 	if (dev->lock.counter != 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Unlock device, counter %d NOT zero?!\n", dev->lock.counter);
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"Unlock device, counter %d NOT zero?!", dev->lock.counter);
 	}
 	
 	uffs_SemSignal(dev->lock.sem);

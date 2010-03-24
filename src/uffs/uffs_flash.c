@@ -178,12 +178,12 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 	uffs_Pool *pool = SPOOL(dev);
 
 	if (!dev->ops->IsBadBlock && !dev->ops->ReadPageSpare) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"flash driver must provide 'IsBadBlock' or 'ReadPageSpare' function!\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"flash driver must provide 'IsBadBlock' or 'ReadPageSpare' function!");
 		return U_FAIL;
 	}
 
 	if (!dev->ops->MarkBadBlock && !dev->ops->WritePageSpare) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"flash driver must provide 'MarkBadBlock' or 'WritePageSpare' function!\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"flash driver must provide 'MarkBadBlock' or 'WritePageSpare' function!");
 		return U_FAIL;
 	}
 
@@ -196,19 +196,19 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 	}
 
 	if (UFFS_SPARE_BUFFER_SIZE > dev->mem.spare_pool_size) {
-		uffs_Perror(UFFS_ERR_DEAD, PFX"Spare buffer require %d but only %d available.\n", UFFS_SPARE_BUFFER_SIZE, dev->mem.spare_pool_size);
+		uffs_Perror(UFFS_ERR_DEAD, PFX"Spare buffer require %d but only %d available.", UFFS_SPARE_BUFFER_SIZE, dev->mem.spare_pool_size);
 		memset(pool, 0, sizeof(uffs_Pool));
 		return U_FAIL;
 	}
 
-	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc spare buffers %d bytes.\n", UFFS_SPARE_BUFFER_SIZE);
+	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc spare buffers %d bytes.", UFFS_SPARE_BUFFER_SIZE);
 	uffs_PoolInit(pool, dev->mem.spare_pool_buf, dev->mem.spare_pool_size, UFFS_MAX_SPARE_SIZE, MAX_SPARE_BUFFERS);
 
 	if (dev->attr->layout_opt == UFFS_LAYOUT_UFFS) {
 		/* sanity check */
 		if ((dev->attr->data_layout && !dev->attr->ecc_layout) ||
 			(!dev->attr->data_layout && dev->attr->ecc_layout)) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Please setup data_layout and ecc_layout, or leave them all NULL !\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Please setup data_layout and ecc_layout, or leave them all NULL !");
 			return U_FAIL;
 		}
 
@@ -346,7 +346,7 @@ int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *ta
 ext:
 	if (is_bad) {
 		uffs_BadBlockAdd(dev, block);
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"A new bad block (%d) is detected.\n", block);
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"A new bad block (%d) is detected.", block);
 	}
 
 	if (spare_buf)
@@ -543,7 +543,7 @@ int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *
 			ret = uffs_FlashReadPage(dev, block, page, verify_buf);
 			if (!UFFS_FLASH_HAVE_ERR(ret)) {
 				if (memcmp(buf->header, verify_buf->header, size) != 0) {
-					uffs_Perror(UFFS_ERR_NORMAL, PFX"Page write verify fail (block %d page %d)\n", block, page);
+					uffs_Perror(UFFS_ERR_NORMAL, PFX"Page write verify fail (block %d page %d)", block, page);
 					ret = UFFS_FLASH_BAD_BLK;
 				}
 			}

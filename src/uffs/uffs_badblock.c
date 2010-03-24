@@ -94,7 +94,7 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 	// pick up a erased good block
 	good = uffs_TreeGetErasedNode(dev);
 	if (good == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free block to replace bad block!\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free block to replace bad block!");
 		return;
 	}
 
@@ -102,7 +102,7 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 	bc = uffs_BlockInfoGet(dev, dev->bad.block);
 	
 	if (bc == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get bad block info\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get bad block info");
 		return;
 	}
 
@@ -116,21 +116,21 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 		tag = GET_TAG(bc, page);
 		buf = uffs_BufClone(dev, NULL);
 		if (buf == NULL) {	
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't clone a new buf!\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't clone a new buf!");
 			succRecov = U_FALSE;
 			break;
 		}
 		//NOTE: since this is a bad block, we can't guarantee the data is ECC ok, so just load data even ECC is not OK.
 		ret = uffs_LoadPhyDataToBufEccUnCare(dev, buf, bc->block, page);
 		if (ret == U_FAIL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"I/O error ?\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"I/O error ?");
 			uffs_BufFreeClone(dev, buf);
 			succRecov = U_FALSE;
 			break;
 		}
 		buf->data_len = TAG_DATA_LEN(tag);
 		if (buf->data_len > dev->com.pg_data_size) {
-			uffs_Perror(UFFS_ERR_NOISY, PFX"data length over flow!!!\n");
+			uffs_Perror(UFFS_ERR_NOISY, PFX"data length over flow!!!");
 			buf->data_len = dev->com.pg_data_size;
 		}
 
@@ -148,7 +148,7 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 		uffs_BufFreeClone(dev, buf);
 
 		if (ret == UFFS_FLASH_IO_ERR) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error ?\n");
+			uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error ?");
 			succRecov = U_FALSE;
 			break;
 		}
@@ -176,14 +176,14 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 			}
 			
 			//from now, the 'bad' is actually good block :)))
-			uffs_Perror(UFFS_ERR_NOISY, PFX"new bad block %d found, and replaced by %d!\n", dev->bad.block, good->u.list.block);
+			uffs_Perror(UFFS_ERR_NOISY, PFX"new bad block %d found, and replaced by %d!", dev->bad.block, good->u.list.block);
 			uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 			//we reuse the 'good' node as bad block node, and process the bad block.
 			good->u.list.block = dev->bad.block;
 			uffs_BadBlockProcess(dev, good);
 		}
 		else {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find the reported bad block(%d) in the tree???\n", dev->bad.block);
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find the reported bad block(%d) in the tree???", dev->bad.block);
 			if (goodBlockIsDirty == U_TRUE)
 				dev->ops->EraseBlock(dev, good->u.list.block);
 			uffs_TreeInsertToErasedListTail(dev, good);
@@ -207,7 +207,7 @@ void uffs_BadBlockAdd(uffs_Device *dev, int block)
 		return;
 
 	if (dev->bad.block != UFFS_INVALID_BLOCK)
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't add more then one bad block !\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't add more then one bad block !");
 	else
 		dev->bad.block = block;
 }

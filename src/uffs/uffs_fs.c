@@ -292,20 +292,20 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 	/* dir|file does not exist, create a new one */
 	obj->serial = uffs_FindFreeFsnSerial(obj->dev);
 	if (obj->serial == INVALID_UFFS_SERIAL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"No free serial num!\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"No free serial num!");
 		obj->err = UENOMEM;
 		goto ext_1;
 	}
 
 	if (obj->dev->tree.erased_count < MINIMUN_ERASED_BLOCK) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"insufficient block in create obj\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"insufficient block in create obj");
 		obj->err = UENOMEM;
 		goto ext_1;
 	}
 
 	buf = uffs_BufNew(obj->dev, obj->type, obj->parent, obj->serial, 0);
 	if (buf == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't create new buffer when create obj!\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't create new buffer when create obj!");
 		goto ext_1;
 	}
 
@@ -334,7 +334,7 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 		obj->node = uffs_TreeFindFileNode(obj->dev, obj->serial);
 
 	if (obj->node == NULL) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't find the node in the tree ?\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't find the node in the tree ?");
 		obj->err = UEIOERR;
 		goto ext_1;
 	}
@@ -379,7 +379,7 @@ URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev,
 
 	if ((oflag & (UO_WRONLY | UO_RDWR)) == (UO_WRONLY | UO_RDWR)) {
 		/* UO_WRONLY and UO_RDWR can't appear together */
-		uffs_Perror(UFFS_ERR_NOISY, PFX"UO_WRONLY and UO_RDWR can't appear together\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"UO_WRONLY and UO_RDWR can't appear together");
 		obj->err = UEINVAL;
 		goto ext;
 	}
@@ -404,7 +404,7 @@ URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev,
 	if (obj->type == UFFS_TYPE_DIR) {
 		if (obj->name_len == 0) {
 			if (dir != PARENT_OF_ROOT) {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX"Bad parent for root dir!\n");
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX"Bad parent for root dir!");
 				obj->err = UEINVAL;
 			}
 			else {
@@ -415,7 +415,7 @@ URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev,
 	}
 	else {
 		if (obj->name_len == 0 || name[obj->name_len - 1] == '/') {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Bad file name.\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Bad file name.");
 			obj->err = UEINVAL;
 		}
 	}
@@ -657,7 +657,7 @@ URET uffs_CloseObject(uffs_Object *obj)
 				buf = uffs_BufGetEx(dev, UFFS_TYPE_FILE, obj->node, 0);
 
 			if(buf == NULL) {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get file header\n");
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get file header");
 				_FlushObject(obj);
 				uffs_ObjectDevUnLock(obj);
 				goto ext;
@@ -725,14 +725,14 @@ static int _WriteNewBlock(uffs_Object *obj,
 
 		buf = uffs_BufNew(dev, UFFS_TYPE_DATA, parent, serial, page_id);
 		if (buf == NULL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't create a new page ?\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't create a new page ?");
 			break;
 		}
 		ret = uffs_BufWrite(dev, buf, (u8 *)data + wroteSize, 0, size);
 		uffs_BufPut(dev, buf);
 
 		if (ret != U_SUCC) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"write data fail!\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"write data fail!");
 			break;
 		}
 		wroteSize += size;
@@ -797,14 +797,14 @@ static int _WriteInternalBlock(uffs_Object *obj,
 			buf = uffs_BufNew(dev, type, parent, serial, page_id);
 
 			if(buf == NULL) {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can create a new buf!\n");
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can create a new buf!");
 				break;
 			}
 		}
 		else {
 			buf = uffs_BufGetEx(dev, type, node, page_id);
 			if (buf == NULL) {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get buffer ?\n");
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get buffer ?");
 				break;
 			}
 		}
@@ -813,7 +813,7 @@ static int _WriteInternalBlock(uffs_Object *obj,
 		uffs_BufPut(dev, buf);
 
 		if (ret == U_FAIL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"write inter data fail!\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"write inter data fail!");
 			break;
 		}
 
@@ -856,7 +856,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 		return 0;
 
 	if (obj->type == UFFS_TYPE_DIR) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't write to an dir object!\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't write to an dir object!");
 		return 0;
 	}
 
@@ -874,7 +874,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 	while (remain > 0) {
 		write_start = obj->pos + len - remain;
 		if (write_start > fnode->u.file.len) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"write point out of file ?\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"write point out of file ?");
 			break;
 		}
 
@@ -883,7 +883,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 		if (write_start == fnode->u.file.len && fdn > 0 &&
 			write_start == _GetStartOfDataBlock(obj, fdn)) {
 			if (dev->tree.erased_count < MINIMUN_ERASED_BLOCK) {
-				uffs_Perror(UFFS_ERR_NOISY, PFX"insufficient block in write obj, new block\n");
+				uffs_Perror(UFFS_ERR_NOISY, PFX"insufficient block in write obj, new block");
 				break;
 			}
 			size = _WriteNewBlock(obj, (u8 *)data + len - remain, remain, fnode->u.file.serial, fdn);
@@ -904,7 +904,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 				dnode = uffs_TreeFindDataNode(dev, fnode->u.file.serial, fdn);
 
 			if(dnode == NULL) {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node in tree ?\n");
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node in tree ?");
 				break;
 			}
 			size = _WriteInternalBlock(obj, dnode, fdn,
@@ -962,7 +962,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 
 	if (obj->type == UFFS_TYPE_DIR) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't read from a dir object!\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't read from a dir object!");
 		return 0;
 	}
 
@@ -977,7 +977,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 	while (remain > 0) {
 		read_start = obj->pos + len - remain;
 		if (read_start >= fnode->u.file.len) {
-			//uffs_Perror(UFFS_ERR_NOISY, PFX"read point out of file ?\n");
+			//uffs_Perror(UFFS_ERR_NOISY, PFX"read point out of file ?");
 			break;
 		}
 
@@ -990,7 +990,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 			type = UFFS_TYPE_DATA;
 			dnode = uffs_TreeFindDataNode(dev, fnode->u.file.serial, fdn);
 			if (dnode == NULL) {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get data node in entry!\n");
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get data node in entry!");
 				break;
 			}
 		}
@@ -1008,13 +1008,13 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 		buf = uffs_BufGetEx(dev, type, dnode, (u16)page_id);
 		if (buf == NULL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get buffer when read obj.\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get buffer when read obj.");
 			break;
 		}
 
 		pageOfs = read_start % dev->com.pg_data_size;
 		if (pageOfs >= buf->data_len) {
-			//uffs_Perror(UFFS_ERR_NOISY, PFX"read data out of page range ?\n");
+			//uffs_Perror(UFFS_ERR_NOISY, PFX"read data out of page range ?");
 			uffs_BufPut(dev, buf);
 			break;
 		}
@@ -1047,7 +1047,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 long uffs_SeekObject(uffs_Object *obj, long offset, int origin)
 {
 	if (obj->type == UFFS_TYPE_DIR) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't seek a dir object!\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't seek a dir object!");
 		return 0;
 	}
 
@@ -1151,7 +1151,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 		node = uffs_TreeFindDataNode(dev, fnode->u.file.serial, fdn);
 		if (node == NULL) {
 			obj->err = UEIOERR;
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node when truncate obj\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node when truncate obj");
 			goto ext;
 		}
 		type = UFFS_TYPE_DATA;
@@ -1184,7 +1184,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 
 	if (page_id > max_page_id) {
 		obj->err = UEUNKNOWN;
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Overflow\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Overflow");
 		goto ext;
 	}
 
@@ -1195,7 +1195,7 @@ static URET _TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 rem
 	buf = uffs_BufGetEx(dev, type, node, page_id);
 	if (buf == NULL) {
 		obj->err = UENOMEM;
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't get buf\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't get buf");
 		goto ext;
 	}
 
@@ -1292,13 +1292,13 @@ static URET _TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run)
 		if (remain <= block_start && fdn > 0) {
 			node = uffs_TreeFindDataNode(dev, obj->serial, fdn);
 			if (node == NULL) {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node when trancate obj.\n");
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find data node when trancate obj.");
 				obj->err = UEIOERR;
 				goto ext;
 			}
 			bc = uffs_BlockInfoGet(dev, node->u.data.block);
 			if (bc == NULL) {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get block info when trancate obj.\n");
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get block info when trancate obj.");
 				obj->err = UEIOERR;
 				goto ext;
 			}
@@ -1395,7 +1395,7 @@ URET uffs_DeleteObject(const char * name)
 		//need to expire this buffer ...
 		if (buf->ref_count != 0) {
 			//there is other obj for this file still in use ?
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"Try to delete object but still have buf referenced.\n");
+			uffs_Perror(UFFS_ERR_NORMAL, PFX"Try to delete object but still have buf referenced.");
 			goto err;
 		}
 
@@ -1448,7 +1448,7 @@ URET uffs_MoveObjectEx(uffs_Object *obj, int new_parent, const char *new_name, i
 
 		buf = uffs_BufGetEx(dev, obj->type, node, 0);
 		if (buf == NULL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get buf when rename!\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't get buf when rename!");
 			obj->err = UEIOERR;
 			goto ext_1;
 		}
@@ -1509,23 +1509,23 @@ URET uffs_RenameObject(const char *old_name, const char *new_name)
 	oflag = UO_RDONLY;
 	if (uffs_OpenObject(new_obj, new_name, oflag) == U_SUCC) {
 		uffs_CloseObject(new_obj);
-		uffs_Perror(UFFS_ERR_NOISY, PFX"new object already exist!\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"new object already exist!");
 		goto ext;
 	}
 	oflag |= UO_DIR;
 	if (uffs_OpenObject(new_obj, new_name, oflag) == U_SUCC) {
 		uffs_CloseObject(new_obj);
-		uffs_Perror(UFFS_ERR_NOISY, PFX"new object already exist!\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"new object already exist!");
 		goto ext;
 	}
 
 	if (uffs_ParseObject(new_obj, new_name) != U_SUCC) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"parse new name fail !\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"parse new name fail !");
 		goto ext;
 	}
 
 	if (new_obj->name_len == 0) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"invalid new name\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"invalid new name");
 		goto ext;
 	}
 
@@ -1533,13 +1533,13 @@ URET uffs_RenameObject(const char *old_name, const char *new_name)
 	if (uffs_OpenObject(obj, old_name, oflag) != U_SUCC) {
 		oflag |= UO_DIR;
 		if (uffs_OpenObject(obj, old_name, oflag) != U_SUCC) {
-			uffs_Perror(UFFS_ERR_NOISY, PFX"Can't open old object !\n");
+			uffs_Perror(UFFS_ERR_NOISY, PFX"Can't open old object !");
 			goto ext;
 		}
 	}
 
 	if (obj->dev != new_obj->dev) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't moving object between different mount point\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"Can't moving object between different mount point");
 	}
 	else {
 		ret = uffs_MoveObjectEx(obj, new_obj->parent, new_obj->name, new_obj->name_len);

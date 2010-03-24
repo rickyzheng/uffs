@@ -181,7 +181,7 @@ static int init_uffs_fs(void)
 	if (memory_pool)
 		uffs_MemInitHeap(memory_pool, conf_memory_pool_size_kb * 1024);
 	else {
-		uffs_Perror(UFFS_ERR_SERIOUS, "Can't alloc memory (size = %dKB) for uffs.\n", conf_memory_pool_size_kb);
+		uffs_Perror(UFFS_ERR_SERIOUS, "Can't alloc memory (size = %dKB) for uffs.", conf_memory_pool_size_kb);
 		return -1;
 	}
 #endif

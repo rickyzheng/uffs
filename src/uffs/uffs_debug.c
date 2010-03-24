@@ -40,6 +40,7 @@
 #include <stdarg.h>
 #include <string.h>
 
+
 #if !defined(_UBASE_)
 #define ENABLE_DEBUG
 //#define OUTPUT_TOFILE
@@ -52,13 +53,16 @@
 #define DEBUG_LOGFILE	"log.txt"
 #endif
 
-void uffs_Perror( int level, const char *errFmt, ...)
+void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const char *errFmt, ...)
 {
 
 #ifdef ENABLE_DEBUG
 	if (level >= UFFS_DBG_LEVEL) {
 
-		char buf[1024] = "";
+		char buf[1024] = {0};
+		char *p;
+		
+
 #ifdef OUTPUT_TOFILE
 		FILE *fp = NULL;	
 #endif
@@ -67,13 +71,23 @@ void uffs_Perror( int level, const char *errFmt, ...)
 
 		if (strlen(errFmt) > 800) {
 			// dangerous!!
-			printf("uffs_Perror buffer is not enough !\r\n");
+			printf("uffs_Perror buffer is not enough !");
 			return;
 		}
 
+		p = buf;
+
+		if (prefix) {
+			strcpy(p, prefix);
+			p += strlen(prefix);
+		}
+
 		va_start(arg, errFmt);
-		vsprintf(buf, errFmt, arg);
+		vsprintf(p, errFmt, arg);
 		va_end(arg);
+
+		if (suffix)
+			strcat(p, suffix);
 
 #ifdef OUTPUT_TOFILE
 		fp = fopen(DEBUG_LOGFILE, "a+b");
@@ -106,6 +120,7 @@ void uffs_Perror( int level, const char *errFmt, ...)
 		dbg_simple_vprintf(errFmt, args);
 		va_end(args);
 	}
+	dbg_simple_raw(TENDSTR);
 #else
 	level = level;
 	errFmt = errFmt;

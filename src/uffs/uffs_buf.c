@@ -61,15 +61,15 @@ void uffs_BufInspect(uffs_Device *dev)
 	struct uffs_PageBufDescSt *pb = &dev->buf;
 	uffs_Buf *buf;
 
-	uffs_Perror(UFFS_ERR_NORMAL, "------------- page buffer inspect ---------\n");
-	uffs_Perror(UFFS_ERR_NORMAL, "all buffers: \n");
+	uffs_Perror(UFFS_ERR_NORMAL, "------------- page buffer inspect ---------");
+	uffs_Perror(UFFS_ERR_NORMAL, "all buffers: ");
 	for (buf = pb->head; buf; buf = buf->next) {
 		if (buf->mark != 0) {
-			uffs_Perror(UFFS_ERR_NORMAL, "\tF:%04x S:%04x P:%02d R:%02d D:%03d M:%c EM:%d\n", 
+			uffs_Perror(UFFS_ERR_NORMAL, "\tF:%04x S:%04x P:%02d R:%02d D:%03d M:%c EM:%d", 
 				buf->parent, buf->serial, buf->page_id, buf->ref_count, buf->data_len, buf->mark == UFFS_BUF_VALID ? 'V' : 'D', buf->ext_mark);
 		}
 	}
-	uffs_Perror(UFFS_ERR_NORMAL, "--------------------------------------------\n");
+	uffs_Perror(UFFS_ERR_NORMAL, "--------------------------------------------");
 }
 
 /**
@@ -97,7 +97,7 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 	dev->com.pg_data_size = dev->com.pg_size - dev->com.header_size;
 
 	if (dev->buf.pool != NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"buf.pool is not NULL, buf already inited ?\n");
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"buf.pool is not NULL, buf already inited ?");
 		return U_FAIL;
 	}
 	
@@ -110,12 +110,12 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 		}
 	}
 	if (size > dev->mem.pagebuf_pool_size) {
-		uffs_Perror(UFFS_ERR_DEAD, PFX"page buffers require %d but only %d available.\n", size, dev->mem.pagebuf_pool_size);
+		uffs_Perror(UFFS_ERR_DEAD, PFX"page buffers require %d but only %d available.", size, dev->mem.pagebuf_pool_size);
 		return U_FAIL;
 	}
 	pool = dev->mem.pagebuf_pool_buf;
 
-	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc %d bytes.\n", size);
+	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc %d bytes.", size);
 	dev->buf.pool = pool;
 
 	for (i = 0; i < buf_max; i++) {
@@ -161,7 +161,7 @@ URET uffs_BufFlushAll(struct uffs_DeviceSt *dev)
 	int slot;
 	for (slot = 0; slot < MAX_DIRTY_BUF_GROUPS; slot++) {
 		if(_BufFlush(dev, FALSE, slot) != U_SUCC) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"fail to flush buffer(slot %d)\n", slot);
+			uffs_Perror(UFFS_ERR_NORMAL, PFX"fail to flush buffer(slot %d)", slot);
 			return U_FAIL;
 		}
 	}
@@ -194,7 +194,7 @@ URET uffs_BufReleaseAll(uffs_Device *dev)
 	}
 
 	if (uffs_BufFlushAll(dev) != U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"can't release buf, fail to flush buffer\n");
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"can't release buf, fail to flush buffer");
 		return U_FAIL;
 	}
 
@@ -289,7 +289,7 @@ static void _LinkToDirtyList(uffs_Device *dev, int slot, uffs_Buf *buf)
 {
 
 	if (buf == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Try to insert a NULL node into dirty list ?\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Try to insert a NULL node into dirty list ?");
 		return;
 	}
 
@@ -454,13 +454,13 @@ static URET _BreakFromDirty(uffs_Device *dev, uffs_Buf *dirtyBuf)
 	int slot = -1;
 
 	if (dirtyBuf->mark != UFFS_BUF_DIRTY) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"try to break a non-dirty buf from dirty list ?\n");
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"try to break a non-dirty buf from dirty list ?");
 		return U_FAIL;
 	}
 
 	slot = uffs_BufFindGroupSlot(dev, dirtyBuf->parent, dirtyBuf->serial);
 	if (slot < 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"no dirty list exit ?\n");
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"no dirty list exit ?");
 		return U_FAIL;
 	}
 
@@ -519,11 +519,11 @@ static URET _CheckDirtyList(uffs_Buf *dirty)
 	while (dirty) {
 		if (parent != dirty->parent ||
 			serial != dirty->serial) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"parent or serial in dirty pages buffer are not the same ?\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"parent or serial in dirty pages buffer are not the same ?");
 			return U_FAIL;
 		}
 		if (dirty->mark != UFFS_BUF_DIRTY) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"non-dirty page buffer in dirty buffer list ?\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"non-dirty page buffer in dirty buffer list ?");
 			return U_FAIL;
 		}
 		dirty = dirty->next_dirty;
@@ -589,13 +589,13 @@ retry:
 
 	newNode = uffs_TreeGetErasedNode(dev);
 	if (newNode == NULL) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"no enough erased block!\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"no enough erased block!");
 		goto ext;
 	}
 	newBlock = newNode->u.list.block;
 	newBc = uffs_BlockInfoGet(dev, newBlock);
 	if (newBc == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"get block info fail!\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"get block info fail!");
 		uffs_InsertToErasedListHead(dev, newNode);  //put node back to erased list
 													//because it doesn't use, so put to head
 		goto ext;
@@ -604,7 +604,7 @@ retry:
 	uffs_BlockInfoLoad(dev, newBc, UFFS_ALL_PAGES);
 	timeStamp = uffs_GetNextBlockTimeStamp(uffs_GetBlockTimeStamp(dev, bc));
 
-//	uffs_Perror(UFFS_ERR_NOISY, PFX"Flush buffers with Block Recover, from %d to %d\n", 
+//	uffs_Perror(UFFS_ERR_NOISY, PFX"Flush buffers with Block Recover, from %d to %d", 
 //					bc->block, newBc->block);
 
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
@@ -628,11 +628,11 @@ retry:
 				flash_op_err = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
 
 			if (flash_op_err == UFFS_FLASH_BAD_BLK) {
-				uffs_Perror(UFFS_ERR_NORMAL, PFX"new bad block %d discovered.\n", newBlock);
+				uffs_Perror(UFFS_ERR_NORMAL, PFX"new bad block %d discovered.", newBlock);
 				break;
 			}
 			else if (flash_op_err == UFFS_FLASH_IO_ERR) {
-				uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error ?\n", newBlock);
+				uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error ?", newBlock);
 				break;
 			}
 			else if (buf->ext_mark & UFFS_BUF_EXT_MARK_TRUNC_TAIL) {
@@ -655,17 +655,17 @@ retry:
 			oldTag = GET_TAG(bc, page);
 			buf = uffs_BufClone(dev, NULL);
 			if (buf == NULL) {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't clone a new buf!\n");
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't clone a new buf!");
 				break;
 			}
 			x = uffs_BufLoadPhyData(dev, buf, bc->block, page);
 			if (x == U_FAIL) {
 				if (HAVE_BADBLOCK(dev) && dev->bad.block == bc->block) {
 					// the old block is a bad block, we'll process it later.
-					uffs_Perror(UFFS_ERR_SERIOUS, PFX"the old block %d is a bad block, but ignore it for now.\n", bc->block);
+					uffs_Perror(UFFS_ERR_SERIOUS, PFX"the old block %d is a bad block, but ignore it for now.", bc->block);
 				}
 				else {
-					uffs_Perror(UFFS_ERR_SERIOUS, PFX"I/O error ?\n");
+					uffs_Perror(UFFS_ERR_SERIOUS, PFX"I/O error ?");
 					uffs_BufFreeClone(dev, buf);
 					flash_op_err = UFFS_FLASH_IO_ERR;
 					break;
@@ -673,7 +673,7 @@ retry:
 			}
 			buf->data_len = TAG_DATA_LEN(oldTag);
 			if (buf->data_len > dev->com.pg_data_size) {
-				uffs_Perror(UFFS_ERR_NOISY, PFX"data length over flow!!!\n");
+				uffs_Perror(UFFS_ERR_NOISY, PFX"data length over flow!!!");
 				buf->data_len = dev->com.pg_data_size;
 			}
 
@@ -690,11 +690,11 @@ retry:
 			flash_op_err = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
 			uffs_BufFreeClone(dev, buf);
 			if (flash_op_err == UFFS_FLASH_BAD_BLK) {
-				uffs_Perror(UFFS_ERR_NORMAL, PFX"new bad block %d discovered.\n", newBlock);
+				uffs_Perror(UFFS_ERR_NORMAL, PFX"new bad block %d discovered.", newBlock);
 				break;
 			}
 			else if (flash_op_err == UFFS_FLASH_IO_ERR) {
-				uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error ?\n", newBlock);
+				uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error ?", newBlock);
 				break;
 			}
 		}
@@ -749,7 +749,7 @@ retry:
 			node->u.data.block = newBlock;
 			break;
 		default:
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"UNKNOW TYPE\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"UNKNOW TYPE");
 			break;
 		}
 
@@ -774,7 +774,7 @@ retry:
 	}
 
 	if (dev->buf.dirtyGroup[slot].dirty != NULL || dev->buf.dirtyGroup[slot].count != 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"still has dirty buffer ?\n");
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"still has dirty buffer ?");
 	}
 
 	uffs_BlockInfoPut(dev, newBc);
@@ -805,12 +805,12 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 
 	node = uffs_TreeGetErasedNode(dev);
 	if (node == NULL) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"no erased block!\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"no erased block!");
 		goto ext;
 	}
 	bc = uffs_BlockInfoGet(dev, node->u.list.block);
 	if (bc == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"get block info fail!\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"get block info fail!");
 		uffs_InsertToErasedListHead(dev, node); //put node back to erased list
 		goto ext;
 	}
@@ -853,7 +853,7 @@ URET
 	URET ret;
 	int x;
 
-//	uffs_Perror(UFFS_ERR_NOISY, PFX"Flush buffers with Enough Free Page, in block %d\n",
+//	uffs_Perror(UFFS_ERR_NOISY, PFX"Flush buffers with Enough Free Page, in block %d",
 //							bc->block);
 	ret = U_FAIL;
 	for (page = dev->attr->pages_per_block - freePages;	//page: free page num
@@ -862,7 +862,7 @@ URET
 
 		buf = _FindMinimunPageIdFromDirtyList(dev->buf.dirtyGroup[slot].dirty);
 		if (buf == NULL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"count > 0, but no dirty pages in list ?\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"count > 0, but no dirty pages in list ?");
 			goto ext;
 		}
 
@@ -879,7 +879,7 @@ URET
 
 		x = uffs_FlashWritePageCombine(dev, bc->block, page, buf, tag);
 		if (x == UFFS_FLASH_IO_ERR) {
-			uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error <1>?\n");
+			uffs_Perror(UFFS_ERR_NORMAL, PFX"I/O error <1>?");
 			goto ext;
 		}
 		else if (x == UFFS_FLASH_BAD_BLK) {
@@ -895,7 +895,7 @@ URET
 	} //end of for
 	
 	if (dev->buf.dirtyGroup[slot].dirty != NULL || dev->buf.dirtyGroup[slot].count != 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"still has dirty buffer ?\n");
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"still has dirty buffer ?");
 	}
 	else {
 		ret = U_SUCC;
@@ -942,7 +942,7 @@ URET _BufFlush(struct uffs_DeviceSt *dev, UBOOL force_block_recover, int slot)
 		node = uffs_TreeFindDataNode(dev, parent, serial);
 		break;
 	default:
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"unknown type\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"unknown type");
 		return U_FAIL;
 	}
 
@@ -962,12 +962,12 @@ URET _BufFlush(struct uffs_DeviceSt *dev, UBOOL force_block_recover, int slot)
 			block = node->u.data.block;
 			break;
 		default:
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"unknown type.\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"unknown type.");
 			return U_FAIL;
 		}
 		bc = uffs_BlockInfoGet(dev, block);
 		if(bc == NULL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"get block info fail.\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"get block info fail.");
 			return U_FAIL;
 		}
 		uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
@@ -1023,7 +1023,7 @@ URET uffs_BufUnLockGroup(struct uffs_DeviceSt *dev, int slot)
 		if (dev->buf.dirtyGroup[slot].lock > 0)
 			dev->buf.dirtyGroup[slot].lock--;
 		else {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Try to unlock an unlocked group ?\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"Try to unlock an unlocked group ?");
 		}
 		ret = U_SUCC;
 	}	
@@ -1225,7 +1225,7 @@ uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 parent, u16 serial
 	buf = uffs_BufGet(dev, parent, serial, page_id);
 	if (buf) {
 		if (buf->ref_count > 1) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"When create new buf, an exist buffer has ref count %d, possibly bug!\n", buf->ref_count);
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"When create new buf, an exist buffer has ref count %d, possibly bug!", buf->ref_count);
 		}
 		else {
 			buf->data_len = 0;
@@ -1239,7 +1239,7 @@ uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 parent, u16 serial
 		uffs_BufFlushMostDirtyGroup(dev);
 		buf = _FindFreeBuf(dev);
 		if (buf == NULL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free page buf!\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free page buf!");
 			return NULL;
 		}
 	}
@@ -1308,21 +1308,21 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 
 		uffs_BufFlushMostDirtyGroup(dev);
 		buf = _FindFreeBuf(dev);
 		if (buf == NULL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free page buf!\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free page buf!");
 			return NULL;
 		}
 	}
 
 	bc = uffs_BlockInfoGet(dev, block);
 	if (bc == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't get block info!\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"Can't get block info!");
 		return NULL;
 	}
 	
 	page = uffs_FindPageInBlockWithPageId(dev, bc, page_id);
 	if (page == UFFS_INVALID_PAGE) {
 		uffs_BlockInfoPut(dev, bc);
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find right page ?\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't find right page ?");
 		return NULL;
 	}
 	page = uffs_FindBestPageInBlock(dev, bc, page);
@@ -1335,7 +1335,7 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 
 	buf->page_id = page_id;
 
 	if (UFFS_FLASH_HAVE_ERR(uffs_FlashReadPage(dev, block, page, buf))) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't load page from flash !\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"can't load page from flash !");
 		return NULL;
 	}
 
@@ -1360,13 +1360,13 @@ URET uffs_BufPut(uffs_Device *dev, uffs_Buf *buf)
 
 	dev = dev;
 	if (buf == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX "Can't put an NULL buffer!\n");
+		uffs_Perror(UFFS_ERR_NORMAL, PFX "Can't put an NULL buffer!");
 	}
 	else if (buf->ref_count == 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX "Putting an unused page buffer ? \n");
+		uffs_Perror(UFFS_ERR_NORMAL, PFX "Putting an unused page buffer ? ");
 	}
 	else if (buf->ref_count == CLONE_BUF_MARK) {
-		uffs_Perror(UFFS_ERR_NORMAL, PFX"Putting an cloned page buffer ? \n");
+		uffs_Perror(UFFS_ERR_NORMAL, PFX"Putting an cloned page buffer ? ");
 		ret = uffs_BufFreeClone(dev, buf);
 	}
 	else {
@@ -1394,7 +1394,7 @@ uffs_Buf * uffs_BufClone(uffs_Device *dev, uffs_Buf *buf)
 
 	p = _FindFreeBufEx(dev, 1);
 	if (p == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"no enough free pages for clone! Please increase Clone Buffer Count threshold.\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"no enough free pages for clone! Please increase Clone Buffer Count threshold.");
 	}
 	else {
 		_BreakFromBufList(dev, p);
@@ -1431,7 +1431,7 @@ URET uffs_BufFreeClone(uffs_Device *dev, uffs_Buf *buf)
 
 	if (buf->ref_count != CLONE_BUF_MARK) {
 		/* a cloned buffer must have a ref_count of CLONE_BUF_MARK */
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX "Try to release a non-cloned page buffer ?\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX "Try to release a non-cloned page buffer ?");
 		return U_FAIL;
 	}
 
@@ -1523,7 +1523,7 @@ URET uffs_BufWrite(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs
 	int slot;
 
 	if(ofs + len > dev->com.pg_data_size) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"data length out of range! %d+%d\n", ofs, len);
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX"data length out of range! %d+%d", ofs, len);
 		return U_FAIL;
 	}
 
@@ -1540,7 +1540,7 @@ URET uffs_BufWrite(struct uffs_DeviceSt *dev, uffs_Buf *buf, void *data, u32 ofs
 			slot = uffs_BufFindFreeGroupSlot(dev);
 			if (slot < 0) {
 				// still no free slot ??
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free slot ?\n");
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX"no free slot ?");
 				return U_FAIL;
 			}
 		}

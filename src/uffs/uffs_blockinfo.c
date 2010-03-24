@@ -64,7 +64,7 @@ URET uffs_BlockInfoInitCache(uffs_Device *dev, int maxCachedBlocks)
 	int size, i, j;
 
 	if (dev->bc.head != NULL) {
-		uffs_Perror(UFFS_ERR_NOISY, PFX"block info cache has been inited already, now release it first.\n");
+		uffs_Perror(UFFS_ERR_NOISY, PFX"block info cache has been inited already, now release it first.");
 		uffs_BlockInfoReleaseCache(dev);
 	}
 
@@ -80,11 +80,11 @@ URET uffs_BlockInfoInitCache(uffs_Device *dev, int maxCachedBlocks)
 		}
 	}
 	if (size > dev->mem.blockinfo_pool_size) {
-		uffs_Perror(UFFS_ERR_DEAD, PFX"Block cache buffer require %d but only %d available.\n", size, dev->mem.blockinfo_pool_size);
+		uffs_Perror(UFFS_ERR_DEAD, PFX"Block cache buffer require %d but only %d available.", size, dev->mem.blockinfo_pool_size);
 		return U_FAIL;
 	}
 
-	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc info cache %d bytes.\n", size);
+	uffs_Perror(UFFS_ERR_NOISY, PFX"alloc info cache %d bytes.", size);
 
 	buf = dev->mem.blockinfo_pool_buf;
 
@@ -146,7 +146,7 @@ URET uffs_BlockInfoReleaseCache(uffs_Device *dev)
 	if (dev->bc.head) {
 		for (work = dev->bc.head; work != NULL; work = work->next) {
 			if (work->ref_count != 0) {
-				uffs_Perror(UFFS_ERR_SERIOUS, PFX "There have refed block info cache, release cache fail.\n");
+				uffs_Perror(UFFS_ERR_SERIOUS, PFX "There have refed block info cache, release cache fail.");
 				return U_FAIL;
 			}
 		}
@@ -224,7 +224,7 @@ URET uffs_BlockInfoLoad(uffs_Device *dev, uffs_BlockInfo *work, int page)
 	}
 	else {
 		if (page < 0 || page >= dev->attr->pages_per_block) {
-			uffs_Perror(UFFS_ERR_SERIOUS, PFX "page out of range !\n");
+			uffs_Perror(UFFS_ERR_SERIOUS, PFX "page out of range !");
 			return U_FAIL;
 		}
 		spare = &(work->spares[page]);
@@ -292,7 +292,7 @@ uffs_BlockInfo * uffs_BlockInfoGet(uffs_Device *dev, int block)
 	}
 	if (work == NULL) {
 		//caches used out !
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX "insufficient block info cache\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX "insufficient block info cache");
 		return NULL;
 	}
 
@@ -318,7 +318,7 @@ void uffs_BlockInfoPut(uffs_Device *dev, uffs_BlockInfo *p)
 {
 	dev = dev;
 	if (p->ref_count == 0) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX "Put an unused block info cache back ?\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, PFX "Put an unused block info cache back ?");
 	}
 	else {
 		p->ref_count--;
