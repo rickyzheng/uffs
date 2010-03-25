@@ -183,7 +183,7 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 	}
 
 	if (!dev->ops->MarkBadBlock && !dev->ops->WritePageSpare && !dev->ops->WriteFullPage) {
-		uffs_Perror(UFFS_ERR_SERIOUS, PFX"flash driver must provide 'MarkBadBlock' or 'WritePageSpare' or 'WriteFullPage' function!\n");
+		uffs_Perror(UFFS_ERR_SERIOUS, "flash driver must provide 'MarkBadBlock' or 'WritePageSpare' or 'WriteFullPage' function!");
 		return U_FAIL;
 	}
 
