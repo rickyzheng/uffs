@@ -107,6 +107,18 @@ URET uffs_PoolInit(uffs_Pool *pool, void *mem, u32 mem_size, u32 buf_size, u32 n
 }
 
 /**
+ * \brief verify pointer validity aganist memory pool
+ * \return U_TRUE if valid, U_FALSE if invalid.
+ */
+UBOOL uffs_PoolVerify(uffs_Pool *pool, void *p)
+{
+	return  p &&
+			p >= pool->mem &&
+			p < pool->mem + (pool->buf_size * pool->num_bufs) &&
+			((p - pool->mem) % pool->buf_size) == 0	? U_TRUE : U_FALSE;
+}
+
+/**
  * \brief Releases the memory pool.
  * \param[in] pool memory pool
  * \return Returns U_SUCC if successful.
@@ -238,3 +250,64 @@ u32 uffs_PoolGetIndex(uffs_Pool *pool, void *p)
 
 	return ((u8 *) p - pool->mem) / pool->buf_size;
 }
+
+/**
+ * \brief this is more efficient version for small nodes number memory pool (< 32)
+ */
+static void * FindNextAllocatedInSmallPool(uffs_Pool *pool, void *from)
+{
+	u32 map = 0;
+	uffs_PoolEntry *e;
+	u32 i;
+
+	for (e = pool->free_list; e; e = e->next)
+		map |= (1 << uffs_PoolGetIndex(pool, e);
+
+	for (i = uffs_PoolGetIndex(from); (map & (1 << i)) && i < 32; i++);
+
+	return i < 32 ? uffs_PoolGetBufByIndex(pool, i) : NULL;
+}
+
+
+/**
+ * \brief Find next allocated memory block
+ *
+ * \param[in] pool memory pool
+ * \param[in] from search start address, if NULL, from pool->mem
+ *
+ * \return next allocated memory block, NULL if not found.
+ *
+ * \note This is NOT efficient, don't do it on a pool with large free nodes !
+ */
+void * uffs_PoolFindNextAllocated(uffs_Pool *pool, void *from)
+{
+	uffs_PoolEntry *e = NULL;
+
+	if (from == NULL)
+		from = pool->mem;
+	else
+		from += pool->buf_size;
+
+	if (pool->num_bufs < 32)
+		return FindNextAllocatedInSmallPool(pool, from);
+
+	// work through the free list, stop if not in free list,
+	// otherwise move to next entry and search free list again.
+
+	if (pool->free_list) {
+		while (e == NULL && uffs_PoolVerify(pool, from)) {
+			e = pool->free_list;
+			while (e) {
+				if (from == e) {
+					from += pool->buf_size; // in free list, move to next entry
+					break;
+				}
+				e = e->next;
+			}
+		}
+	}
+
+	return uffs_PoolVerify(pool, from) ? from : NULL ;
+}
+
+

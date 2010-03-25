@@ -69,6 +69,8 @@ typedef struct uffs_PoolSt {
 URET uffs_PoolInit(uffs_Pool *pool, void *mem, u32 mem_size, u32 buf_size, u32 num_bufs);
 URET uffs_PoolRelease(uffs_Pool *pool);
 
+UBOOL uffs_PoolVerify(uffs_Pool *pool, void *p);
+
 void *uffs_PoolGet(uffs_Pool *pool);
 void *uffs_PoolGetLocked(uffs_Pool *pool);
 
@@ -77,6 +79,8 @@ int uffs_PoolPutLocked(uffs_Pool *pool, void *p);
 
 void *uffs_PoolGetBufByIndex(uffs_Pool *pool, u32 index);
 u32 uffs_PoolGetIndex(uffs_Pool *pool, void *p);
+
+void * uffs_PoolFindNextAllocated(uffs_Pool *pool, void *from);
 
 #ifdef __cplusplus
 }
