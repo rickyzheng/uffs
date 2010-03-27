@@ -150,102 +150,11 @@ URET uffs_FindObjectOpenEx(uffs_FindInfo *f, uffs_Device *dev, int dir)
 }
 
 
-/**
- * Find the first object
- *
- * \param[out] info the object information will be filled to info.
- *				if info is NULL, then skip this object.
- * \param[in] f uffs_FindInfo structure, openned by uffs_FindObjectOpen().
- *
- * \return U_SUCC if an object is found, U_FAIL if no object is found.
- */
-URET uffs_FindObjectFirst(uffs_ObjectInfo * info, uffs_FindInfo * f)
+static URET do_FindObject(uffs_FindInfo *f, uffs_ObjectInfo *info, u16 x)
 {
-	uffs_Device *dev = f->dev;
-	TreeNode *node;
-	u16 x;
 	URET ret = U_SUCC;
-
-	uffs_DeviceLock(dev);
-	f->step = 0;
-
-	if (f->step == 0) {
-		for (f->hash = 0;
-			f->hash < DIR_NODE_ENTRY_LEN;
-			f->hash++) {
-
-			x = dev->tree.dir_entry[f->hash];
-
-			while (x != EMPTY_NODE) {
-				node = FROM_IDX(x, TPOOL(dev));
-				if(node->u.dir.parent == f->serial) {
-					f->work = node;
-					if (info) 
-						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
-					goto ext;
-				}
-				x = node->hash_next;
-			}
-		}
-
-		//no subdirs, then lookup the files
-		f->step++;
-	}
-
-	if (f->step == 1) {
-		for (f->hash = 0;
-			f->hash < FILE_NODE_ENTRY_LEN;
-			f->hash++) {
-
-			x = dev->tree.file_entry[f->hash];
-
-			while (x != EMPTY_NODE) {
-				node = FROM_IDX(x, TPOOL(dev));
-				if (node->u.file.parent == f->serial) {
-					f->work = node;
-					if (info)
-						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
-					goto ext;
-				}
-				x = node->hash_next;
-			}
-		}
-		f->step++;
-	}
-
-	ret = U_FAIL;
-ext:
-	uffs_DeviceUnLock(dev);
-
-	return ret;
-}
-
-/**
- * Find the next object.
- *
- * \param[out] info the object information will be filled to info.
- *				if info is NULL, then skip this object.
- * \param[in] f uffs_FindInfo structure, openned by uffs_FindObjectOpen().
- *
- * \return U_SUCC if an object is found, U_FAIL if no object is found.
- *
- * \note uffs_FindObjectFirst() should be called before uffs_FindObjectNext().
- */
-URET uffs_FindObjectNext(uffs_ObjectInfo *info, uffs_FindInfo * f)
-{
-	uffs_Device *dev = f->dev;
 	TreeNode *node;
-	u16 x;
-	URET ret = U_SUCC;
-
-	if (f->dev == NULL ||
-		f->work == NULL ||
-		f->step > 1) 
-		return U_FAIL;
-
-	uffs_DeviceLock(dev);
-
-	x = f->work->hash_next;
+	uffs_Device *dev = f->dev;
 
 	if (f->step == 0) { //!< working on dirs
 		while (x != EMPTY_NODE) {
@@ -316,6 +225,59 @@ URET uffs_FindObjectNext(uffs_ObjectInfo *info, uffs_FindInfo * f)
 
 	ret = U_FAIL;
 ext:
+
+	return ret;
+
+}
+
+
+/**
+ * Find the first object
+ *
+ * \param[out] info the object information will be filled to info.
+ *				if info is NULL, then skip this object.
+ * \param[in] f uffs_FindInfo structure, openned by uffs_FindObjectOpen().
+ *
+ * \return U_SUCC if an object is found, U_FAIL if no object is found.
+ */
+URET uffs_FindObjectFirst(uffs_ObjectInfo * info, uffs_FindInfo * f)
+{
+	uffs_Device *dev = f->dev;
+	URET ret = U_SUCC;
+
+	uffs_DeviceLock(dev);
+	f->step = 0;
+	f->hash = 0;
+	f->work = NULL;
+	ret = do_FindObject(f, info, dev->tree.dir_entry[0]);
+	uffs_DeviceUnLock(dev);
+
+	return ret;
+}
+
+/**
+ * Find the next object.
+ *
+ * \param[out] info the object information will be filled to info.
+ *				if info is NULL, then skip this object.
+ * \param[in] f uffs_FindInfo structure, openned by uffs_FindObjectOpen().
+ *
+ * \return U_SUCC if an object is found, U_FAIL if no object is found.
+ *
+ * \note uffs_FindObjectFirst() should be called before uffs_FindObjectNext().
+ */
+URET uffs_FindObjectNext(uffs_ObjectInfo *info, uffs_FindInfo * f)
+{
+	uffs_Device *dev = f->dev;
+	URET ret = U_SUCC;
+
+	if (f->dev == NULL ||
+		f->work == NULL ||
+		f->step > 1) 
+		return U_FAIL;
+
+	uffs_DeviceLock(dev);
+	ret = do_FindObject(f, info, f->work->hash_next);
 	uffs_DeviceUnLock(dev);
 
 	return ret;

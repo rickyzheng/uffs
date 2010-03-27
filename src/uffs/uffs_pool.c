@@ -113,9 +113,9 @@ URET uffs_PoolInit(uffs_Pool *pool, void *mem, u32 mem_size, u32 buf_size, u32 n
 UBOOL uffs_PoolVerify(uffs_Pool *pool, void *p)
 {
 	return  p &&
-			p >= pool->mem &&
-			p < pool->mem + (pool->buf_size * pool->num_bufs) &&
-			((p - pool->mem) % pool->buf_size) == 0	? U_TRUE : U_FALSE;
+			(u8 *)p >= pool->mem &&
+			(u8 *)p < pool->mem + (pool->buf_size * pool->num_bufs) &&
+			(((u8 *)p - pool->mem) % pool->buf_size) == 0	? U_TRUE : U_FALSE;
 }
 
 /**
@@ -261,9 +261,9 @@ static void * FindNextAllocatedInSmallPool(uffs_Pool *pool, void *from)
 	u32 i;
 
 	for (e = pool->free_list; e; e = e->next)
-		map |= (1 << uffs_PoolGetIndex(pool, e);
+		map |= (1 << uffs_PoolGetIndex(pool, e));
 
-	for (i = uffs_PoolGetIndex(from); (map & (1 << i)) && i < 32; i++);
+	for (i = uffs_PoolGetIndex(pool, from); (map & (1 << i)) && i < 32; i++);
 
 	return i < 32 ? uffs_PoolGetBufByIndex(pool, i) : NULL;
 }
@@ -282,24 +282,25 @@ static void * FindNextAllocatedInSmallPool(uffs_Pool *pool, void *from)
 void * uffs_PoolFindNextAllocated(uffs_Pool *pool, void *from)
 {
 	uffs_PoolEntry *e = NULL;
+	u8 *p = (u8 *)from;
 
-	if (from == NULL)
-		from = pool->mem;
+	if (p == NULL)
+		p = pool->mem;
 	else
-		from += pool->buf_size;
+		p += pool->buf_size;
 
 	if (pool->num_bufs < 32)
-		return FindNextAllocatedInSmallPool(pool, from);
+		return FindNextAllocatedInSmallPool(pool, p);
 
 	// work through the free list, stop if not in free list,
 	// otherwise move to next entry and search free list again.
 
 	if (pool->free_list) {
-		while (e == NULL && uffs_PoolVerify(pool, from)) {
+		while (e == NULL && uffs_PoolVerify(pool, p)) {
 			e = pool->free_list;
 			while (e) {
-				if (from == e) {
-					from += pool->buf_size; // in free list, move to next entry
+				if (p == (u8 *)e) {
+					p += pool->buf_size; // in free list, move to next entry
 					break;
 				}
 				e = e->next;
@@ -307,7 +308,7 @@ void * uffs_PoolFindNextAllocated(uffs_Pool *pool, void *from)
 		}
 	}
 
-	return uffs_PoolVerify(pool, from) ? from : NULL ;
+	return uffs_PoolVerify(pool, p) ? p : NULL ;
 }
 
 
