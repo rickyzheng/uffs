@@ -42,6 +42,13 @@
 
 #define TPOOL(dev) &((dev)->mem.tree_pool)
 
+static void ResetFindInfo(uffs_FindInfo *f)
+{
+	f->hash = 0;
+	f->work = NULL;
+	f->step = 0;
+	f->pos = 0;
+}
 
 static URET _LoadObjectInfo(uffs_Device *dev, TreeNode *node, uffs_ObjectInfo *info, int type)
 {
@@ -111,9 +118,7 @@ URET uffs_FindObjectOpen(uffs_FindInfo *f, uffs_Object *dir)
 
 	f->dev = dir->dev;
 	f->serial = dir->serial;
-	f->hash = 0;
-	f->work = NULL;
-	f->step = 0;
+	ResetFindInfo(f);
 
 	return U_SUCC;
 }
@@ -142,9 +147,7 @@ URET uffs_FindObjectOpenEx(uffs_FindInfo *f, uffs_Device *dev, int dir)
 
 	f->serial = dir;
 	f->dev = dev;
-	f->hash = 0;
-	f->work = NULL;
-	f->step = 0;
+	ResetFindInfo(f);
 
 	return U_SUCC;
 }
@@ -161,6 +164,7 @@ static URET do_FindObject(uffs_FindInfo *f, uffs_ObjectInfo *info, u16 x)
 			node = FROM_IDX(x, TPOOL(dev));
 			if (node->u.dir.parent == f->serial) {
 				f->work = node;
+				f->pos++;
 				if (info)
 					ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
 				goto ext;
@@ -176,6 +180,7 @@ static URET do_FindObject(uffs_FindInfo *f, uffs_ObjectInfo *info, u16 x)
 				node = FROM_IDX(x, TPOOL(dev));
 				if (node->u.dir.parent == f->serial) {
 					f->work = node;
+					f->pos++;
 					if (info)
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
 					goto ext;
@@ -196,6 +201,7 @@ static URET do_FindObject(uffs_FindInfo *f, uffs_ObjectInfo *info, u16 x)
 			node = FROM_IDX(x, TPOOL(dev));
 			if (node->u.file.parent == f->serial) {
 				f->work = node;
+				f->pos++;
 				if (info)
 					ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
 				goto ext;
@@ -211,6 +217,7 @@ static URET do_FindObject(uffs_FindInfo *f, uffs_ObjectInfo *info, u16 x)
 				node = FROM_IDX(x, TPOOL(dev));
 				if (node->u.file.parent == f->serial) {
 					f->work = node;
+					f->pos++;
 					if (info) 
 						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
 					goto ext;
@@ -246,9 +253,7 @@ URET uffs_FindObjectFirst(uffs_ObjectInfo * info, uffs_FindInfo * f)
 	URET ret = U_SUCC;
 
 	uffs_DeviceLock(dev);
-	f->step = 0;
-	f->hash = 0;
-	f->work = NULL;
+	ResetFindInfo(f);
 	ret = do_FindObject(f, info, dev->tree.dir_entry[0]);
 	uffs_DeviceUnLock(dev);
 
@@ -271,10 +276,11 @@ URET uffs_FindObjectNext(uffs_ObjectInfo *info, uffs_FindInfo * f)
 	uffs_Device *dev = f->dev;
 	URET ret = U_SUCC;
 
-	if (f->dev == NULL ||
-		f->work == NULL ||
-		f->step > 1) 
+	if (f->dev == NULL || f->step > 1) 
 		return U_FAIL;
+
+	if (f->work == NULL)
+		return uffs_FindObjectFirst(info, f);
 
 	uffs_DeviceLock(dev);
 	ret = do_FindObject(f, info, f->work->hash_next);
@@ -293,9 +299,7 @@ URET uffs_FindObjectRewind(uffs_FindInfo *f)
 	if (f == NULL)
 		return U_FAIL;
 
-	f->hash = 0;
-	f->work = NULL;
-	f->step = 0;
+	ResetFindInfo(f);
 
 	return U_SUCC;
 }
@@ -313,11 +317,36 @@ URET uffs_FindObjectClose(uffs_FindInfo * f)
 		return U_FAIL;
 
 	f->dev = NULL;
-	f->hash = 0;
-	f->work = NULL;
+	ResetFindInfo(f);
 
 	return U_SUCC;
 }
 
+/**
+ * Count objects
+ *
+ * \param[in] f uffs_FindInfo structure, openned by uffs_FindObjectOpen().
+ *
+ * \return object counts
+ * \note after call this function, you need to call uffs_FindObjectRewind() to start finding process.
+ */
+int uffs_FindObjectCount(uffs_FindInfo *f)
+{
+	if (uffs_FindObjectFirst(NULL, f) == U_SUCC) {
+		while (uffs_FindObjectNext(NULL, f) == U_SUCC) { };
+	}
+	return f->pos;
+}
 
+/**
+ * Return current finding position
+ *
+ * \param[in] f uffs_FindInfo structure, openned by uffs_FindObjectOpen().
+ *
+ * \return current finding position
+ */
+int uffs_FindObjectTell(uffs_FindInfo *f)
+{
+	return f->pos;
+}
 

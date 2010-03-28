@@ -51,6 +51,7 @@ typedef struct uffs_FindInfoSt {
 	int step;						//!< step: 0 - working on dir entries, 1 - working on file entries, 2 - stoped.
 	int hash;						//!< hash entry, internal used
 	TreeNode *work;					//!< working node, internal used.
+	int pos;						//!< current position
 } uffs_FindInfo;
 
 
