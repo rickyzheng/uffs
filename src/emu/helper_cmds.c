@@ -262,7 +262,7 @@ BOOL cmdRm(const char *tail)
 	const char *name = NULL;
 	if (tail == NULL) return FALSE;
 	name = cli_getparam(tail, NULL);
-	if (uffs_DeleteObject(name) == U_SUCC) {
+	if (uffs_DeleteObject(name, NULL) == U_SUCC) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Delete '%s' succ.", name);
 	}
 	else {
@@ -281,7 +281,7 @@ BOOL cmdRen(const char *tail)
 	oldname = cli_getparam(tail, &newname);
 	if (newname == NULL)
 		return FALSE;
-	if (uffs_RenameObject(oldname, newname) == U_SUCC) {
+	if (uffs_RenameObject(oldname, newname, NULL) == U_SUCC) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Rename from '%s' to '%s' succ.", oldname, newname);
 	}
 	else {

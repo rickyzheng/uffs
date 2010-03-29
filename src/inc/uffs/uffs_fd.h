@@ -93,11 +93,19 @@ URET uffs_ReleaseDirEntryBuf(void);
 
 int uffs_open(const char *name, int oflag, ...);
 int uffs_close(int fd);
+int uffs_read(int fd, void *data, int len);
+int uffs_write(int fd, void *data, int len);
+long uffs_seek(int fd, long offset, int origin);
+long uffs_tell(int fd);
+int uffs_eof(int fd);
+int uffs_flush(int fd);
+int uffs_rename(const char *old_name, const char *new_name);
+int uffs_remove(const char *name);
+int uffs_truncate(int fd, long remain);
 
 int uffs_stat(const char *filename, struct uffs_stat *buf);
 int uffs_lstat(const char *filename, struct uffs_stat *buf);
 int uffs_fstat(int fd, struct uffs_stat *buf);
-
 
 int uffs_closedir(uffs_DIR *dirp);
 uffs_DIR * uffs_opendir(const char *path);
@@ -110,4 +118,6 @@ void uffs_rewinddir(uffs_DIR *dirp);
 void uffs_seekdir(uffs_DIR *dirp, long loc);
 long uffs_telldir(uffs_DIR *dirp);
 
+int uffs_get_error(void);
+int uffs_set_error(int err);
 

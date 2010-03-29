@@ -79,6 +79,7 @@ int uffs_PoolPutLocked(uffs_Pool *pool, void *p);
 
 void *uffs_PoolGetBufByIndex(uffs_Pool *pool, u32 index);
 u32 uffs_PoolGetIndex(uffs_Pool *pool, void *p);
+UBOOL uffs_PoolCheckFreeList(uffs_Pool *pool, void *p);
 
 void * uffs_PoolFindNextAllocated(uffs_Pool *pool, void *from);
 

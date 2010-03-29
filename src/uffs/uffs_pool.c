@@ -252,6 +252,20 @@ u32 uffs_PoolGetIndex(uffs_Pool *pool, void *p)
 }
 
 /**
+ * \brief Check given buffer in free list
+ * \return U_TRUE if it's in free list, U_FALSE if not.
+ */
+UBOOL uffs_PoolCheckFreeList(uffs_Pool *pool, void *p)
+{
+	uffs_PoolEntry *e;
+	for (e = pool->free_list; e; e = e->next) {
+		if ((void *)e == p)
+			return U_TRUE;
+	}
+	return U_FALSE;
+}
+
+/**
  * \brief this is more efficient version for small nodes number memory pool (< 32)
  */
 static void * FindNextAllocatedInSmallPool(uffs_Pool *pool, void *from)

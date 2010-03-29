@@ -144,6 +144,12 @@
 #define MAX_OBJECT_HANDLE	10
 
 /**
+ * \def MAX_DIR_HANDLE
+ * maximum number of uffs_DIR
+ */
+#define MAX_DIR_HANDLE	5
+
+/**
  * \def MINIMUN_ERASED_BLOCK
  *  UFFS will not allow appending or creating new files when the free/erased block
  *  is lower then MINIMUN_ERASED_BLOCK.

@@ -85,8 +85,8 @@ typedef struct uffs_ObjectSt uffs_Object;
 
 
 
-#define uffs_GetObjectErr(obj) (obj->err)
-#define uffs_ClearObjectErr(obj) do { obj->err = UENOERR; } while (0)
+#define uffs_GetObjectErr(obj) ((obj)->err)
+#define uffs_ClearObjectErr(obj) do { (obj)->err = UENOERR; } while (0)
 
 URET uffs_InitObjectBuf(void);
 URET uffs_ReleaseObjectBuf(void);
@@ -121,8 +121,8 @@ int uffs_GetCurOffset(uffs_Object *obj);
 int uffs_EndOfFile(uffs_Object *obj);
 URET uffs_FlushObject(uffs_Object *obj);
 
-URET uffs_RenameObject(const char *old_name, const char *new_name);
-URET uffs_DeleteObject(const char * name);
+URET uffs_RenameObject(const char *old_name, const char *new_name, int *err);
+URET uffs_DeleteObject(const char * name, int *err);
 
 
 
