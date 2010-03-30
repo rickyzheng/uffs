@@ -275,7 +275,7 @@ static URET femu_ReadPageData(uffs_Device *dev, u32 block, u32 page_num, u8 *dat
 		nread = fread(data, 1, len, emu->fp);
 
 		// for ECC testing.
-		if (1 && block == 2 && page_num == 3) {
+		if (1 && block == 2 && page_num == 3 && len > 13) {
 			printf("--- ECC error inject to block %d page %d ---\n", block, page_num);
 			data[13] = (data[13] & ~0x40) | (~(data[13] & 0x40) & 0x40) ;
 		}

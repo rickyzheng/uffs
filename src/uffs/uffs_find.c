@@ -50,13 +50,15 @@ static void ResetFindInfo(uffs_FindInfo *f)
 	f->pos = 0;
 }
 
-static URET _LoadObjectInfo(uffs_Device *dev, TreeNode *node, uffs_ObjectInfo *info, int type)
+static URET _LoadObjectInfo(uffs_Device *dev, TreeNode *node, uffs_ObjectInfo *info, int type, int *err)
 {
 	uffs_Buf *buf;
 
 	buf = uffs_BufGetEx(dev, (u8)type, node, 0);
 
 	if (buf == NULL) {
+		if (err)
+			*err = UENOMEM;
 		return U_FAIL;
 	}
 
@@ -81,20 +83,26 @@ static URET _LoadObjectInfo(uffs_Device *dev, TreeNode *node, uffs_ObjectInfo *i
  *
  * \param[in] obj the object to be revealed
  * \param[out] info object information will be loaded to info
+ * \param[out] err return error code if failed
  *
  * \return U_SUCC or U_FAIL
  *
  * \node the obj should be openned before call this function.
  */
-URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info)
+URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info, int *err)
 {
 	uffs_Device *dev = obj->dev;
 	URET ret = U_FAIL;
 
 	uffs_DeviceLock(dev);
 
-	if (obj && dev && info)
-		ret = _LoadObjectInfo(dev, obj->node, info, obj->type);
+	if (obj && dev && info) {
+		ret = _LoadObjectInfo(dev, obj->node, info, obj->type, err);
+	}
+	else {
+		if (err)
+			*err = UEINVAL;
+	}
 
 	uffs_DeviceUnLock(dev);
 
@@ -166,7 +174,7 @@ static URET do_FindObject(uffs_FindInfo *f, uffs_ObjectInfo *info, u16 x)
 				f->work = node;
 				f->pos++;
 				if (info)
-					ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
+					ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR, NULL);
 				goto ext;
 			}
 			x = node->hash_next;
@@ -182,7 +190,7 @@ static URET do_FindObject(uffs_FindInfo *f, uffs_ObjectInfo *info, u16 x)
 					f->work = node;
 					f->pos++;
 					if (info)
-						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR);
+						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_DIR, NULL);
 					goto ext;
 				}
 				x = node->hash_next;
@@ -203,7 +211,7 @@ static URET do_FindObject(uffs_FindInfo *f, uffs_ObjectInfo *info, u16 x)
 				f->work = node;
 				f->pos++;
 				if (info)
-					ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
+					ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE, NULL);
 				goto ext;
 			}
 			x = node->hash_next;
@@ -219,7 +227,7 @@ static URET do_FindObject(uffs_FindInfo *f, uffs_ObjectInfo *info, u16 x)
 					f->work = node;
 					f->pos++;
 					if (info) 
-						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE);
+						ret = _LoadObjectInfo(dev, node, info, UFFS_TYPE_FILE, NULL);
 					goto ext;
 				}
 				x = node->hash_next;

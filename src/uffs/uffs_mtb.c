@@ -41,6 +41,7 @@
 #include "uffs/uffs_config.h"
 #include "uffs/uffs_tree.h"
 #include "uffs/uffs_mtb.h"
+#include "uffs/uffs_fd.h"
 #include <string.h>
 
 #define PFX "mtb:  "
@@ -85,6 +86,7 @@ URET uffs_InitMountTable(void)
 {
 	struct uffs_MountTableEntrySt *tbl = uffs_GetMountTable();
 	struct uffs_MountTableEntrySt *work;
+	int dev_num = 0;
 
 	for (work = tbl; work; work = work->next) {
 		uffs_Perror(UFFS_ERR_NOISY, "init device for mount point %s ...", work->mount);
@@ -107,9 +109,16 @@ URET uffs_InitMountTable(void)
 			uffs_Perror(UFFS_ERR_SERIOUS, "init device fail !");
 			return U_FAIL;
 		}
+		work->dev->dev_num = dev_num++;
 	}
 
-	return U_SUCC;
+	if (uffs_InitObjectBuf() == U_SUCC) {
+		if (uffs_InitDirEntryBuf() == U_SUCC) {
+			return U_SUCC;
+		}
+	}
+
+	return U_FAIL;
 }
 
 URET uffs_ReleaseMountTable(void)
@@ -122,7 +131,13 @@ URET uffs_ReleaseMountTable(void)
 		work->dev->Release(work->dev);
 	}
 
-	return U_SUCC;
+	if (uffs_ReleaseObjectBuf() == U_SUCC) {
+		if (uffs_ReleaseDirEntryBuf() == U_SUCC) {
+			return U_SUCC;
+		}
+	}
+
+	return U_FAIL;
 }
 
 

@@ -55,7 +55,7 @@ typedef struct uffs_FindInfoSt {
 } uffs_FindInfo;
 
 
-URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info);
+URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info, int *err);
 URET uffs_FindObjectOpen(uffs_FindInfo *find_handle, uffs_Object *dir);
 URET uffs_FindObjectOpenEx(uffs_FindInfo *f, uffs_Device *dev, int dir);
 URET uffs_FindObjectFirst(uffs_ObjectInfo *info, uffs_FindInfo *find_handle);

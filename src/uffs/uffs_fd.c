@@ -36,31 +36,49 @@
  * \author Ricky Zheng, created 8th Jun, 2005
  */
 
-#include "uffs/uffs_fs.h"
-#include "uffs/uffs_config.h"
 #include <string.h>
-
+#include "uffs/uffs_config.h"
+#include "uffs/uffs_fs.h"
+#include "uffs/uffs_fd.h"
 #define PFX "fd: "
 
-
-static int _dir_pool_data[sizeof(uffs_DIR) * MAX_DIR_HANDLE / sizeof(int)];
-static uffs_Pool _dir_pool;
-static int _uffs_errno = 0;
 
 #define FD_OFFSET		3	//!< just make file handler more like POSIX (0, 1, 2 for stdin/stdout/stderr)
 
 #define FD2OBJ(fd)	(((fd) >= FD_OFFSET && (fd) < MAX_DIR_HANDLE + FD_OFFSET) ? \
-						(uffs_Object *)uffs_PoolGetBufByIndex(&_dir_pool, (fd) - FD_OFFSET) : NULL )
+						(uffs_Object *)uffs_PoolGetBufByIndex(uffs_GetObjectPool(), (fd) - FD_OFFSET) : NULL )
 
-#define OBJ2FD(obj)		(uffs_PoolGetIndex(&_dir_pool, obj) + FD_OFFSET)
+#define OBJ2FD(obj)		(uffs_PoolGetIndex(uffs_GetObjectPool(), obj) + FD_OFFSET)
 
 #define CHK_OBJ(obj, ret)	do { \
-								if (uffs_PoolCheckFreeList(&_dir_pool, (obj)) == U_FALSE) { \
+								if (uffs_PoolVerify(uffs_GetObjectPool(), (obj)) == U_FALSE || \
+										uffs_PoolCheckFreeList(uffs_GetObjectPool(), (obj)) == U_TRUE) { \
 									uffs_set_error(-UEBADF); \
 									return (ret); \
 								} \
 							} while(0)
 
+#define CHK_DIR(dirp, ret)	do { \
+								if (uffs_PoolVerify(&_dir_pool, dirp) == U_FALSE || \
+										uffs_PoolCheckFreeList(&_dir_pool, (dirp)) == U_TRUE) { \
+									uffs_set_error(-UEBADF); \
+									return (ret); \
+								} \
+							} while(0)
+
+#define CHK_DIR_VOID(dirp)	do { \
+								if (uffs_PoolVerify(&_dir_pool, dirp) == U_FALSE || \
+										uffs_PoolCheckFreeList(&_dir_pool, (dirp)) == U_TRUE) { \
+									uffs_set_error(-UEBADF); \
+									return; \
+								} \
+							} while(0)
+
+
+
+static int _dir_pool_data[sizeof(uffs_DIR) * MAX_DIR_HANDLE / sizeof(int)];
+static uffs_Pool _dir_pool;
+static int _uffs_errno = 0;
 
 /**
  * initialise uffs_DIR buffers, called by UFFS internal
@@ -77,6 +95,21 @@ URET uffs_InitDirEntryBuf(void)
 URET uffs_ReleaseDirEntryBuf(void)
 {
 	return uffs_PoolRelease(&_dir_pool);
+}
+
+static uffs_DIR * GetDirEntry(void)
+{
+	uffs_DIR *dirp = (uffs_DIR *) uffs_PoolGet(&_dir_pool);
+
+	if (dirp)
+		memset(dirp, 0, sizeof(uffs_DIR));
+
+	return dirp;
+}
+
+static void PutDirEntry(uffs_DIR *p)
+{
+	uffs_PoolPut(&_dir_pool, p);
 }
 
 
@@ -255,18 +288,158 @@ int uffs_truncate(int fd, long remain)
 	return ret;
 }
 
-int uffs_stat(const char *filename, struct uffs_stat *buf);
-int uffs_lstat(const char *filename, struct uffs_stat *buf);
-int uffs_fstat(int fd, struct uffs_stat *buf);
+static int do_stat(uffs_Object *obj, struct uffs_stat *buf)
+{
+	uffs_ObjectInfo info;
+	int ret = 0;
+	int err = 0;
 
-int uffs_closedir(uffs_DIR *dirp);
-uffs_DIR * uffs_opendir(const char *path);
-struct uffs_dirent * uffs_readdir(uffs_DIR *dirp);
+	if (uffs_GetObjectInfo(obj, &info, &err) == U_FAIL) {
+		uffs_set_error(-err);
+		ret = -1;
+	}
+	else {
+		buf->st_dev = obj->dev->dev_num;
+		buf->st_ino = info.serial;
+		buf->st_mode = 0;
+		buf->st_nlink = 0;
+		buf->st_uid = 0;
+		buf->st_gid = 0;
+		buf->st_rdev = 0;
+		buf->st_size = info.len;
+		buf->st_blksize = obj->dev->com.pg_data_size;
+		buf->st_blocks = 0;
+		buf->st_atime = info.info.last_modify;
+		buf->st_mtime = info.info.last_modify;
+		buf->st_ctime = info.info.create_time;
+	}
 
-int uffs_readdir_r(uffs_DIR *restrict, struct uffs_dirent *restrict,
-                   struct uffs_dirent **restrict);
-void uffs_rewinddir(uffs_DIR *dirp);
+	return ret;
+}
 
-void uffs_seekdir(uffs_DIR *dirp, long loc);
-long uffs_telldir(uffs_DIR *dirp);
+int uffs_stat(const char *filename, struct uffs_stat *buf)
+{
+	uffs_Object *obj;
+	int ret = 0;
 
+	obj = uffs_GetObject();
+	if (obj) {
+		if (uffs_OpenObject(obj, filename, UO_RDONLY) == U_SUCC) {
+			ret = do_stat(obj, buf);
+			uffs_CloseObject(obj);
+		}
+		else {
+			uffs_set_error(-uffs_GetObjectErr(obj));
+			ret = -1;
+		}
+		uffs_PutObject(obj);
+	}
+	else {
+		uffs_set_error(-UENOMEM);
+		ret = -1;
+	}
+
+	return ret;
+}
+
+int uffs_lstat(const char *filename, struct uffs_stat *buf)
+{
+	return uffs_stat(filename, buf);
+}
+
+int uffs_fstat(int fd, struct uffs_stat *buf)
+{
+	uffs_Object *obj = FD2OBJ(fd);
+
+	CHK_OBJ(obj, -1);
+
+	return do_stat(obj, buf);
+}
+
+int uffs_closedir(uffs_DIR *dirp)
+{
+	CHK_DIR(dirp, -1);
+
+	uffs_FindObjectClose(&dirp->f);
+	if (dirp->obj) {
+		uffs_CloseObject(dirp->obj);
+		uffs_PutObject(dirp->obj);
+	}
+	PutDirEntry(dirp);
+
+	return 0;
+}
+
+uffs_DIR * uffs_opendir(const char *path)
+{
+	uffs_DIR *dirp = GetDirEntry();
+
+	if (dirp) {
+		dirp->obj = uffs_GetObject();
+		if (dirp->obj) {
+			if (uffs_OpenObject(dirp->obj, path, UO_RDONLY | UO_DIR) == U_SUCC) {
+				if (uffs_FindObjectOpen(&dirp->f, dirp->obj) == U_SUCC) {
+					return dirp;
+				}
+				else {
+					uffs_CloseObject(dirp->obj);
+				}
+			}
+			else {
+				uffs_set_error(-uffs_GetObjectErr(dirp->obj));
+			}
+			uffs_PutObject(dirp->obj);
+			dirp->obj = NULL;
+		}
+		else {
+			uffs_set_error(-UEMFILE);
+		}
+		PutDirEntry(dirp);
+	}
+	else {
+		uffs_set_error(-UEMFILE);
+	}
+
+	return NULL;
+}
+
+struct uffs_dirent * uffs_readdir(uffs_DIR *dirp)
+{
+	struct uffs_dirent *ent;
+
+	CHK_DIR(dirp, NULL);
+
+	if (uffs_FindObjectNext(&dirp->info, &dirp->f) == U_SUCC) {
+		ent = &dirp->dirent;
+		ent->d_ino = dirp->info.serial;
+		ent->d_namelen = dirp->info.info.name_len;
+		memcpy(ent->d_name, dirp->info.info.name, ent->d_namelen);
+		ent->d_name[ent->d_namelen] = 0;
+		ent->d_off = dirp->f.pos;
+		ent->d_reclen = sizeof(struct uffs_dirent);
+		ent->d_type = dirp->info.info.attr;
+
+		return ent;
+	}
+	else
+		return NULL;
+}
+
+void uffs_rewinddir(uffs_DIR *dirp)
+{
+	CHK_DIR_VOID(dirp);
+
+	uffs_FindObjectRewind(&dirp->f);
+}
+
+#if 0
+void uffs_seekdir(uffs_DIR *dirp, long loc)
+{
+	return ;
+}
+
+long uffs_telldir(uffs_DIR *dirp)
+{
+	return 0;
+}
+#endif

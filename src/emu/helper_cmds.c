@@ -46,6 +46,7 @@
 #include "uffs/uffs_mtb.h"
 #include "uffs/uffs_find.h"
 #include "cmdline.h"
+#include "uffs/uffs_fd.h"
 
 #define PFX "cmd: "
 
@@ -149,113 +150,80 @@ BOOL cmdMkdir(const char *tail)
 
 static int CountObjectUnder(const char *dir)
 {
-	uffs_FindInfo find = {0};
 	int count = 0;
-	URET ret;
-	uffs_Object *obj;
+	uffs_DIR *dirp;
 
-	obj = uffs_GetObject();
-
-	if (obj == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, "Can't get a new object");
+	dirp = uffs_opendir(dir);
+	if (dirp) {
+		while (uffs_readdir(dirp) != NULL)
+			count++;
+		uffs_closedir(dirp);
 	}
-	else {
-		if (uffs_OpenObject(obj, dir, UO_RDONLY|UO_DIR) == U_FAIL) {
-			uffs_Perror(UFFS_ERR_NOISY, "Can't open dir %s for read.", dir);
-		}
-		else {
-			ret = uffs_FindObjectOpen(&find, obj);
-			if (ret == U_SUCC) {
-				ret = uffs_FindObjectFirst(NULL, &find);
-				while (ret == U_SUCC) {
-					count++;
-					ret = uffs_FindObjectNext(NULL, &find);
-				}
-				uffs_FindObjectClose(&find);
-			}
-			uffs_CloseObject(obj);
-		}
-		uffs_PutObject(obj);
-	}
-
 	return count;
 }
 
 BOOL cmdPwd(const char *tail)
 {
-	uffs_Perror(UFFS_ERR_NORMAL, "not supported since v1.2.0.");
+	uffs_Perror(UFFS_ERR_NORMAL, "not supported.");
 	return TRUE;
 }
 
 BOOL cmdCd(const char *tail)
 {
-	uffs_Perror(UFFS_ERR_NORMAL, "Not supported since v1.2.0");
+	uffs_Perror(UFFS_ERR_NORMAL, "Not supported");
 	return TRUE;
 }
 
 BOOL cmdLs(const char *tail)
 {
-	uffs_FindInfo find = {0};
-	uffs_ObjectInfo info;
-	URET ret;
+	uffs_DIR *dirp;
+	struct uffs_dirent *ent;
+	struct uffs_stat stat_buf;
 	int count = 0;
 	char buf[MAX_PATH_LENGTH+2];
 	char *name = (char *)tail;
 	char *sub;
-	uffs_Object *obj;
 
 	if (name == NULL) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Must provide file/dir name.");
 		return FALSE;
 	}
 
-	obj = uffs_GetObject();
-
-	if (obj == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, "Can't get a new object");
-		return TRUE;
-	}
-	if (uffs_OpenObject(obj, name, UO_RDONLY|UO_DIR) == U_FAIL) {
-		uffs_Perror(UFFS_ERR_NOISY, "Can't open dir %s for read.", name);
-		uffs_PutObject(obj);
-		return TRUE;
-	}
-
-	ret = uffs_FindObjectOpen(&find, obj);
-	if (ret == U_FAIL) {
+	dirp = uffs_opendir(name);
+	if (dirp == NULL) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Can't open '%s'", name);
 	}
 	else {
 		uffs_PerrorRaw(UFFS_ERR_NORMAL, "------name-----------size---------serial-----" TENDSTR);
-		ret = uffs_FindObjectFirst(&info, &find);
-		while (ret == U_SUCC) {
-			uffs_PerrorRaw(UFFS_ERR_NORMAL, "%9s", info.info.name);
-			if (info.info.attr & FILE_ATTR_DIR) {
-				strcpy(buf, name);
-				sub = buf;
-				if (name[strlen(name)-1] != '/')
-					sub = strcat(buf, "/");
-				sub = strcat(sub, info.info.name);
+		ent = uffs_readdir(dirp);
+		while (ent) {
+			uffs_PerrorRaw(UFFS_ERR_NORMAL, "%9s", ent->d_name);
+			strcpy(buf, name);
+			sub = buf;
+			if (name[strlen(name)-1] != '/')
+				sub = strcat(buf, "/");
+			sub = strcat(sub, ent->d_name);
+			if (ent->d_type & FILE_ATTR_DIR) {
+				sub = strcat(sub, "/");
 				uffs_PerrorRaw(UFFS_ERR_NORMAL, "/  \t<%8d>", CountObjectUnder(sub));
 			}
 			else {
-				uffs_PerrorRaw(UFFS_ERR_NORMAL, "   \t %8d ", info.len);
+				uffs_stat(sub, &stat_buf);
+				uffs_PerrorRaw(UFFS_ERR_NORMAL, "   \t %8d ", stat_buf.st_size);
 			}
-			uffs_PerrorRaw(UFFS_ERR_NORMAL, "\t%6d" TENDSTR, info.serial);
+			uffs_PerrorRaw(UFFS_ERR_NORMAL, "\t%6d" TENDSTR, ent->d_ino);
 			count++;
-			ret = uffs_FindObjectNext(&info, &find);
+			ent = uffs_readdir(dirp);
 		}
 		
-		uffs_FindObjectClose(&find);
+		uffs_closedir(dirp);
 
 		uffs_PerrorRaw(UFFS_ERR_NORMAL, "Total: %d objects." TENDSTR, count);
 	}
 
-	uffs_CloseObject(obj);
-	uffs_PutObject(obj);
-
 	return TRUE;
 }
+
 
 BOOL cmdRm(const char *tail)
 {

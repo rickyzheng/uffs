@@ -149,14 +149,8 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (uffs_InitObjectBuf() == U_SUCC) {
-		cli_add_commandset(get_helper_cmds());
-		cliMain();
-		uffs_ReleaseObjectBuf();
-	}
-	else {
-		printf("Fail to init Object buffer.\n");
-	}
+	cli_add_commandset(get_helper_cmds());
+	cliMain();
 
 	release_uffs_fs();
 

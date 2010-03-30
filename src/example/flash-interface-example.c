@@ -295,12 +295,10 @@ static int my_init_filesystem(void)
 int main()
 {
 	my_init_filesystem();
-	uffs_InitObjectBuf();
 
 	// ... my application codes ....
 	// read/write/create/delete files ...
 
-	uffs_ReleaseObjectBuf();
 	uffs_ReleaseMountTable();
 
 	return 0;

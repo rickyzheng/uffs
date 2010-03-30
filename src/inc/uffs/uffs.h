@@ -96,7 +96,8 @@ extern "C"{
  */
 #define MAX_FILENAME_LENGTH			32
 
-#define FILE_ATTR_DIR		(1 << 24)	//!< attribute for directory
+/** \note 8-bits attr goes to uffs_dirent::d_type */
+#define FILE_ATTR_DIR		(1 << 7)	//!< attribute for directory
 #define FILE_ATTR_WRITE		(1 << 0)	//!< writable
 
 

@@ -40,6 +40,7 @@
 #include "uffs/uffs_core.h"
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs.h"
+#include "uffs/uffs_find.h"
 #include <string.h>
 
 
@@ -59,8 +60,8 @@ struct uffs_dirent {
 /**
  * \brief POSIX DIR
  */
-typedef uffs_dirSt {
-    uffs_ObjectSt   *obj;				/* dir object */
+typedef struct uffs_dirSt {
+    struct uffs_ObjectSt   *obj;		/* dir object */
     struct uffs_FindInfoSt f;			/* find info */
     struct uffs_ObjectInfoSt info;		/* object info */
     struct uffs_dirent dirent;			/* dir entry */
@@ -111,12 +112,12 @@ int uffs_closedir(uffs_DIR *dirp);
 uffs_DIR * uffs_opendir(const char *path);
 struct uffs_dirent * uffs_readdir(uffs_DIR *dirp);
 
-int uffs_readdir_r(uffs_DIR *restrict, struct uffs_dirent *restrict,
-                   struct uffs_dirent **restrict);
 void uffs_rewinddir(uffs_DIR *dirp);
 
+#if 0
 void uffs_seekdir(uffs_DIR *dirp, long loc);
 long uffs_telldir(uffs_DIR *dirp);
+#endif
 
 int uffs_get_error(void);
 int uffs_set_error(int err);

@@ -76,6 +76,11 @@ static int _object_data[sizeof(uffs_Object) * MAX_OBJECT_HANDLE / sizeof(int)];
 static uffs_Pool _object_pool;
 
 
+uffs_Pool * uffs_GetObjectPool(void)
+{
+	return &_object_pool;
+}
+
 /**
  * initialise object buffers, called by UFFS internal
  */
@@ -1540,7 +1545,7 @@ URET uffs_RenameObject(const char *old_name, const char *new_name, int *err)
 
 	if (obj == NULL || new_obj == NULL) {
 		if (err) 
-			*err = UEINVAL
+			*err = UEINVAL;
 		goto ext;
 	}
 
@@ -1594,7 +1599,7 @@ URET uffs_RenameObject(const char *old_name, const char *new_name, int *err)
 	else {
 		ret = uffs_MoveObjectEx(obj, new_obj->parent, new_obj->name, new_obj->name_len);
 		if (ret == U_FAIL && err)
-			err = obj->err;
+			*err = obj->err;
 	}
 
 	uffs_CloseObject(obj);

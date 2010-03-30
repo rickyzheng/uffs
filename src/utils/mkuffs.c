@@ -469,29 +469,22 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (uffs_InitObjectBuf() == U_SUCC) {
-		cli_add_commandset(get_helper_cmds());
-		cli_add_commandset(get_test_cmds());
-		cli_add_commandset(basic_cmdset);
-		if (conf_command_line_mode) {
-			if (conf_exec_script) {
-				exec_script();
-			}
-			cliMain();
+	cli_add_commandset(get_helper_cmds());
+	cli_add_commandset(get_test_cmds());
+	cli_add_commandset(basic_cmdset);
+	if (conf_command_line_mode) {
+		if (conf_exec_script) {
+			exec_script();
 		}
-		else {
-			if (conf_exec_script) {
-				exec_script();
-			}
-			else {
-				cliMain();
-			}
-		}
-
-		uffs_ReleaseObjectBuf();
+		cliMain();
 	}
 	else {
-		printf("Fail to init Object buffer.\n");
+		if (conf_exec_script) {
+			exec_script();
+		}
+		else {
+			cliMain();
+		}
 	}
 
 	release_uffs_fs();
