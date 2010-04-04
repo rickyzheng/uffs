@@ -307,7 +307,6 @@ static int do_stat(uffs_Object *obj, struct uffs_stat *buf)
 	int err = 0;
 
 	if (uffs_GetObjectInfo(obj, &info, &err) == U_FAIL) {
-		uffs_set_error(-err);
 		ret = -1;
 	}
 	else {
@@ -326,6 +325,7 @@ static int do_stat(uffs_Object *obj, struct uffs_stat *buf)
 		buf->st_ctime = info.info.create_time;
 	}
 
+	uffs_set_error(-err);
 	return ret;
 }
 
@@ -333,6 +333,7 @@ int uffs_stat(const char *filename, struct uffs_stat *buf)
 {
 	uffs_Object *obj;
 	int ret = 0;
+	int err = 0;
 
 	obj = uffs_GetObject();
 	if (obj) {
@@ -341,16 +342,17 @@ int uffs_stat(const char *filename, struct uffs_stat *buf)
 			uffs_CloseObject(obj);
 		}
 		else {
-			uffs_set_error(-uffs_GetObjectErr(obj));
+			err = uffs_GetObjectErr(obj);
 			ret = -1;
 		}
 		uffs_PutObject(obj);
 	}
 	else {
-		uffs_set_error(-UENOMEM);
+		err = UENOMEM;
 		ret = -1;
 	}
 
+	uffs_set_error(-err);
 	return ret;
 }
 
@@ -385,6 +387,7 @@ int uffs_closedir(uffs_DIR *dirp)
 uffs_DIR * uffs_opendir(const char *path)
 {
 	int err = 0;
+	uffs_DIR *ret = NULL;
 	uffs_DIR *dirp = GetDirEntry();
 
 	if (dirp) {
@@ -392,28 +395,29 @@ uffs_DIR * uffs_opendir(const char *path)
 		if (dirp->obj) {
 			if (uffs_OpenObject(dirp->obj, path, UO_RDONLY | UO_DIR) == U_SUCC) {
 				if (uffs_FindObjectOpen(&dirp->f, dirp->obj) == U_SUCC) {
-					return dirp;
+					ret = dirp;
 				}
 				else {
 					uffs_CloseObject(dirp->obj);
 				}
 			}
 			else {
-				uffs_set_error(-uffs_GetObjectErr(dirp->obj));
+				err = uffs_GetObjectErr(dirp->obj);
 			}
 			uffs_PutObject(dirp->obj);
 			dirp->obj = NULL;
 		}
 		else {
-			uffs_set_error(-UEMFILE);
+			err = UEMFILE;
 		}
 		PutDirEntry(dirp);
 	}
 	else {
-		uffs_set_error(-UEMFILE);
+		err = UEMFILE;
 	}
 
-	return NULL;
+	uffs_set_error(-err);
+	return ret;
 }
 
 struct uffs_dirent * uffs_readdir(uffs_DIR *dirp)
