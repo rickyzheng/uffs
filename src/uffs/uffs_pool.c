@@ -325,4 +325,19 @@ void * uffs_PoolFindNextAllocated(uffs_Pool *pool, void *from)
 	return uffs_PoolVerify(pool, p) ? p : NULL ;
 }
 
+/**
+ * \brief get free memory block count
+ */
+int uffs_PoolGetFreeCount(uffs_Pool *pool)
+{
+	int count = 0;
+	uffs_PoolEntry *e;
 
+	e = pool->free_list;
+	while (e) {
+		count++;
+		e = e->next;
+	}
+
+	return count;
+}

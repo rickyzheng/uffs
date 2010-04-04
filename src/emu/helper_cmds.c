@@ -83,9 +83,8 @@ BOOL cmdFormat(const char *tail)
 
 BOOL cmdMkf(const char *tail)
 {
-	uffs_Object *f;
+	int fd;
 	const char *name;
-	URET ret;
 	int oflags = UO_RDWR | UO_CREATE;
 
 	if (tail == NULL) {
@@ -93,33 +92,21 @@ BOOL cmdMkf(const char *tail)
 	}
 
 	name = cli_getparam(tail, NULL);
-	
-	f = uffs_GetObject();
-	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
-		return TRUE;
+	fd = uffs_open(name, oflags);
+	if (fd < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Create %s fail, err: %d", name, uffs_get_error());
 	}
-
-	ret = uffs_CreateObject(f, name, oflags);
-	if (ret == U_FAIL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Create %s fail, err: %d", name, f->err);
-		uffs_PutObject(f);
-		return TRUE;
+	else {
+		uffs_Perror(UFFS_ERR_NORMAL, "Create %s succ.", name);
+		uffs_close(fd);
 	}
-	
-	uffs_Perror(UFFS_ERR_NORMAL, "Create %s succ.", name);
-	uffs_CloseObject(f);
-	uffs_PutObject(f);
 	
 	return TRUE;
 }
 
 BOOL cmdMkdir(const char *tail)
 {
-	uffs_Object *f;
 	const char *name;
-	URET ret;
-	int oflags = UO_RDWR | UO_CREATE | UO_DIR;
 
 	if (tail == NULL) {
 		return FALSE;
@@ -127,23 +114,12 @@ BOOL cmdMkdir(const char *tail)
 
 	name = cli_getparam(tail, NULL);
 	
-	f = uffs_GetObject();
-	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
-		return TRUE;
+	if (uffs_mkdir(name) < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Create %s fail, err: %d", name, uffs_get_error());
 	}
-
-	ret = uffs_CreateObject(f, name, oflags);
-	if (ret == U_FAIL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Create %s fail, err: %d", name, f->err);
-		uffs_PutObject(f);
-		return TRUE;
-	}
-	
-	uffs_Perror(UFFS_ERR_NORMAL, "Create %s succ.", name);
-	uffs_CloseObject(f);
-	uffs_PutObject(f);
-	
+	else {
+		uffs_Perror(UFFS_ERR_NORMAL, "Create %s succ.", name);
+	}	
 	return TRUE;
 }
 
@@ -228,14 +204,24 @@ BOOL cmdLs(const char *tail)
 BOOL cmdRm(const char *tail)
 {
 	const char *name = NULL;
+	int ret = 0;
+
 	if (tail == NULL) return FALSE;
+
 	name = cli_getparam(tail, NULL);
-	if (uffs_DeleteObject(name, NULL) == U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Delete '%s' succ.", name);
+
+	if (name[strlen(name)-1] == '/') {
+		ret = uffs_rmdir(name);
 	}
 	else {
-		uffs_Perror(UFFS_ERR_NORMAL, "Delete '%s' fail!", name);
+		ret = uffs_remove(name);
 	}
+
+	if (ret == 0)
+			uffs_Perror(UFFS_ERR_NORMAL, "Delete '%s' succ.", name);
+	else
+		uffs_Perror(UFFS_ERR_NORMAL, "Delete '%s' fail!", name);
+
 	return TRUE;
 }
 
@@ -249,7 +235,8 @@ BOOL cmdRen(const char *tail)
 	oldname = cli_getparam(tail, &newname);
 	if (newname == NULL)
 		return FALSE;
-	if (uffs_RenameObject(oldname, newname, NULL) == U_SUCC) {
+
+	if (uffs_rename(oldname, newname) == 0) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Rename from '%s' to '%s' succ.", oldname, newname);
 	}
 	else {
@@ -284,6 +271,9 @@ BOOL cmdSt(const char *tail)
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxDirtyPagesPerBlock: %d" TENDSTR, MAX_DIRTY_PAGES_IN_A_BLOCK);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxPathLength:         %d" TENDSTR, MAX_PATH_LENGTH);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxObjectHandles:      %d" TENDSTR, MAX_OBJECT_HANDLE);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "FreeObjectHandles:     %d" TENDSTR, uffs_PoolGetFreeCount(uffs_GetObjectPool()));
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxDirHandles:         %d" TENDSTR, MAX_DIR_HANDLE);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "FreeDirHandles:        %d" TENDSTR, uffs_PoolGetFreeCount(uffs_GetDirEntryBufPool()));
 
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "----------- statistics for '%s' -----------" TENDSTR, mount);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Block Erased:          %d" TENDSTR, s->block_erase_count);
@@ -326,7 +316,7 @@ BOOL cmdCp(const char *tail)
 	const char *src;
 	const char *des;
 	char buf[100];
-	uffs_Object *f1 = NULL, *f2 = NULL;
+	int fd1 = -1, fd2 = -1;
 	int len;
 	BOOL src_local = FALSE, des_local = FALSE;
 	FILE *fp1 = NULL, *fp2 = NULL;
@@ -347,44 +337,39 @@ BOOL cmdCp(const char *tail)
 		des += 2;
 		des_local = TRUE;
 	}
-	f1 = uffs_GetObject();
-	f2 = uffs_GetObject();
-
-	if (!f1 || !f2) 
-		goto fail_2;
 	
 	if (src_local) {
 		if ((fp1 = fopen(src, "rb")) == NULL) {
 			uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s for copy.", src);
-			goto fail_1;
+			goto fail_ext;
 		}
 	}
 	else {
-		if (uffs_OpenObject(f1, src, UO_RDONLY) != U_SUCC) {
+		if ((fd1 = uffs_open(src, UO_RDONLY)) < 0) {
 			uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s for copy.", src);
-			goto fail_1;
+			goto fail_ext;
 		}
 	}
 
 	if (des_local) {
 		if ((fp2 = fopen(des, "wb")) == NULL) {
 			uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s for copy.", des);
-			goto fail_1;
+			goto fail_ext;
 		}
 	}
 	else {
-		if (uffs_OpenObject(f2, des, UO_RDWR|UO_CREATE|UO_TRUNC) != U_SUCC) {
+		if ((fd2 = uffs_open(des, UO_RDWR|UO_CREATE|UO_TRUNC)) < 0) {
 			uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s for copy.", des);
-			goto fail_1;
+			goto fail_ext;
 		}
 	}
 
-	while (	(src_local ? (feof(fp1) == 0) : (uffs_EndOfFile(f1) == 0)) ) {
+	while (	(src_local ? (feof(fp1) == 0) : (uffs_eof(fd1) == 0)) ) {
 		if (src_local) {
 			len = fread(buf, 1, sizeof(buf), fp1);
 		}
 		else {
-			len = uffs_ReadObject(f1, buf, sizeof(buf));
+			len = uffs_read(fd1, buf, sizeof(buf));
 		}
 		if (len == 0) 
 			break;
@@ -399,34 +384,29 @@ BOOL cmdCp(const char *tail)
 			}
 		}
 		else {
-			if (uffs_WriteObject(f2, buf, len) != len) {
+			if (uffs_write(fd2, buf, len) != len) {
 				uffs_Perror(UFFS_ERR_NORMAL, "write file %s fail ? ", des);
 				break;
 			}
 		}
 	}
 
-fail_1:
-	uffs_CloseObject(f1);
-	uffs_CloseObject(f2);
+fail_ext:
+	if (fd1 > 0)
+		uffs_close(fd1);
+	if (fd2 > 0)
+		uffs_close(fd2);
 	if (fp1) 
 		fclose(fp1);
 	if (fp2)
 		fclose(fp2);
 
-fail_2:
-	if (f1) {
-		uffs_PutObject(f1);
-	}
-	if (f2) {
-		uffs_PutObject(f2);
-	}
 	return TRUE;
 }
 
 BOOL cmdCat(const char *tail)
 {
-	uffs_Object *obj;
+	int fd;
 	const char *name;
 	const char *next;
 	char buf[100];
@@ -437,12 +417,7 @@ BOOL cmdCat(const char *tail)
 
 	name = cli_getparam(tail, &next);
 
-	obj = uffs_GetObject();
-
-	if (!obj) 
-		return FALSE;
-
-	if (uffs_OpenObject(obj, name, UO_RDONLY) == U_FAIL) {
+	if ((fd = uffs_open(name, UO_RDONLY)) < 0) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s", name);
 		goto fail;
 	}
@@ -453,12 +428,12 @@ BOOL cmdCat(const char *tail)
 	}
 
 	if (start >= 0)
-		uffs_SeekObject(obj, start, USEEK_SET);
+		uffs_seek(fd, start, USEEK_SET);
 	else
-		uffs_SeekObject(obj, -start, USEEK_END);
+		uffs_seek(fd, -start, USEEK_END);
 
-	while (uffs_EndOfFile(obj) == 0) {
-		len = uffs_ReadObject(obj, buf, sizeof(buf) - 1);
+	while (uffs_eof(fd) == 0) {
+		len = uffs_read(fd, buf, sizeof(buf) - 1);
 		if (len == 0) 
 			break;
 		if (len > 0) {
@@ -474,10 +449,9 @@ BOOL cmdCat(const char *tail)
 		}
 	}
 	uffs_Perror(UFFS_ERR_NORMAL, "");
-	uffs_CloseObject(obj);
+	uffs_close(fd);
 
 fail:
-	uffs_PutObject(obj);
 
 	return TRUE;
 }
@@ -485,25 +459,19 @@ fail:
 
 static URET test_verify_file(const char *file_name)
 {
-	uffs_Object *f = NULL;
+	int fd;
 	int ret = U_FAIL;
 	unsigned char buf[100];
 	int i, pos, len;
 
-	f = uffs_GetObject();
-	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
-		goto test_exit;
-	}
-
-	if (uffs_OpenObject(f, file_name, UO_RDONLY) != U_SUCC) {
+	if ((fd = uffs_open(file_name, UO_RDONLY)) < 0) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Can't open file %s for read.", file_name);
 		goto test_exit;
 	}
 
 	pos = 0;
-	while (!uffs_EndOfFile(f)) {
-		len = uffs_ReadObject(f, buf, sizeof(buf));
+	while (!uffs_eof(fd)) {
+		len = uffs_read(fd, buf, sizeof(buf));
 		if (len <= 0)
 			goto test_failed;
 		for (i = 0; i < len; i++) {
@@ -515,7 +483,7 @@ static URET test_verify_file(const char *file_name)
 		}
 	}
 
-	if (pos != uffs_SeekObject(f, 0, USEEK_END)) {
+	if (pos != uffs_seek(fd, 0, USEEK_END)) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Verify file %s failed. invalid file length.", file_name);
 		goto test_failed;
 	}
@@ -524,15 +492,14 @@ static URET test_verify_file(const char *file_name)
 	ret = U_SUCC;
 
 test_failed:
-	uffs_CloseObject(f);
+	uffs_close(fd);
 
 test_exit:
-	uffs_PutObject(f);
 
 	return ret;
 }
 
-static URET do_write_test_file(uffs_Object *f, int size)
+static URET do_write_test_file(int fd, int size)
 {
 	long pos;
 	unsigned char buf[100];
@@ -540,13 +507,13 @@ static URET do_write_test_file(uffs_Object *f, int size)
 	int i, len;
 
 	while (size > 0) {
-		pos = uffs_SeekObject(f, 0, USEEK_CUR);
+		pos = uffs_seek(fd, 0, USEEK_CUR);
 		len = (size > sizeof(buf) ? sizeof(buf) : size);
 		data = pos & 0xFF;
 		for (i = 0; i < len; i++, data++) {
 			buf[i] = data;
 		}
-		if (uffs_WriteObject(f, buf, len) != len) {
+		if (uffs_write(fd, buf, len) != len) {
 			uffs_Perror(UFFS_ERR_NORMAL, "Write file failed, size %d at %d", len, pos);
 			return U_FAIL;
 		}
@@ -559,33 +526,25 @@ static URET do_write_test_file(uffs_Object *f, int size)
 static URET test_append_file(const char *file_name, int size)
 {
 	int ret = U_FAIL;
-	uffs_Object *f = NULL;
+	int fd = -1;
 
-	f = uffs_GetObject();
-	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
-		goto test_exit;
-	}
-
-	if (uffs_OpenObject(f, file_name, UO_RDWR|UO_APPEND|UO_CREATE) != U_SUCC) {
+	if ((fd = uffs_open(file_name, UO_RDWR|UO_APPEND|UO_CREATE)) < 0) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Can't open file %s for append.", file_name);
 		goto test_exit;
 	}
 
-	uffs_SeekObject(f, 0, USEEK_END);
+	uffs_seek(fd, 0, USEEK_END);
 
-	if (do_write_test_file(f, size) == U_FAIL) {
+	if (do_write_test_file(fd, size) == U_FAIL) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Write file %s failed.", file_name);
 		goto test_failed;
 	}
 	ret = U_SUCC;
 
 test_failed:
-	uffs_CloseObject(f);
+	uffs_close(fd);
 
 test_exit:
-	if (f) 
-		uffs_PutObject(f);
 
 	return ret;
 }
@@ -593,36 +552,28 @@ test_exit:
 static URET test_write_file(const char *file_name, int pos, int size)
 {
 	int ret = U_FAIL;
-	uffs_Object *f = NULL;
+	int fd = -1;
 
-	f = uffs_GetObject();
-	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
-		goto test_exit;
-	}
-
-	if (uffs_OpenObject(f, file_name, UO_RDWR|UO_CREATE) != U_SUCC) {
+	if ((fd = uffs_open(file_name, UO_RDWR|UO_CREATE)) < 0) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Can't open file %s for write.", file_name);
 		goto test_exit;
 	}
 
-	if (uffs_SeekObject(f, pos, USEEK_SET) != pos) {
+	if (uffs_seek(fd, pos, USEEK_SET) != pos) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Can't seek file %s at pos %d", file_name, pos);
 		goto test_failed;
 	}
 
-	if (do_write_test_file(f, size) == U_FAIL) {
+	if (do_write_test_file(fd, size) == U_FAIL) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Write file %s failed.", file_name);
 		goto test_failed;
 	}
 	ret = U_SUCC;
 
 test_failed:
-	uffs_CloseObject(f);
+	uffs_close(fd);
 
 test_exit:
-	if (f) 
-		uffs_PutObject(f);
 
 	return ret;
 }
@@ -630,48 +581,42 @@ test_exit:
 
 static URET DoTest2(void)
 {
-	uffs_Object *f;
+	int fd = -1;
 	URET ret = U_FAIL;
 	char buf[100], buf_1[100];
 
-	f = uffs_GetObject();
-	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
-		goto exit_test;
-	}
-
-	ret = uffs_OpenObject(f, "/abc/", UO_RDWR|UO_DIR);
-	if (ret != U_SUCC) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Can't open dir abc, err: %d", f->err);
+	fd = uffs_open("/abc/", UO_RDWR|UO_DIR);
+	if (fd < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open dir abc, err: %d", uffs_get_error());
 		uffs_Perror(UFFS_ERR_NORMAL, "Try to create a new one...");
-		ret = uffs_OpenObject(f, "/abc/", UO_RDWR|UO_CREATE|UO_DIR);
-		if (ret != U_SUCC) {
+		fd = uffs_open("/abc/", UO_RDWR|UO_CREATE|UO_DIR);
+		if (fd < 0) {
 			uffs_Perror(UFFS_ERR_NORMAL, "Can't create new dir /abc/");
 			goto exit_test;
 		}
 		else {
-			uffs_CloseObject(f);
+			uffs_close(fd);
 		}
 	}
 	else {
-		uffs_CloseObject(f);
+		uffs_close(fd);
 	}
 	
-	ret = uffs_OpenObject(f, "/abc/test.txt", UO_RDWR|UO_CREATE);
-	if (ret != U_SUCC) {
+	fd = uffs_open("/abc/test.txt", UO_RDWR|UO_CREATE);
+	if (fd < 0) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Can't open /abc/test.txt");
 		goto exit_test;
 	}
 
 	sprintf(buf, "123456789ABCDEF");
-	ret = uffs_WriteObject(f, buf, strlen(buf));
+	ret = uffs_write(fd, buf, strlen(buf));
 	uffs_Perror(UFFS_ERR_NORMAL, "write %d bytes to file, content: %s", ret, buf);
 
-	ret = uffs_SeekObject(f, 3, USEEK_SET);
+	ret = uffs_seek(fd, 3, USEEK_SET);
 	uffs_Perror(UFFS_ERR_NORMAL, "new file position: %d", ret);
 
 	memset(buf_1, 0, sizeof(buf_1));
-	ret = uffs_ReadObject(f, buf_1, 5);
+	ret = uffs_read(fd, buf_1, 5);
 	uffs_Perror(UFFS_ERR_NORMAL, "read %d bytes, content: %s", ret, buf_1);
 
 	if (memcmp(buf + 3, buf_1, 5) != 0) {
@@ -681,12 +626,9 @@ static URET DoTest2(void)
 		ret = U_SUCC;
 	}
 
-	uffs_CloseObject(f);
+	uffs_close(fd);
 
 exit_test:
-	if (f) {
-		uffs_PutObject(f);
-	}
 
 	return ret;
 }
@@ -694,7 +636,7 @@ exit_test:
 /* test create file, write file and read back */
 BOOL cmdTest1(const char *tail)
 {
-	uffs_Object *f;
+	int fd;
 	URET ret;
 	char buf[100];
 	const char *name;
@@ -705,33 +647,26 @@ BOOL cmdTest1(const char *tail)
 
 	name = cli_getparam(tail, NULL);
 
-	f = uffs_GetObject();
-	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
-		return TRUE;	
-	}
-
-	ret = uffs_OpenObject(f, name, UO_RDWR|UO_CREATE|UO_TRUNC);
-	if (ret != U_SUCC) {
+	fd = uffs_open(name, UO_RDWR|UO_CREATE|UO_TRUNC);
+	if (fd < 0) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s", name);
 		goto fail;
 	}
 
 	sprintf(buf, "123456789ABCDEF");
-	ret = uffs_WriteObject(f, buf, strlen(buf));
+	ret = uffs_write(fd, buf, strlen(buf));
 	uffs_Perror(UFFS_ERR_NORMAL, "write %d bytes to file, content: %s", ret, buf);
 
-	ret = uffs_SeekObject(f, 3, USEEK_SET);
+	ret = uffs_seek(fd, 3, USEEK_SET);
 	uffs_Perror(UFFS_ERR_NORMAL, "new file position: %d", ret);
 
 	memset(buf, 0, sizeof(buf));
-	ret = uffs_ReadObject(f, buf, 5);
+	ret = uffs_read(fd, buf, 5);
 	uffs_Perror(UFFS_ERR_NORMAL, "read %d bytes, content: %s", ret, buf);
 
-	uffs_CloseObject(f);
+	uffs_close(fd);
 
 fail:
-	uffs_PutObject(f);
 
 	return TRUE;
 }
@@ -791,51 +726,44 @@ BOOL cmdTest3(const char *tail)
 /* open two files and test write */
 BOOL cmdTest4(const char *tail)
 {
-	uffs_Object *f1 = NULL, *f2 = NULL;
-
-	f1 = uffs_GetObject();
-	f2 = uffs_GetObject();
-
-	if (f1 == NULL || f2 == NULL)
-		goto fail_exit;
+	int fd1 = -1, fd2 = -1;
 
 	uffs_Perror(UFFS_ERR_NORMAL, "open /a ...");
-	if (uffs_OpenObject(f1, "/a", UO_RDWR | UO_CREATE) != U_SUCC) {
+	if ((fd1 = uffs_open("/a", UO_RDWR | UO_CREATE)) < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open /a");
 		goto fail_exit;
 	}
 
 	uffs_Perror(UFFS_ERR_NORMAL, "open /b ...");
-	if (uffs_OpenObject(f2, "/b", UO_RDWR | UO_CREATE) != U_SUCC) {
-		uffs_CloseObject(f1);
+	if ((fd2 = uffs_open("/b", UO_RDWR | UO_CREATE)) < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open /b");
+		uffs_close(fd1);
 		goto fail_exit;
 	}
 
 	uffs_Perror(UFFS_ERR_NORMAL, "write (1) to /a ...");
-	uffs_WriteObject(f1, "Hello,", 6);
+	uffs_write(fd1, "Hello,", 6);
 	uffs_Perror(UFFS_ERR_NORMAL, "write (1) to /b ...");
-	uffs_WriteObject(f2, "Hello,", 6);
+	uffs_write(fd2, "Hello,", 6);
 	uffs_Perror(UFFS_ERR_NORMAL, "write (2) to /a ...");
-	uffs_WriteObject(f1, "World.", 6);
+	uffs_write(fd1, "World.", 6);
 	uffs_Perror(UFFS_ERR_NORMAL, "write (2) to /b ...");
-	uffs_WriteObject(f2, "World.", 6);
+	uffs_write(fd2, "World.", 6);
 	uffs_Perror(UFFS_ERR_NORMAL, "close /a ...");
-	uffs_CloseObject(f1);
+	uffs_close(fd1);
 	uffs_Perror(UFFS_ERR_NORMAL, "close /b ...");
-	uffs_CloseObject(f2);
+	uffs_close(fd2);
+
+	return TRUE;
 
 fail_exit:
-	if (f1)
-		uffs_PutObject(f1);
-	if (f2)
-		uffs_PutObject(f2);
-
 	return TRUE;
 }
 
 /* test appending file */
 BOOL cmdTest5(const char *tail)
 {
-	uffs_Object *f;
+	int fd = -1;
 	URET ret;
 	char buf[100];
 	const char *name;
@@ -846,20 +774,14 @@ BOOL cmdTest5(const char *tail)
 
 	name = cli_getparam(tail, NULL);
 
-	f = uffs_GetObject();
-	if (f == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Fail to get object.");
-		return TRUE;	
-	}
-
-	ret = uffs_OpenObject(f, name, UO_RDWR|UO_APPEND);
-	if (ret != U_SUCC) {
+	fd = uffs_open(name, UO_RDWR|UO_APPEND);
+	if (fd < 0) {
 		uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s", name);
 		goto fail;
 	}
 
 	sprintf(buf, "append test...");
-	ret = uffs_WriteObject(f, buf, strlen(buf));
+	ret = uffs_write(fd, buf, strlen(buf));
 	if (ret != strlen(buf)) {
 		uffs_Perror(UFFS_ERR_NORMAL, "write file failed, %d/%d", ret, strlen(buf));
 	}
@@ -867,10 +789,9 @@ BOOL cmdTest5(const char *tail)
 		uffs_Perror(UFFS_ERR_NORMAL, "write %d bytes to file, content: %s", ret, buf);
 	}
 
-	uffs_CloseObject(f);
+	uffs_close(fd);
 
 fail:
-	uffs_PutObject(f);
 
 	return TRUE;
 }

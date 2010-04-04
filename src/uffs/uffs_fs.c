@@ -1365,6 +1365,10 @@ ext:
 
 /**
  * \brief delete uffs object
+ *
+ * \param[in] name full name of object
+ * \param[out] err return error code
+ *
  * \return U_SUCC if object is deleted successfully. 
  *	return U_FAIL if error happen, error code is set to *err.
  */

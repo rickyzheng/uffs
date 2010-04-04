@@ -89,6 +89,7 @@ struct uffs_stat {
 
 URET uffs_InitDirEntryBuf(void);
 URET uffs_ReleaseDirEntryBuf(void);
+uffs_Pool * uffs_GetDirEntryBufPool(void);
 
 /* POSIX compliant file system APIs */
 
@@ -103,6 +104,9 @@ int uffs_flush(int fd);
 int uffs_rename(const char *old_name, const char *new_name);
 int uffs_remove(const char *name);
 int uffs_truncate(int fd, long remain);
+
+int uffs_mkdir(const char *name, ...);
+int uffs_rmdir(const char *name);
 
 int uffs_stat(const char *filename, struct uffs_stat *buf);
 int uffs_lstat(const char *filename, struct uffs_stat *buf);

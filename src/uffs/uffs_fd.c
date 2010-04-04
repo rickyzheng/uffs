@@ -97,6 +97,11 @@ URET uffs_ReleaseDirEntryBuf(void)
 	return uffs_PoolRelease(&_dir_pool);
 }
 
+uffs_Pool * uffs_GetDirEntryBufPool(void)
+{
+	return &_dir_pool;
+}
+
 static uffs_DIR * GetDirEntry(void)
 {
 	uffs_DIR *dirp = (uffs_DIR *) uffs_PoolGet(&_dir_pool);
@@ -254,25 +259,32 @@ int uffs_flush(int fd)
 int uffs_rename(const char *old_name, const char *new_name)
 {
 	int err = 0;
-	if (uffs_RenameObject(old_name, new_name, &err) == U_SUCC) {
-		return 0;
-	}
-	else {
-		uffs_set_error(-err);
-		return -1;
-	}
+	int ret = 0;
+
+	ret = (uffs_RenameObject(old_name, new_name, &err) == U_SUCC) ? 0 : -1;
+	uffs_set_error(-err);
+
+	return ret;
 }
 
 int uffs_remove(const char *name)
 {
 	int err = 0;
-	if (uffs_DeleteObject(name, &err) == U_SUCC) {
-		return 0;
+	int ret = 0;
+
+	if (name[strlen(name) - 1] == '/') {
+		err = UENOENT;
+		ret = -1;
+	}
+	else if (uffs_DeleteObject(name, &err) == U_SUCC) {
+		ret = 0;
 	}
 	else {
-		uffs_set_error(-err);
-		return -1;
+		ret = -1;
 	}
+
+	uffs_set_error(-err);
+	return ret;
 }
 
 int uffs_truncate(int fd, long remain)
@@ -372,6 +384,7 @@ int uffs_closedir(uffs_DIR *dirp)
 
 uffs_DIR * uffs_opendir(const char *path)
 {
+	int err = 0;
 	uffs_DIR *dirp = GetDirEntry();
 
 	if (dirp) {
@@ -431,6 +444,61 @@ void uffs_rewinddir(uffs_DIR *dirp)
 
 	uffs_FindObjectRewind(&dirp->f);
 }
+
+
+int uffs_mkdir(const char *name, ...)
+{
+	uffs_Object *obj;
+	int ret = 0;
+	int err = 0;
+
+	if (name[strlen(name) - 1] != '/') {
+		err = UEINVAL;
+		ret = -1;
+	}
+	else {
+		obj = uffs_GetObject();
+		if (obj) {
+			if (uffs_CreateObject(obj, name, UO_CREATE|UO_DIR) != U_SUCC) {
+				err = obj->err;
+				ret = -1;
+			}
+			else {
+				uffs_CloseObject(obj);
+				ret = 0;
+			}
+			uffs_PutObject(obj);
+		}
+		else {
+			err = UEMFILE;
+			ret = -1;
+		}
+	}
+
+	uffs_set_error(-err);
+	return ret;
+}
+
+int uffs_rmdir(const char *name)
+{
+	int err = 0;
+	int ret = 0;
+
+	if (name[strlen(name) - 1] != '/') {
+		err = UENOENT;
+		ret = -1;
+	}
+	else if (uffs_DeleteObject(name, &err) == U_SUCC) {
+		ret = 0;
+	}
+	else {
+		ret = -1;
+	}
+
+	uffs_set_error(-err);
+	return ret;
+}
+
 
 #if 0
 void uffs_seekdir(uffs_DIR *dirp, long loc)

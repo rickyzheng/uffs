@@ -83,6 +83,8 @@ UBOOL uffs_PoolCheckFreeList(uffs_Pool *pool, void *p);
 
 void * uffs_PoolFindNextAllocated(uffs_Pool *pool, void *from);
 
+int uffs_PoolGetFreeCount(uffs_Pool *pool);
+
 #ifdef __cplusplus
 }
 #endif
