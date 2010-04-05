@@ -152,6 +152,17 @@ UFFS 1.3.0:
   - reduced buffer flushes by grouping buffers
   - structual improvments and bug fixes
   
+UFFS v1.3.1:
+  - Tidy up three memory allocators: static, native and system.
+  - Fix bugs in flash interface example.
+  - Fix memory allocation bugs when using static memory allocator.
+  - Add flash driver interface 'WriteFullPage()'.
+  - Fix compilation errors for BlackFin DSP compiler.
+
+UFFS v1.3.2:
+  - Add POSIX like file system APIs.
+  - Bug fixes.
+  
 LICENCE
 -------
   From v1.2.1, UFFS is released under a midified GNU GPLv2. (the same as eCos Licence)
@@ -197,3 +208,4 @@ Special thanks for your contributions to:
 * Sergey <s_sazonov@m2m-t.ru>
 * Chris Conrad <chris.conrad@halliburton.com>
 * Vladimir <decoder@rambler.ru>
+* Thien Pham <thienpham2008@yahoo.com>
