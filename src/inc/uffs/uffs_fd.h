@@ -43,6 +43,28 @@
 #include "uffs/uffs_find.h"
 #include <string.h>
 
+/**
+ * \brief definitions for uffs_stat::st_mode
+ */
+#define	US_IFMT		0xF000	/* file type make */
+#define	US_IFREG	0x8000	/* regular */
+#define	US_IFLNK	0xA000	/* symbolic link */
+#define	US_IFDIR	0x4000	/* directory */
+#define	US_IREAD	00400	/* read permission */
+#define	US_IWRITE	00200	/* write permission */
+
+#define	US_IRWXU	00700	/* RWX	owner */
+#define	US_IRUSR	00400	/* R	owner */
+#define	US_IWUSR	00200	/* W	owner */
+#define	US_IXUSR	00100	/* X	owner */
+#define	US_IRWXG	00070	/* RWX	group */
+#define	US_IRGRP	00040	/* R	group */
+#define	US_IWGRP	00020	/* W	group */
+#define	US_IXGRP	00010	/* X	group */
+#define	US_IRWXO	00007	/* RWX	other */
+#define	US_IROTH	00004	/* R	other */
+#define	US_IWOTH	00002	/* W	other */
+#define	US_IXOTH	00001	/* X	other */
 
 /**
  * \brief POSIX dirent
@@ -108,8 +130,8 @@ int uffs_truncate(int fd, long remain);
 int uffs_mkdir(const char *name, ...);
 int uffs_rmdir(const char *name);
 
-int uffs_stat(const char *filename, struct uffs_stat *buf);
-int uffs_lstat(const char *filename, struct uffs_stat *buf);
+int uffs_stat(const char *name, struct uffs_stat *buf);
+int uffs_lstat(const char *name, struct uffs_stat *buf);
 int uffs_fstat(int fd, struct uffs_stat *buf);
 
 int uffs_closedir(uffs_DIR *dirp);

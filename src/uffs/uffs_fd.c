@@ -59,7 +59,7 @@
 							} while(0)
 
 #define CHK_DIR(dirp, ret)	do { \
-								if (uffs_PoolVerify(&_dir_pool, dirp) == U_FALSE || \
+								if (uffs_PoolVerify(&_dir_pool, (dirp)) == U_FALSE || \
 										uffs_PoolCheckFreeList(&_dir_pool, (dirp)) == U_TRUE) { \
 									uffs_set_error(-UEBADF); \
 									return (ret); \
@@ -67,7 +67,7 @@
 							} while(0)
 
 #define CHK_DIR_VOID(dirp)	do { \
-								if (uffs_PoolVerify(&_dir_pool, dirp) == U_FALSE || \
+								if (uffs_PoolVerify(&_dir_pool, (dirp)) == U_FALSE || \
 										uffs_PoolCheckFreeList(&_dir_pool, (dirp)) == U_TRUE) { \
 									uffs_set_error(-UEBADF); \
 									return; \
@@ -312,7 +312,6 @@ static int do_stat(uffs_Object *obj, struct uffs_stat *buf)
 	else {
 		buf->st_dev = obj->dev->dev_num;
 		buf->st_ino = info.serial;
-		buf->st_mode = 0;
 		buf->st_nlink = 0;
 		buf->st_uid = 0;
 		buf->st_gid = 0;
@@ -323,21 +322,28 @@ static int do_stat(uffs_Object *obj, struct uffs_stat *buf)
 		buf->st_atime = info.info.last_modify;
 		buf->st_mtime = info.info.last_modify;
 		buf->st_ctime = info.info.create_time;
+		buf->st_mode = (info.info.attr & FILE_ATTR_DIR ? US_IFDIR : US_IFREG);
+		if (info.info.attr & FILE_ATTR_WRITE)
+			buf->st_mode |= US_IRWXU;
 	}
 
 	uffs_set_error(-err);
 	return ret;
 }
 
-int uffs_stat(const char *filename, struct uffs_stat *buf)
+int uffs_stat(const char *name, struct uffs_stat *buf)
 {
 	uffs_Object *obj;
 	int ret = 0;
 	int err = 0;
+	int oflag = UO_RDONLY;
 
 	obj = uffs_GetObject();
 	if (obj) {
-		if (uffs_OpenObject(obj, filename, UO_RDONLY) == U_SUCC) {
+		if (*name && name[strlen(name) - 1] == '/')
+			oflag |= UO_DIR;
+
+		if (uffs_OpenObject(obj, name, UO_RDONLY) == U_SUCC) {
 			ret = do_stat(obj, buf);
 			uffs_CloseObject(obj);
 		}
@@ -356,9 +362,9 @@ int uffs_stat(const char *filename, struct uffs_stat *buf)
 	return ret;
 }
 
-int uffs_lstat(const char *filename, struct uffs_stat *buf)
+int uffs_lstat(const char *name, struct uffs_stat *buf)
 {
-	return uffs_stat(filename, buf);
+	return uffs_stat(name, buf);
 }
 
 int uffs_fstat(int fd, struct uffs_stat *buf)
@@ -396,6 +402,7 @@ uffs_DIR * uffs_opendir(const char *path)
 			if (uffs_OpenObject(dirp->obj, path, UO_RDONLY | UO_DIR) == U_SUCC) {
 				if (uffs_FindObjectOpen(&dirp->f, dirp->obj) == U_SUCC) {
 					ret = dirp;
+					goto ext;
 				}
 				else {
 					uffs_CloseObject(dirp->obj);
@@ -415,7 +422,7 @@ uffs_DIR * uffs_opendir(const char *path)
 	else {
 		err = UEMFILE;
 	}
-
+ext:
 	uffs_set_error(-err);
 	return ret;
 }
