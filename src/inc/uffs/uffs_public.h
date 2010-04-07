@@ -156,10 +156,10 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj);
 void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const char *errFmt, ...);
 
 #define uffs_Perror(level, fmt, ... ) \
-	uffs_DebugMessage(level, PFX, TENDSTR, fmt, __VA_ARGS__)
+	uffs_DebugMessage(level, PFX, TENDSTR, fmt, ## __VA_ARGS__)
 
-#define uffs_PerrorRaw(level, fmt, ...) \
-	uffs_DebugMessage(level, NULL, NULL, fmt, __VA_ARGS__)
+#define uffs_PerrorRaw(level, fmt, ... ) \
+	uffs_DebugMessage(level, NULL, NULL, fmt, ## __VA_ARGS__)
 
 
 
