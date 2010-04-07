@@ -36,8 +36,8 @@
  * \author Ricky Zheng
  */
 
-#ifndef UFFS_PUBLIC_H
-#define UFFS_PUBLIC_H
+#ifndef _UFFS_PUBLIC_H_
+#define _UFFS_PUBLIC_H_
 
 #include "uffs/uffs_types.h"
 #include "uffs/uffs_config.h"
@@ -239,4 +239,5 @@ URET uffs_InitFlashClass(uffs_Device *dev);
 #ifdef __cplusplus
 }
 #endif
-#endif
+#endif	// _UFFS_PUBLIC_H_
+

@@ -973,7 +973,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 	}
 
 	if (obj->type == UFFS_TYPE_DIR) {
-		uffs_Perror(UFFS_ERR_NOISY, "Can't read from a dir object!");
+		uffs_Perror(UFFS_ERR_NOISY, "Can't read data from a dir object!");
 		obj->err = UEBADF;
 		return 0;
 	}
@@ -1016,7 +1016,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 		if (fdn == 0) {
 			/**
-			 * fdn == 0: this means that the reading range is start from the first block,
+			 * fdn == 0: this means that the reading is start from the first block,
 			 * since the page 0 is for file attr, so we move to the next page ID.
 			 */
 			page_id++;
@@ -1035,7 +1035,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 			uffs_BufPut(dev, buf);
 			break;
 		}
-		size = (remain + pageOfs > buf->data_len ? buf->data_len - pageOfs: remain);
+		size = (remain + pageOfs > buf->data_len ? buf->data_len - pageOfs : remain);
 
 		uffs_BufRead(dev, buf, (u8 *)data + len - remain, pageOfs, size);
 		uffs_BufPut(dev, buf);
@@ -1045,7 +1045,8 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 	obj->pos += (len - remain);
 
-	if (HAVE_BADBLOCK(dev)) uffs_BadBlockRecover(dev);
+	if (HAVE_BADBLOCK(dev)) 
+		uffs_BadBlockRecover(dev);
 
 	uffs_ObjectDevUnLock(obj);
 
@@ -1231,7 +1232,7 @@ static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 r
 	buf->ext_mark |= UFFS_BUF_EXT_MARK_TRUNC_TAIL;
 	uffs_BufPut(dev, buf);
 
-	// invalidatwe the rest page buf
+	// invalidate the rest page buf
 	page_id++;
 	for (; page_id <= max_page_id; page_id++) {
 		buf = uffs_BufFind(dev, parent, serial, page_id);
@@ -1239,7 +1240,7 @@ static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj, u16 fdn, u32 r
 			uffs_BufMarkEmpty(dev, buf);
 	}
 
-	// flush dirty buffer immediately, force block recovery.
+	// flush dirty buffer immediately, forcing block recovery.
 	uffs_BufFlushGroupEx(dev, parent, serial, U_TRUE);
 
 	// unlock the group
@@ -1596,7 +1597,7 @@ URET uffs_RenameObject(const char *old_name, const char *new_name, int *err)
 	}
 
 	if (obj->dev != new_obj->dev) {
-		uffs_Perror(UFFS_ERR_NOISY, "Can't moving object between different mount point");
+		uffs_Perror(UFFS_ERR_NOISY, "Can't move object between different mount point");
 		if (err)
 			*err = UEACCES;
 	}

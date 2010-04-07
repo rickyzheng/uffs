@@ -36,8 +36,8 @@
  * \author Ricky Zheng, Simon Kallweit
  */
 
-#ifndef __UFFS_POOL_H__
-#define __UFFS_POOL_H__
+#ifndef _UFFS_POOL_H_
+#define _UFFS_POOL_H_
 
 
 #include "uffs/uffs_types.h"
@@ -89,4 +89,4 @@ int uffs_PoolGetFreeCount(uffs_Pool *pool);
 }
 #endif
 
-#endif // __UFFS_POOL_H__
+#endif // _UFFS_POOL_H_

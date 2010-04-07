@@ -632,7 +632,7 @@ retry:
 				break;
 			}
 			else if (flash_op_err == UFFS_FLASH_IO_ERR) {
-				uffs_Perror(UFFS_ERR_NORMAL, "I/O error ?", newBlock);
+				uffs_Perror(UFFS_ERR_NORMAL, "writing to block %d page %d, I/O error ?", (int)newBlock, (int)i);
 				break;
 			}
 			else if (buf->ext_mark & UFFS_BUF_EXT_MARK_TRUNC_TAIL) {
