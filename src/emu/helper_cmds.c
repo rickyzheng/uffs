@@ -440,7 +440,7 @@ BOOL cmdCat(const char *tail)
 			if (size == 0 || printed < size) {
 				n = (size == 0 ? len : (size - printed > len ? len : size - printed));
 				buf[n] = 0;
-				uffs_Perror(UFFS_ERR_NORMAL, "%s", buf);
+				uffs_PerrorRaw(UFFS_ERR_NORMAL, "%s", buf);
 				printed += n;
 			}
 			else {
@@ -448,7 +448,7 @@ BOOL cmdCat(const char *tail)
 			}
 		}
 	}
-	uffs_Perror(UFFS_ERR_NORMAL, "");
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, TENDSTR);
 	uffs_close(fd);
 
 fail:
