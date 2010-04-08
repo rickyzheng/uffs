@@ -244,6 +244,7 @@ BOOL cmdRen(const char *tail)
 	}
 	return TRUE;
 }
+
 BOOL cmdSt(const char *tail)
 {
 	uffs_Device *dev;
@@ -283,10 +284,10 @@ BOOL cmdSt(const char *tail)
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Read Header:           %d" TENDSTR, s->page_header_read_count);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Read Spare:            %d" TENDSTR, s->spare_read_count);
 
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "----------- disk info for '%s' -----------" TENDSTR, mount);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Disk total:            %d" TENDSTR, uffs_GetDeviceTotal(dev));
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Disk Used:             %d" TENDSTR, uffs_GetDeviceUsed(dev));
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Disk Free:             %d" TENDSTR, uffs_GetDeviceFree(dev));
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "--------- partition info for '%s' ---------" TENDSTR, mount);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Space total:           %d" TENDSTR, uffs_GetDeviceTotal(dev));
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Space used:            %d" TENDSTR, uffs_GetDeviceUsed(dev));
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Space free:            %d" TENDSTR, uffs_GetDeviceFree(dev));
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Page Size:             %d" TENDSTR, dev->attr->page_data_size);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Spare Size:            %d" TENDSTR, dev->attr->spare_size);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Pages Per Block:       %d" TENDSTR, dev->attr->pages_per_block);
