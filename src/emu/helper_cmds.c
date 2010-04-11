@@ -70,12 +70,17 @@ BOOL cmdFormat(const char *tail)
 		uffs_Perror(UFFS_ERR_NORMAL, "Can't get device from mount point.");
 	}
 	else {
-		ret = uffs_FormatDevice(dev);
-		if (ret != U_SUCC) {
-			uffs_Perror(UFFS_ERR_NORMAL, "Format fail.");
+		if (dev->ref_count == 1) {
+			ret = uffs_FormatDevice(dev);
+			if (ret != U_SUCC) {
+				uffs_Perror(UFFS_ERR_NORMAL, "Format fail.");
+			}
+			else {
+				uffs_Perror(UFFS_ERR_NORMAL, "Format succ.");
+			}
 		}
 		else {
-			uffs_Perror(UFFS_ERR_NORMAL, "Format succ.");
+			uffs_Perror(UFFS_ERR_NORMAL, "dev->ref_count: %d, can't format this device.", dev->ref_count);
 		}
 	}
 	return TRUE;	
