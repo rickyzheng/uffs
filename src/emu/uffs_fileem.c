@@ -432,22 +432,6 @@ static URET femu_initDevice(uffs_Device *dev)
 	return U_SUCC;
 }
 
-static void femu_printStatistic(uffs_Device *dev)
-{
-	uffs_FlashStat *s;
-	s = &(dev->st);
-	
-	printf("-----------statistics-----------\n");
-	printf("Block Erased: %d\n", s->block_erase_count);
-	printf("Write Page:   %d\n", s->page_write_count);
-	printf("Write Spare:  %d\n", s->spare_write_count);
-	printf("Read Page:    %d\n", s->page_read_count);
-	printf("Read Spare:   %d\n", s->spare_read_count);
-	printf("Disk total:   %d\n", uffs_GetDeviceTotal(dev));
-	printf("Disk Used:    %d\n", uffs_GetDeviceUsed(dev));
-	printf("Disk Free:    %d\n", uffs_GetDeviceFree(dev));
-}
-
 static URET femu_releaseDevice(uffs_Device *dev)
 {
 	uffs_FileEmu *emu;
@@ -463,7 +447,6 @@ static URET femu_releaseDevice(uffs_Device *dev)
 			emu->fp = NULL;
 		}
 
-		femu_printStatistic(dev);
 		memset(emu, 0, sizeof(uffs_FileEmu));
 
 		if (emu->em_monitor_page)

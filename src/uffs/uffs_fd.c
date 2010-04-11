@@ -343,7 +343,7 @@ int uffs_stat(const char *name, struct uffs_stat *buf)
 		if (*name && name[strlen(name) - 1] == '/')
 			oflag |= UO_DIR;
 
-		if (uffs_OpenObject(obj, name, UO_RDONLY) == U_SUCC) {
+		if (uffs_OpenObject(obj, name, oflag) == U_SUCC) {
 			ret = do_stat(obj, buf);
 			uffs_CloseObject(obj);
 		}
