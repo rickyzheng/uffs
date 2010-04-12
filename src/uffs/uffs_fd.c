@@ -271,9 +271,14 @@ int uffs_remove(const char *name)
 {
 	int err = 0;
 	int ret = 0;
+	struct uffs_stat st;
 
-	if (name[strlen(name) - 1] == '/') {
+	if (uffs_stat(name, &st) < 0) {
 		err = UENOENT;
+		ret = -1;
+	}
+	else if (st.st_mode & US_IFDIR) {
+		err = UEISDIR;
 		ret = -1;
 	}
 	else if (uffs_DeleteObject(name, &err) == U_SUCC) {
@@ -336,14 +341,18 @@ int uffs_stat(const char *name, struct uffs_stat *buf)
 	uffs_Object *obj;
 	int ret = 0;
 	int err = 0;
-	int oflag = UO_RDONLY;
+	URET result;
 
 	obj = uffs_GetObject();
 	if (obj) {
-		if (*name && name[strlen(name) - 1] == '/')
-			oflag |= UO_DIR;
-
-		if (uffs_OpenObject(obj, name, oflag) == U_SUCC) {
+		if (*name && name[strlen(name) - 1] == '/') {
+			result = uffs_OpenObject(obj, name, UO_RDONLY | UO_DIR);
+		}
+		else {
+			if ((result = uffs_OpenObject(obj, name, UO_RDONLY)) != U_SUCC)	// try file
+				result = uffs_OpenObject(obj, name, UO_RDONLY | UO_DIR);	// then try dir
+		}
+		if (result == U_SUCC) {
 			ret = do_stat(obj, buf);
 			uffs_CloseObject(obj);
 		}
@@ -463,27 +472,21 @@ int uffs_mkdir(const char *name, ...)
 	int ret = 0;
 	int err = 0;
 
-	if (name[strlen(name) - 1] != '/') {
-		err = UEINVAL;
-		ret = -1;
-	}
-	else {
-		obj = uffs_GetObject();
-		if (obj) {
-			if (uffs_CreateObject(obj, name, UO_CREATE|UO_DIR) != U_SUCC) {
-				err = obj->err;
-				ret = -1;
-			}
-			else {
-				uffs_CloseObject(obj);
-				ret = 0;
-			}
-			uffs_PutObject(obj);
-		}
-		else {
-			err = UEMFILE;
+	obj = uffs_GetObject();
+	if (obj) {
+		if (uffs_CreateObject(obj, name, UO_CREATE|UO_DIR) != U_SUCC) {
+			err = obj->err;
 			ret = -1;
 		}
+		else {
+			uffs_CloseObject(obj);
+			ret = 0;
+		}
+		uffs_PutObject(obj);
+	}
+	else {
+		err = UEMFILE;
+		ret = -1;
 	}
 
 	uffs_set_error(-err);
@@ -494,9 +497,14 @@ int uffs_rmdir(const char *name)
 {
 	int err = 0;
 	int ret = 0;
+	struct uffs_stat st;
 
-	if (name[strlen(name) - 1] != '/') {
+	if (uffs_stat(name, &st) < 0) {
 		err = UENOENT;
+		ret = -1;
+	}
+	else if ((st.st_mode & US_IFDIR) == 0) {
+		err = UENOTDIR;
 		ret = -1;
 	}
 	else if (uffs_DeleteObject(name, &err) == U_SUCC) {

@@ -172,7 +172,7 @@ BOOL cmdLs(const char *tail)
 
 	dirp = uffs_opendir(name);
 	if (dirp == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Can't open '%s'", name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open '%s' for list", name);
 	}
 	else {
 		uffs_PerrorRaw(UFFS_ERR_NORMAL, "------name-----------size---------serial-----" TENDSTR);
@@ -210,12 +210,18 @@ BOOL cmdRm(const char *tail)
 {
 	const char *name = NULL;
 	int ret = 0;
+	struct uffs_stat st;
 
 	if (tail == NULL) return FALSE;
 
 	name = cli_getparam(tail, NULL);
 
-	if (name[strlen(name)-1] == '/') {
+	if (uffs_stat(name, &st) < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't stat '%s'", name);
+		return TRUE;
+	}
+
+	if (st.st_mode & US_IFDIR) {
 		ret = uffs_rmdir(name);
 	}
 	else {
@@ -223,7 +229,7 @@ BOOL cmdRm(const char *tail)
 	}
 
 	if (ret == 0)
-			uffs_Perror(UFFS_ERR_NORMAL, "Delete '%s' succ.", name);
+		uffs_Perror(UFFS_ERR_NORMAL, "Delete '%s' succ.", name);
 	else
 		uffs_Perror(UFFS_ERR_NORMAL, "Delete '%s' fail!", name);
 

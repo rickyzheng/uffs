@@ -75,6 +75,9 @@ extern "C"{
 #define UEBADF	9		/** invalid file handle */
 #define UENOMEM	10		/** no enough memory */
 #define UEIOERR	11		/** I/O error from lower level flash operation */
+#define UENOTDIR 12		/** Not a directory */
+#define UEISDIR 13		/** Is a directory */    
+
 #define UEUNKNOWN	100	/** unknown error */
 
 
