@@ -517,8 +517,8 @@ URET uffs_ParseObject(uffs_Object *obj, const char *name)
 			dname = start;
 			while (p - start < d_len) {
 				while (*p != '/') p++;
-				sum = uffs_MakeSum16(start, p - dname);
-				node = uffs_TreeFindDirNodeByName(dev, start, p - dname, sum, dir);
+				sum = uffs_MakeSum16(dname, p - dname);
+				node = uffs_TreeFindDirNodeByName(dev, dname, p - dname, sum, dir);
 				if (node == NULL) {
 					obj->err = UENOENT;
 					break;
