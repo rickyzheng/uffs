@@ -82,6 +82,7 @@ BOOL cmdFormat(const char *tail)
 		else {
 			uffs_Perror(UFFS_ERR_NORMAL, "dev->ref_count: %d, can't format this device.", dev->ref_count);
 		}
+		uffs_PutDevice(dev);
 	}
 	return TRUE;	
 }

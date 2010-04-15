@@ -111,15 +111,6 @@ static void uffs_EccMakeChunk256(void *data, void *ecc, u16 len)
 		}
 	}
 
-	for (i = 0; i < 256 - len; i++) {
-		b = column_parity_tbl[0xFF];	//always use 0 for the rest of data
-		col_parity ^= b;
-
-		if (b & 0x01) { // odd number of bits in the byte
-			line_parity ^= i;
-			line_parity_prime ^= ~i;
-		}
-	}
 	// ECC layout:
 	// Byte[0]  P64   | P64'   | P32  | P32'  | P16  | P16'  | P8   | P8'
 	// Byte[1]  P1024 | P1024' | P512 | P512' | P256 | P256' | P128 | P128'
@@ -240,16 +231,14 @@ static int uffs_EccCorrectChunk256(void *data, void *read_ecc, const void *test_
 int uffs_EccCorrect(void *data, int data_len, void *read_ecc, const void *test_ecc)
 {
 	u8 *p_data = (u8 *)data, *p_read_ecc = (u8 *)read_ecc, *p_test_ecc = (u8 *)test_ecc;
-	int total = 0, ret;
+	int total = 0, ret, len;
 
 	if (data == NULL || read_ecc == NULL || test_ecc == NULL)
 		return -1;
 
-	if (data_len & 0xFF)
-		return -1;	//!< data length must be n * 256
-
 	while (data_len > 0) {
-		ret = uffs_EccCorrectChunk256(p_data, p_read_ecc, p_test_ecc, 256);
+		len = (data_len > 256 ? 256 : data_len);
+		ret = uffs_EccCorrectChunk256(p_data, p_read_ecc, p_test_ecc, len);
 		if (ret < 0) {
 			total = ret;
 			break;
@@ -257,10 +246,10 @@ int uffs_EccCorrect(void *data, int data_len, void *read_ecc, const void *test_e
 		else
 			total += ret;
 
-		p_data += 256;
+		p_data += len;
 		p_read_ecc += 3;
 		p_test_ecc += 3;
-		data_len -= 256;
+		data_len -= len;
 	}
 
 	return total;
@@ -289,15 +278,6 @@ u16 uffs_EccMake8(void *data, int data_len)
 	for (i = 0; i < data_len; i++) {
 		b = column_parity_tbl[*p++];
 		col_parity ^= b;
-		if (b & 0x01) { // odd number of bits in the byte
-			line_parity ^= i;
-			line_parity_prime ^= ~i;
-		}
-	}
-	for (i = 0; i < 8 - data_len; i++) {
-		b = column_parity_tbl[0xFF];	//always use 0xFF for the rest of data
-		col_parity ^= b;
-
 		if (b & 0x01) { // odd number of bits in the byte
 			line_parity ^= i;
 			line_parity_prime ^= ~i;
