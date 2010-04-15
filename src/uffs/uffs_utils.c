@@ -40,6 +40,7 @@
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_version.h"
+#include "uffs/uffs_badblock.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -54,6 +55,7 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 	int i, j;
 	uffs_Buf *buf;
 	UBOOL bad = U_TRUE;
+	int ret;
 
 	buf = uffs_BufClone(dev, NULL);
 	if (buf == NULL) {
@@ -66,11 +68,18 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 
 
 	//step 1: Erase, fully fill with 0x0, and check
-	dev->ops->EraseBlock(dev, block);
+	ret = dev->ops->EraseBlock(dev, block);
+	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+		goto bad_out;
+
 	memset(pageBuf, 0, pageSize);
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		dev->ops->WritePageData(dev, block, i, pageBuf, pageSize, NULL);
-		dev->ops->WritePageSpare(dev, block, i, pageBuf, 0, dev->attr->spare_size, U_TRUE);
+		ret = dev->ops->WritePageData(dev, block, i, pageBuf, pageSize, NULL);
+		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+			goto bad_out;
+		ret = dev->ops->WritePageSpare(dev, block, i, pageBuf, 0, dev->attr->spare_size, U_TRUE);
+		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+			goto bad_out;
 	}
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		memset(pageBuf, 0xFF, pageSize);
@@ -88,7 +97,10 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 	}
 
 	//step 2: Erase, and check
-	dev->ops->EraseBlock(dev, block);
+	ret = dev->ops->EraseBlock(dev, block);
+	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+		goto bad_out;
+
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		memset(pageBuf, 0, pageSize);
 		dev->ops->ReadPageData(dev, block, i, pageBuf, pageSize, NULL);
@@ -156,6 +168,8 @@ URET uffs_FormatDevice(uffs_Device *dev)
 	for (i = dev->par.start; i <= dev->par.end; i++) {
 		if (uffs_FlashIsBadBlock(dev, i) == U_FALSE) {
 			uffs_FlashEraseBlock(dev, i);
+			if (HAVE_BADBLOCK(dev))
+				uffs_BadBlockProcess(dev, NULL);
 		}
 		else {
 #ifdef CONFIG_ENABLE_BAD_BLOCK_VERIFY

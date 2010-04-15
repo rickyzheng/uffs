@@ -763,14 +763,20 @@ retry:
 		else {
 			// erase recovered block, put it back to erased block list.
 			uffs_FlashEraseBlock(dev, bc->block);
-			uffs_TreeInsertToErasedListTail(dev, newNode);
+			if (HAVE_BADBLOCK(dev))
+				uffs_BadBlockProcess(dev, newNode);
+			else
+				uffs_TreeInsertToErasedListTail(dev, newNode);
 		}
 	}
 	else {
 		uffs_BlockInfoExpire(dev, newBc, UFFS_ALL_PAGES);
 		uffs_FlashEraseBlock(dev, newBlock);
 		newNode->u.list.block = newBlock;
-		uffs_TreeInsertToErasedListTail(dev, newNode);
+		if (HAVE_BADBLOCK(dev))
+			uffs_BadBlockProcess(dev, newNode);
+		else
+			uffs_TreeInsertToErasedListTail(dev, newNode);
 	}
 
 	if (dev->buf.dirtyGroup[slot].dirty != NULL || dev->buf.dirtyGroup[slot].count != 0) {

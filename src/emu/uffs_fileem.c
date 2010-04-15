@@ -48,8 +48,8 @@
 #define PFX "femu: "
 
 
-#define MAXWRITETIME_PAGE 2
-#define MAXWRITETIME_SPARE 2
+#define MAXWRITETIME_PAGE 1
+#define MAXWRITETIME_SPARE 1
 
 #define FEMU_MAX_SPARE_SIZE		UFFS_MAX_SPARE_SIZE
 
@@ -367,6 +367,7 @@ static URET femu_EraseBlock(uffs_Device *dev, u32 blockNumber)
 		goto err;
 	}
 	else {
+
 		//clear this block monitors
 		memset(emu->em_monitor_page + (blockNumber * blk_pgs), 
 			0, 
@@ -375,6 +376,10 @@ static URET femu_EraseBlock(uffs_Device *dev, u32 blockNumber)
 			0,
 			blk_pgs * sizeof(u8));
 		
+		if (1 && (blockNumber == 5)) {  // simulate bad block 
+			return UFFS_FLASH_BAD_BLK;
+		}
+
 		memset(pg, 0xff, (pgd_size + sp_size));
 		
 		fseek(emu->fp, blockNumber * blk_pgs * (pgd_size + sp_size), SEEK_SET);

@@ -45,6 +45,7 @@
 #include "uffs/uffs_core.h"
 #include "uffs/uffs_mtb.h"
 #include "uffs/uffs_find.h"
+#include "uffs/uffs_badblock.h"
 #include "cmdline.h"
 
 #define PFX "test:"
@@ -143,7 +144,10 @@ static BOOL cmdTestPageReadWrite(const char *tail)
 ext:
 	if (node) {
 		uffs_FlashEraseBlock(dev, node->u.list.block);
-		uffs_InsertToErasedListHead(dev, node);
+		if (HAVE_BADBLOCK(dev))
+			uffs_BadBlockProcess(dev, node);
+		else
+			uffs_InsertToErasedListHead(dev, node);
 	}
 
 	if (dev)

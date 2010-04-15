@@ -1335,11 +1335,15 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run)
 
 			if (dry_run == U_FALSE) {
 				uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
-				dev->ops->EraseBlock(dev, node->u.data.block);
 				uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, node);
+				uffs_FlashEraseBlock(dev, bc->block);
 				node->u.list.block = bc->block;
+				if (HAVE_BADBLOCK(dev))
+					uffs_BadBlockProcess(dev, node);
+				else
+					uffs_TreeInsertToErasedListTail(dev, node);
+
 				uffs_BlockInfoPut(dev, bc);
-				uffs_TreeInsertToErasedListTail(dev, node);
 				fnode->u.file.len = block_start;
 			}
 			else {
@@ -1442,11 +1446,16 @@ URET uffs_DeleteObject(const char * name, int *err)
 
 		buf->mark = UFFS_BUF_EMPTY; //!< make this buffer expired.
 	}
-	//FIXME !!: need to take care of other obj->node ?
+
+	//TODO: need to take care of other obj->node ?
+
 	uffs_BreakFromEntry(dev, obj->type, node);
-	dev->ops->EraseBlock(dev, block); //!< ok, the object is deleted now.
+	uffs_FlashEraseBlock(dev, block);
 	node->u.list.block = block;
-	uffs_TreeInsertToErasedListTail(dev, node);
+	if (HAVE_BADBLOCK(dev))
+		uffs_BadBlockProcess(dev, node);
+	else
+		uffs_TreeInsertToErasedListTail(dev, node);
 
 	ret = U_SUCC;
 err:

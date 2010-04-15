@@ -618,12 +618,21 @@ URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block)
 	u8 status = 0;
 	int ret;
 
+	uffs_Perror(UFFS_ERR_NORMAL, "Mark bad block: %d", block);
+
 	if (dev->ops->MarkBadBlock)
 		return dev->ops->MarkBadBlock(dev, block) == 0 ? U_SUCC : U_FAIL;
 
+#ifdef CONFIG_ERASE_BLOCK_BEFORE_MARK_BAD
 	ret = dev->ops->EraseBlock(dev, block);
-	if (ret == UFFS_FLASH_NO_ERR)
-		ret = dev->ops->WritePageSpare(dev, block, 0, &status, dev->attr->block_status_offs, 1, U_FALSE);
+	if (ret != UFFS_FLASH_IO_ERR) {  // note: event EraseBlock return UFFS_FLASH_BAD_BLK, we still process it ...
+#endif
+
+	ret = dev->ops->WritePageSpare(dev, block, 0, &status, dev->attr->block_status_offs, 1, U_FALSE);
+
+#ifdef CONFIG_ERASE_BLOCK_BEFORE_MARK_BAD
+	}
+#endif
 
 	return ret == UFFS_FLASH_NO_ERR ? U_SUCC : U_FAIL;
 }

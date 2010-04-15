@@ -172,6 +172,11 @@
  */
 #define CONFIG_ENABLE_BAD_BLOCK_VERIFY
 
+/**
+ * \def CONFIG_ERASE_BLOCK_BEFORE_MARK_BAD
+ * \note erase block again before mark bad block
+ */
+#define CONFIG_ERASE_BLOCK_BEFORE_MARK_BAD
 
 /**
  * \def CONFIG_PAGE_WRITE_VERIFY
@@ -187,6 +192,7 @@
  * \note Enable this will ensure your data always be stored on completly good blocks.
  */
 #define CONFIG_BAD_BLOCK_POLICY_STRICT
+
 
 
 /** micros for calculating buffer sizes */

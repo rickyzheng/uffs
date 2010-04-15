@@ -62,10 +62,12 @@ void uffs_BadBlockProcess(uffs_Device *dev, TreeNode *node)
 		uffs_FlashMarkBadBlock(dev, dev->bad.block);
 
 		// and put it into bad block list
-		uffs_TreeInsertToBadBlockList(dev, node);
+		if (node != NULL)
+			uffs_TreeInsertToBadBlockList(dev, node);
 
 		//clear bad block mark.
 		dev->bad.block = UFFS_INVALID_BLOCK;
+
 	}
 }
 
@@ -91,7 +93,7 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 	if (dev->bad.block == UFFS_INVALID_BLOCK)
 		return;
 
-	// pick up a erased good block
+	// pick up an erased good block
 	good = uffs_TreeGetErasedNode(dev);
 	if (good == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, "no free block to replace bad block!");
