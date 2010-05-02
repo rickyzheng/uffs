@@ -30,8 +30,8 @@
   on this file might be covered by the GNU General Public License.
 */
 
-#ifndef UFFS_VERSION_H
-#define UFFS_VERSION_H
+#ifndef _UFFS_VERSION_H_
+#define _UFFS_VERSION_H_
 
 #ifdef __cplusplus
 extern "C"{

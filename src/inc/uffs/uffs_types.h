@@ -30,8 +30,12 @@
   on this file might be covered by the GNU General Public License.
 */
 
-#ifndef UFFS_TYPES_H
-#define UFFS_TYPES_H
+#ifndef _UFFS_TYPES_H_
+#define _UFFS_TYPES_H_
+
+#ifdef __CDT_PARSER__
+#undef __cplusplus
+#endif
 
 #ifdef __cplusplus
 extern "C"{

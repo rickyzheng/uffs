@@ -36,8 +36,8 @@
  * \author Ricky Zheng
  */
 
-#ifndef UFFS_MTB_H
-#define UFFS_MTB_H
+#ifndef _UFFS_MTB_H_
+#define _UFFS_MTB_H_
 
 #include "uffs/uffs_types.h"
 #include "uffs/uffs_config.h"

@@ -30,8 +30,8 @@
   on this file might be covered by the GNU General Public License.
 */
 
-#ifndef UFFS_MEM_H
-#define UFFS_MEM_H
+#ifndef _UFFS_MEM_H_
+#define _UFFS_MEM_H_
 
 #include "uffs/uffs_device.h"
 

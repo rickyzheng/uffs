@@ -36,12 +36,20 @@
  * \author Ricky Zheng, created 8th Jun, 2005
  */
 
+#ifndef _UFFS_FD_H_
+#define _UFFS_FD_H_
+
+
 #include "uffs/uffs_config.h"
 #include "uffs/uffs_core.h"
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs.h"
 #include "uffs/uffs_find.h"
 #include <string.h>
+
+#ifdef __cplusplus
+extern "C"{
+#endif
 
 /**
  * \brief definitions for uffs_stat::st_mode
@@ -147,4 +155,11 @@ long uffs_telldir(uffs_DIR *dirp);
 
 int uffs_get_error(void);
 int uffs_set_error(int err);
+
+#ifdef __cplusplus
+}
+#endif
+#endif
+
+
 

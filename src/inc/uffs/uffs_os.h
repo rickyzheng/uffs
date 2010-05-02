@@ -30,15 +30,15 @@
   on this file might be covered by the GNU General Public License.
 */
 
-#ifndef UFFS_OS_H
-#define UFFS_OS_H
+#ifndef _UFFS_OS_H_
+#define _UFFS_OS_H_
+
+#include "uffs/uffs_device.h"
+#include "uffs/uffs_core.h"
 
 #ifdef __cplusplus
 extern "C"{
 #endif
-
-#include "uffs/uffs_device.h"
-#include "uffs/uffs_core.h"
 
 #define UFFS_TASK_ID_NOT_EXIST	-1
 
