@@ -165,7 +165,7 @@ UFFS v1.3.2:
   
 LICENCE
 -------
-  From v1.2.1, UFFS is released under a midified GNU GPLv2. (the same as eCos Licence)
+  From v1.2.1, UFFS is released under a modified GNU GPLv2. (the same as eCos Licence)
   The full licence text can be found in the header of source files:
   
 	  UFFS is free software; you can redistribute it and/or modify it under
