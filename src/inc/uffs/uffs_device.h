@@ -72,9 +72,10 @@ struct uffs_BlockInfoCacheSt {
  */
 struct uffs_PartitionSt {
 	u16 start;		//!< start block number of partition
-	u16 end;		//!< end block number of partiton
+	u16 end;		//!< end block number of partition
 };
 
+#ifdef CONFIG_USE_PER_DEVICE_LOCK
 /** 
  * \struct uffs_LockSt
  * \brief lock stuffs
@@ -84,6 +85,7 @@ struct uffs_LockSt {
 	int task_id;
 	int counter;
 };
+#endif
 
 /** 
  * \struct uffs_DirtyGroupSt
@@ -111,7 +113,7 @@ struct uffs_PageBufDescSt {
 
 /** 
  * \struct uffs_PageCommInfoSt
- * \brief common data for device, should be initialized at early
+ * \brief common data for device, should be initialised at early
  * \note it is possible that pg_size is smaller than physical page size, but normally they are the same.
  * \note page data layout: [HEADER] + [DATA]
  */
@@ -150,7 +152,7 @@ typedef struct uffs_FlashStatSt {
  * \note one partition corresponding one uffs device.
  */
 struct uffs_DeviceSt {
-	URET (*Init)(uffs_Device *dev);				//!< low level initialization
+	URET (*Init)(uffs_Device *dev);				//!< low level initialisation
 	URET (*Release)(uffs_Device *dev);			//!< low level release
 	void *_private;								//!< private data for device
 
@@ -158,7 +160,9 @@ struct uffs_DeviceSt {
 	struct uffs_PartitionSt			par;		//!< partition information
 	struct uffs_FlashOpsSt			*ops;		//!< flash operations
 	struct uffs_BlockInfoCacheSt	bc;			//!< block info cache
+#ifdef CONFIG_USE_PER_DEVICE_LOCK
 	struct uffs_LockSt				lock;		//!< lock data structure
+#endif
 	struct uffs_PageBufDescSt		buf;		//!< page buffers
 	struct uffs_PageCommInfoSt		com;		//!< common information
 	struct uffs_TreeSt				tree;		//!< tree list of block
@@ -168,6 +172,8 @@ struct uffs_DeviceSt {
 	u32	ref_count;								//!< device reference count
 	int	dev_num;								//!< device number (partition number)	
 };
+
+#ifdef CONFIG_USE_PER_DEVICE_LOCK
 
 /** create the lock for uffs device */
 URET uffs_DeviceInitLock(uffs_Device *dev);
@@ -181,6 +187,14 @@ URET uffs_DeviceLock(uffs_Device *dev);
 /** unlock uffs device */
 URET uffs_DeviceUnLock(uffs_Device *dev);
 
+#else
+
+#define uffs_DeviceInitLock(dev)
+#define uffs_DeviceReleaseLock(dev)
+#define uffs_DeviceLock(dev)
+#define uffs_DeviceUnLock(dev)
+
+#endif
 
 #ifdef __cplusplus
 }

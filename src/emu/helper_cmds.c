@@ -59,9 +59,13 @@ BOOL cmdFormat(const char *tail)
 	URET ret;
 	const char *mount = "/";
 	uffs_Device *dev;
+	const char *next;
+	UBOOL force = U_FALSE;
 
 	if (tail) {
-		mount = cli_getparam(tail, NULL);
+		mount = cli_getparam(tail, &next);
+		if (next && strcmp(next, "-f") == 0)
+			force = U_TRUE;
 	}
 	uffs_Perror(UFFS_ERR_NORMAL, "Formating %s ... ", mount);
 
@@ -70,17 +74,12 @@ BOOL cmdFormat(const char *tail)
 		uffs_Perror(UFFS_ERR_NORMAL, "Can't get device from mount point.");
 	}
 	else {
-		if (dev->ref_count == 1) {
-			ret = uffs_FormatDevice(dev);
-			if (ret != U_SUCC) {
-				uffs_Perror(UFFS_ERR_NORMAL, "Format fail.");
-			}
-			else {
-				uffs_Perror(UFFS_ERR_NORMAL, "Format succ.");
-			}
+		ret = uffs_FormatDevice(dev, force);
+		if (ret != U_SUCC) {
+			uffs_Perror(UFFS_ERR_NORMAL, "Format fail.");
 		}
 		else {
-			uffs_Perror(UFFS_ERR_NORMAL, "dev->ref_count: %d, can't format this device.", dev->ref_count);
+			uffs_Perror(UFFS_ERR_NORMAL, "Format succ.");
 		}
 		uffs_PutDevice(dev);
 	}
@@ -286,9 +285,10 @@ BOOL cmdSt(const char *tail)
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxObjectHandles:      %d" TENDSTR, MAX_OBJECT_HANDLE);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "FreeObjectHandles:     %d" TENDSTR, uffs_PoolGetFreeCount(uffs_GetObjectPool()));
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxDirHandles:         %d" TENDSTR, MAX_DIR_HANDLE);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "FreeDirHandles:        %d" TENDSTR, uffs_PoolGetFreeCount(uffs_GetDirEntryBufPool()));
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "FreeDirHandles:        %d" TENDSTR, uffs_PoolGetFreeCount(uffs_DirEntryBufGetPool()));
 
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "----------- statistics for '%s' -----------" TENDSTR, mount);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Device Ref:            %d" TENDSTR, dev->ref_count);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Block Erased:          %d" TENDSTR, s->block_erase_count);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Write Page:            %d" TENDSTR, s->page_write_count);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Write Spare:           %d" TENDSTR, s->spare_write_count);

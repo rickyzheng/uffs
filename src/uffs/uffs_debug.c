@@ -137,8 +137,13 @@ void uffs_Perror( int level, const char *errFmt, ...)
  * \param[in] line Source line of code
  * \param[in] msg Assert message
  */
-void uffs_AssertCall(const char *file, int line, const char *msg)
+void uffs_AssertCall(const char *file, int line, const char *msg, ...)
 {
-	printf("ASSERT %s:%d - msg:%s\n", file, line, msg);
+	va_list args;
+	printf("ASSERT %s:%d - :", file, line);
+	va_start(args, msg);
+	vprintf(msg, args);
+	va_end(args);
+	printf(TENDSTR);
 	while (1);
 }

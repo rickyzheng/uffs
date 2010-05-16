@@ -41,40 +41,26 @@
 extern "C"{
 #endif
 
-
-//begin method
-#define PARTITION_FOLLOW_PRIVATE	0
-#define PARTITION_BEGIN_ABSOLUTE	1
-	
-//alloc method
-#define ALLOC_BY_SIZE		0
-#define ALLOC_BY_ABSOLUTE	1
-#define ALLOC_USE_FREE		2
-
-//struct uffs_PartitionMakeInfoSt {
-//	u32 begin_method;
-//	u32	alloc_method;
-//	union{
-//		u32 begin_block;
-//		u32 begin_offset;
-//	};
-//	union{
-//		u32 end_block;
-//		u32 size;
-//		u32 remain_size;
-//	};
-//	u32 access;
-//};
-//
-//
-//URET uffs_MakePartition(struct uffs_DeviceSt *dev, struct uffs_PartitionMakeInfoSt *pi, int nums);
-//
-//void uffs_ListPartition(struct uffs_DeviceSt *dev);
-
 //get UFFS disk version, if fail, return 0
 int uffs_GetUFFSVersion(struct uffs_DeviceSt *dev);
 
-URET uffs_FormatDevice(uffs_Device *dev);
+#ifdef CONFIG_USE_GLOBAL_FS_LOCK
+
+void uffs_InitGlobalFsLock(void);
+void uffs_ReleaseGlobalFsLock(void);
+void uffs_GlobalFsLockLock(void);
+void uffs_GlobalFsLockUnlock(void);
+
+#else
+
+#define uffs_InitGlobalFsLock()
+#define uffs_ReleaseGlobalFsLock()
+#define uffs_GlobalFsLockLock()
+#define uffs_GlobalFsLockUnlock()
+
+#endif
+
+URET uffs_FormatDevice(uffs_Device *dev, UBOOL force);
 
 #ifdef __cplusplus
 }

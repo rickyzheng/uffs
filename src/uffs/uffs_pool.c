@@ -229,7 +229,7 @@ int uffs_PoolPutLocked(uffs_Pool *pool, void *p)
 void *uffs_PoolGetBufByIndex(uffs_Pool *pool, u32 index)
 {
 	uffs_Assert(pool, "pool missing");
-	uffs_Assert(index >= 0 && index < pool->num_bufs, "index out of range");
+	uffs_Assert(index >= 0 && index < pool->num_bufs, "index(%d) out of range(max %d)", index, pool->num_bufs);
 
 	return (u8 *) pool->mem + index * pool->buf_size;
 }
@@ -277,9 +277,9 @@ static void * FindNextAllocatedInSmallPool(uffs_Pool *pool, void *from)
 	for (e = pool->free_list; e; e = e->next)
 		map |= (1 << uffs_PoolGetIndex(pool, e));
 
-	for (i = uffs_PoolGetIndex(pool, from); (map & (1 << i)) && i < 32; i++);
+	for (i = uffs_PoolGetIndex(pool, from); (map & (1 << i)) && i < 32 && i < pool->num_bufs; i++);
 
-	return i < 32 ? uffs_PoolGetBufByIndex(pool, i) : NULL;
+	return i < 32 && i < pool->num_bufs ? uffs_PoolGetBufByIndex(pool, i) : NULL;
 }
 
 
@@ -338,6 +338,25 @@ int uffs_PoolGetFreeCount(uffs_Pool *pool)
 		count++;
 		e = e->next;
 	}
+
+	return count;
+}
+
+/**
+ * \brief put all memory block back, return how many memory blocks were put back
+ */
+int uffs_PoolPutAll(uffs_Pool *pool)
+{
+	void *p = NULL;
+	int count = 0;
+
+	do {
+		p = uffs_PoolFindNextAllocated(pool, p);
+		if (p) {
+			uffs_PoolPut(pool, p);
+			count++;
+		}
+	} while (p);
 
 	return count;
 }

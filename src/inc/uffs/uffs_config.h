@@ -93,6 +93,22 @@
 
 
 /**
+ * \def CONFIG_USE_GLOBAL_FS_LOCK
+ * \note use global lock instead of per-device lock.
+ *       this is required if you use fd APIs in multi-thread environment.
+ */
+#define CONFIG_USE_GLOBAL_FS_LOCK
+
+
+/**
+ * \def CONFIG_USE_PER_DEVICE_LOCK
+ * \note use per-device lock. this is required if you use fs APIs in multi-thread environment.
+ */
+//#define CONFIG_USE_PER_DEVICE_LOCK
+
+
+
+/**
  * \def CONFIG_USE_STATIC_MEMORY_ALLOCATOR
  * \note uffs will use static memory allocator if this is defined.
  *       to use static memory allocator, you need to provide memory
@@ -125,9 +141,9 @@
  * \def CONFIG_FLUSH_BUF_AFTER_WRITE
  * \note UFFS will write all data directly into flash in 
  *       each 'write' call if you enable this option.
- *       (which means lesser data lost when power failue but
- *		 pooer writing performance).
- *		 It's not recommented to open this define for normal applications.
+ *       (which means lesser data lost when power failure but
+ *		 poorer writing performance).
+ *		 It's not recommended to open this define for normal applications.
  */
 //#define CONFIG_FLUSH_BUF_AFTER_WRITE
 
@@ -142,6 +158,8 @@
  * maximum number of object handle 
  */
 #define MAX_OBJECT_HANDLE	10
+#define FD_SIGNATURE_SHIFT	5
+
 
 /**
  * \def MAX_DIR_HANDLE
@@ -168,7 +186,7 @@
 /**
  * \def CONFIG_ENABLE_BAD_BLOCK_VERIFY
  * \note allow erase and verify block marked as 'bad' when format UFFS partition.
- *		it's not recommented for most NAND flash.
+ *		it's not recommended for most NAND flash.
  */
 #define CONFIG_ENABLE_BAD_BLOCK_VERIFY
 
@@ -189,7 +207,7 @@
  * \note If this is enabled, UFFS will report the block as 'bad' if any bit-flips found;
  *       otherwise, UFFS report bad block only when ECC failed or reported by low level flash driver.
  *
- * \note Enable this will ensure your data always be stored on completly good blocks.
+ * \note Enable this will ensure your data always be stored on completely good blocks.
  */
 #define CONFIG_BAD_BLOCK_POLICY_STRICT
 
@@ -269,6 +287,13 @@
 #error "Please enable ONE of memory allocators"
 #endif
 
+#if defined(CONFIG_USE_GLOBAL_FS_LOCK) && defined(CONFIG_USE_PER_DEVICE_LOCK)
+#error "enable either CONFIG_USE_GLOBAL_FS_LOCK or CONFIG_USE_PER_DEVICE_LOCK, not both"
+#endif
+
+#if (MAX_OBJECT_HANDLE > (1 << FD_SIGNATURE_SHIFT))
+#error "Please increase FD_SIGNATURE_SHIFT !"
+#endif
 
 #ifdef WIN32
 # pragma warning(disable : 4996)

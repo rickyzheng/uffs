@@ -99,6 +99,25 @@ URET uffs_ReleaseObjectBuf(void)
 }
 
 /**
+ * Put all object which match dev
+ */
+int uffs_PutAllObjectBuf(uffs_Device *dev)
+{
+	int count = 0;
+	uffs_Object * obj = NULL;
+
+	do {
+		obj = (uffs_Object *) uffs_PoolFindNextAllocated(&_object_pool, (void *)obj);
+		if (obj && obj->dev && obj->dev->dev_num == dev->dev_num) {
+			uffs_PutObject(obj);
+			count++;
+		}
+	} while (obj);
+
+	return count;
+}
+
+/**
  * alloc a new object structure
  * \return the new object
  */
@@ -161,6 +180,7 @@ uffs_Object * uffs_GetObjectByIndex(int idx)
 	return (uffs_Object *) uffs_PoolGetBufByIndex(&_object_pool, idx);
 }
 
+#ifdef CONFIG_PER_DEVICE_LOCK
 static void uffs_ObjectDevLock(uffs_Object *obj)
 {
 	if (obj) {
@@ -180,6 +200,10 @@ static void uffs_ObjectDevUnLock(uffs_Object *obj)
 		}
 	}
 } 
+#else
+#define uffs_ObjectDevLock
+#define uffs_ObjectDevUnLock
+#endif
 
 
 
@@ -533,31 +557,14 @@ URET uffs_ParseObject(uffs_Object *obj, const char *name)
 			obj->name = start + (d_len > 0 ? d_len + 1 : 0);
 			obj->name_len = len - (d_len > 0 ? d_len + 1 : 0) - m_len;
 		}
+
+		if (obj->err != UENOERR) {
+			uffs_PutDevice(obj->dev);
+		}
 	}
 	else {
 		obj->err = UENOENT;
 	}
-
-	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
-}
-
-/**
- * Open a UFFS object
- *
- * \param[in|out] obj the object to be open
- * \param[in] name the full name of the object
- * \param[in] oflag open flag
- *
- * \return U_SUCC if object is opened successfully,
- *			 U_FAIL if failed, error code will be set to obj->err.
- */
-URET uffs_OpenObject(uffs_Object *obj, const char *name, int oflag)
-{
-	if (obj == NULL)
-		return U_FAIL;
-
- 	if (uffs_ParseObject(obj, name) == U_SUCC)
-		uffs_OpenObjectEx(obj, obj->dev, obj->parent, obj->name, obj->name_len, oflag);
 
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
@@ -579,6 +586,31 @@ static void do_ReleaseObjectResource(uffs_Object *obj)
 	}
 }
 
+/**
+ * Open a UFFS object
+ *
+ * \param[in|out] obj the object to be open
+ * \param[in] name the full name of the object
+ * \param[in] oflag open flag
+ *
+ * \return U_SUCC if object is opened successfully,
+ *			 U_FAIL if failed, error code will be set to obj->err.
+ */
+URET uffs_OpenObject(uffs_Object *obj, const char *name, int oflag)
+{
+	URET ret;
+
+	if (obj == NULL)
+		return U_FAIL;
+
+ 	if ((ret = uffs_ParseObject(obj, name)) == U_SUCC) {
+		ret = uffs_OpenObjectEx(obj, obj->dev, obj->parent, obj->name, obj->name_len, oflag);
+ 	}
+ 	if (ret != U_SUCC)
+ 		do_ReleaseObjectResource(obj);
+
+	return ret;
+}
 
 static URET do_FlushObject(uffs_Object *obj)
 {
@@ -1620,7 +1652,10 @@ URET uffs_RenameObject(const char *old_name, const char *new_name, int *err)
 
 ext:
 	if (obj) uffs_PutObject(obj);
-	if (new_obj) uffs_PutObject(new_obj);
+	if (new_obj) {
+		do_ReleaseObjectResource(new_obj);
+		uffs_PutObject(new_obj);
+	}
 
 	return ret;
 }

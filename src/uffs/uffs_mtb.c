@@ -113,7 +113,7 @@ URET uffs_InitMountTable(void)
 	}
 
 	if (uffs_InitObjectBuf() == U_SUCC) {
-		if (uffs_InitDirEntryBuf() == U_SUCC) {
+		if (uffs_DirEntryBufInit() == U_SUCC) {
 			return U_SUCC;
 		}
 	}
@@ -132,7 +132,7 @@ URET uffs_ReleaseMountTable(void)
 	}
 
 	if (uffs_ReleaseObjectBuf() == U_SUCC) {
-		if (uffs_ReleaseDirEntryBuf() == U_SUCC) {
+		if (uffs_DirEntryBufRelease() == U_SUCC) {
 			return U_SUCC;
 		}
 	}

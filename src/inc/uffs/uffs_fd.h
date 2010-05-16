@@ -78,13 +78,13 @@ extern "C"{
  * \brief POSIX dirent
  */
 struct uffs_dirent {
-    int d_ino;							/* inode number (serial number or this record) */
-	char d_name[MAX_FILENAME_LENGTH];	/* name of this record */
+    int d_ino;					/* inode number (serial number or this record) */
+    char d_name[MAX_FILENAME_LENGTH];		/* name of this record */
 
-    int d_off;							/* offset to this dirent */
+    int d_off;					/* offset to this dirent */
     unsigned short int d_reclen;		/* length of this uffs_dirent */
     unsigned short int d_namelen;		/* length of this d_name */
-	unsigned char d_type;				/* type of this record */
+    unsigned char d_type;			/* type of this record */
 };
 
 /**
@@ -116,12 +116,14 @@ struct uffs_stat {
     u32			st_ctime;   /* time of last status change */
 };
 
+void uffs_FdSignatureIncrease(void);
 
-URET uffs_InitDirEntryBuf(void);
-URET uffs_ReleaseDirEntryBuf(void);
-uffs_Pool * uffs_GetDirEntryBufPool(void);
+URET uffs_DirEntryBufInit(void);
+URET uffs_DirEntryBufRelease(void);
+uffs_Pool * uffs_DirEntryBufGetPool(void);
+int uffs_DirEntryBufPutAll(uffs_Device *dev);
 
-/* POSIX compliant file system APIs */
+/* POSIX complaint file system APIs */
 
 int uffs_open(const char *name, int oflag, ...);
 int uffs_close(int fd);
@@ -148,10 +150,6 @@ struct uffs_dirent * uffs_readdir(uffs_DIR *dirp);
 
 void uffs_rewinddir(uffs_DIR *dirp);
 
-#if 0
-void uffs_seekdir(uffs_DIR *dirp, long loc);
-long uffs_telldir(uffs_DIR *dirp);
-#endif
 
 int uffs_get_error(void);
 int uffs_set_error(int err);

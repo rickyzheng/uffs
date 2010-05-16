@@ -35,6 +35,7 @@
  * \brief uffs device operation
  * \author Ricky Zheng, created 10th May, 2005
  */
+#include "uffs/uffs_config.h"
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_public.h"
@@ -44,7 +45,7 @@
 #define PFX "dev: "
 
 
-
+#ifdef CONFIG_USE_PER_DEVICE_LOCK
 URET uffs_DeviceInitLock(uffs_Device *dev)
 {
 	dev->lock.sem = uffs_SemCreate(1);
@@ -92,3 +93,4 @@ URET uffs_DeviceUnLock(uffs_Device *dev)
 	return U_SUCC;
 }
 
+#endif

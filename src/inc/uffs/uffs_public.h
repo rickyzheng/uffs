@@ -163,12 +163,12 @@ void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const 
 
 
 
-void uffs_AssertCall(const char *file, int line, const char *msg);
+void uffs_AssertCall(const char *file, int line, const char *msg, ...);
 
-#define uffs_Assert(expr, msg)												\
+#define uffs_Assert(expr, msg, ...)												\
 	do {																	\
 		if (!(expr))														\
-			uffs_AssertCall(__FILE__, __LINE__, msg);						\
+			uffs_AssertCall(__FILE__, __LINE__, msg, ## __VA_ARGS__);						\
 	} while(0)
 
 /********************************** NAND **********************************************/

@@ -394,7 +394,7 @@ static URET _ScanAndFixUnCleanPage(uffs_Device *dev, uffs_BlockInfo *bc)
 
 	/* in most case, the valid block contents fewer free page,
 		so it's better scan from the last page ... to page 1.
-		note: scaning page 0 is not necessary.
+		note: scanning page 0 is not necessary.
 
 		The worse case: read (pages_per_block - 1) * (mini header + spares) !
 		most case: read one spare.
@@ -444,7 +444,6 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 //	printf("s:%d e:%d\n", dev->par.start, dev->par.end);
 	for (block_lt = dev->par.start; block_lt <= dev->par.end; block_lt++) {
 		bc = uffs_BlockInfoGet(dev, block_lt);
-//		uffs_Perror(UFFS_ERR_NORMAL, "loop");
 		if (bc == NULL) {
 			uffs_Perror(UFFS_ERR_SERIOUS, "step one:fail to get block info");
 			ret = U_FAIL;
@@ -457,14 +456,14 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 			break;
 		}
 
-		//Need to check bad block at first !
+		// Need to check bad block at first !
 		if (uffs_FlashIsBadBlock(dev, block_lt) == U_TRUE) {
 			node->u.list.block = block_lt;
 			uffs_TreeInsertToBadBlockList(dev, node);
 			uffs_Perror(UFFS_ERR_NORMAL, "found bad block %d", block_lt);
 		}
 		else if (uffs_IsPageErased(dev, bc, 0) == U_TRUE) { //@ read one spare: 0
-			//just need to check page 0 to know whether the block is erased
+			// just need to check page 0 to know whether the block is erased
 			// Check the mini header status
 
 			if (uffs_LoadMiniHeader(dev, block_lt, 0, &header) == U_FAIL) {
@@ -493,7 +492,6 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 				break;
 
 			ret = _BuildValidTreeNode(dev, node, bc, &st);
-			//uffs_Perror(UFFS_ERR_NOISY, "valid block done!");
 			if (ret == U_FAIL)
 				break;
 
@@ -511,7 +509,7 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 
 static URET _BuildTreeStepTwo(uffs_Device *dev)
 {
-	//Random the start point of erased block to implement ware leveling
+	//Randomise the start point of erased block to implement wear levelling
 	u32 startCount = 0;
 	u32 endPoint;
 	TreeNode *node;

@@ -159,9 +159,54 @@ ext:
 	return TRUE;
 }
 
+static BOOL cmdTestFormat(const char *tail)
+{
+	URET ret;
+	const char *mount = "/";
+	uffs_Device *dev;
+	const char *next;
+	UBOOL force = U_FALSE;
+	const char *test_file = "/a.txt";
+	int fd;
+
+	if (tail) {
+		mount = cli_getparam(tail, &next);
+		if (next && strcmp(next, "-f") == 0)
+			force = U_TRUE;
+	}
+
+	fd = uffs_open(test_file, UO_RDWR | UO_CREATE);
+	if (fd < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "can't create test file %s", test_file);
+		return U_TRUE;
+	}
+
+	uffs_Perror(UFFS_ERR_NORMAL, "Formating %s ... ", mount);
+
+	dev = uffs_GetDeviceFromMountPoint(mount);
+	if (dev == NULL) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't get device from mount point.");
+	}
+	else {
+		ret = uffs_FormatDevice(dev, force);
+		if (ret != U_SUCC) {
+			uffs_Perror(UFFS_ERR_NORMAL, "Format fail.");
+		}
+		else {
+			uffs_Perror(UFFS_ERR_NORMAL, "Format succ.");
+		}
+		uffs_PutDevice(dev);
+	}
+
+	uffs_close(fd);  // this should fail on signature check !
+
+	return TRUE;
+}
+
 static struct cli_commandset cmdset[] = 
 {
     { cmdTestPageReadWrite,	"t_pgrw",		NULL,		"test page read/write" },
+    { cmdTestFormat,	"t_format",		NULL,		"test format file system" },
     { NULL, NULL, NULL, NULL }
 };
 
@@ -170,3 +215,6 @@ struct cli_commandset * get_test_cmds()
 {
 	return cmdset;
 };
+
+
+

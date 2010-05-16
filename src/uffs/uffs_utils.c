@@ -35,6 +35,7 @@
  * \brief utilities of uffs
  * \author Ricky Zheng, created 12th May, 2005
  */
+#include "uffs/uffs_config.h"
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_utils.h"
 #include "uffs/uffs_os.h"
@@ -46,6 +47,33 @@
 #include <string.h>
 
 #define PFX "util: "
+
+
+#ifdef CONFIG_USE_GLOBAL_FS_LOCK
+static int _global_lock = 0;
+
+/* global file system lock */
+void uffs_InitGlobalFsLock(void)
+{
+	_global_lock = uffs_SemCreate(1);
+}
+
+void uffs_ReleaseGlobalFsLock(void)
+{
+	uffs_SemDelete(_global_lock);
+}
+
+void uffs_GlobalFsLockLock(void)
+{
+	uffs_SemWait(_global_lock);
+}
+
+void uffs_GlobalFsLockUnlock(void)
+{
+	uffs_SemSignal(_global_lock);
+}
+#endif
+
 
 #ifdef CONFIG_ENABLE_BAD_BLOCK_VERIFY
 static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
@@ -132,9 +160,10 @@ ext:
 
 
 
-URET uffs_FormatDevice(uffs_Device *dev)
+URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 {
 	u16 i, slot;
+	URET ret = U_SUCC;
 	
 	if (dev == NULL)
 		return U_FAIL;
@@ -142,30 +171,46 @@ URET uffs_FormatDevice(uffs_Device *dev)
 	if (dev->ops == NULL) 
 		return U_FAIL;
 
+	uffs_GlobalFsLockLock();
 
-	if (uffs_BufIsAllFree(dev) == U_FALSE) {
-		uffs_Perror(UFFS_ERR_NORMAL, "some page still in used!");
-		return U_FAIL;
+	ret = uffs_BufFlushAll(dev);
+
+	if (dev->ref_count > 1 && force != U_TRUE) {
+		uffs_Perror(UFFS_ERR_NORMAL, "can't format when dev->ref_count = %d", dev->ref_count);
+		ret = U_FAIL;
 	}
 
-	for (slot = 0; slot < MAX_DIRTY_BUF_GROUPS; slot++) {
+	if (ret == U_SUCC && force == U_TRUE) {
+		uffs_DirEntryBufPutAll(dev);
+		uffs_PutAllObjectBuf(dev);
+		uffs_FdSignatureIncrease();
+	}
+
+	if (ret == U_SUCC && uffs_BufIsAllFree(dev) == U_FALSE && force == U_TRUE) {
+		uffs_Perror(UFFS_ERR_NORMAL, "some page still in used!");
+		ret = U_FAIL;
+	}
+
+	for (slot = 0; ret == U_SUCC && slot < MAX_DIRTY_BUF_GROUPS; slot++) {
 		if (dev->buf.dirtyGroup[slot].count > 0) {
 			uffs_Perror(UFFS_ERR_SERIOUS, "there still have dirty pages!");
-			return U_FAIL;
+			ret = U_FAIL;
 		}
 	}
 
-	uffs_BufSetAllEmpty(dev);
+	if (ret == U_SUCC)
+		uffs_BufSetAllEmpty(dev);
 
 
-	if (uffs_BlockInfoIsAllFree(dev) == U_FALSE) {
+	if (ret == U_SUCC && uffs_BlockInfoIsAllFree(dev) == U_FALSE) {
 		uffs_Perror(UFFS_ERR_NORMAL, "there still have block info cache ? fail to format");
-		return U_FAIL;
+		ret = U_FAIL;
 	}
 
-	uffs_BlockInfoExpireAll(dev);
+	if (ret == U_SUCC)
+		uffs_BlockInfoExpireAll(dev);
 
-	for (i = dev->par.start; i <= dev->par.end; i++) {
+	for (i = dev->par.start; ret == U_SUCC && i <= dev->par.end; i++) {
 		if (uffs_FlashIsBadBlock(dev, i) == U_FALSE) {
 			uffs_FlashEraseBlock(dev, i);
 			if (HAVE_BADBLOCK(dev))
@@ -178,18 +223,18 @@ URET uffs_FormatDevice(uffs_Device *dev)
 		}
 	}
 
-	if (uffs_TreeRelease(dev) == U_FAIL) {
-		return U_FAIL;
+	if (ret == U_SUCC && uffs_TreeRelease(dev) == U_FAIL) {
+		ret = U_FAIL;
 	}
 
-	if (uffs_TreeInit(dev) == U_FAIL) {
-		return U_FAIL;
+	if (ret == U_SUCC && uffs_TreeInit(dev) == U_FAIL) {
+		ret = U_FAIL;
 	}
 
-	if (uffs_BuildTree(dev) == U_FAIL) {
-		return U_FAIL;
+	if (ret == U_SUCC && uffs_BuildTree(dev) == U_FAIL) {
+		ret = U_FAIL;
 	}
-	
-	return U_SUCC;
+	uffs_GlobalFsLockUnlock();
+	return ret;
 }
 
