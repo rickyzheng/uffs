@@ -40,7 +40,7 @@
 #include <stdlib.h>
 #include "uffs/uffs_config.h"
 #include "uffs/uffs_public.h"
-#include "uffs/uffs_fs.h"
+#include "uffs/uffs_fd.h"
 #include "uffs/uffs_utils.h"
 #include "uffs/uffs_core.h"
 #include "uffs/uffs_mtb.h"

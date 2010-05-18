@@ -72,7 +72,7 @@
 
 #define CHK_DIR_LOCK(dirp, ret)	do { \
 								uffs_GlobalFsLockLock(); \
-								if ((dirp) == NULL | \
+								if ((dirp) == NULL || \
 										uffs_PoolVerify(&_dir_pool, (dirp)) == U_FALSE || \
 										uffs_PoolCheckFreeList(&_dir_pool, (dirp)) == U_TRUE) { \
 									uffs_set_error(-UEBADF); \
