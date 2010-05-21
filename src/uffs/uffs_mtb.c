@@ -42,6 +42,7 @@
 #include "uffs/uffs_tree.h"
 #include "uffs/uffs_mtb.h"
 #include "uffs/uffs_fd.h"
+#include "uffs/uffs_utils.h"
 #include <string.h>
 
 #define PFX "mtb:  "
@@ -114,6 +115,7 @@ URET uffs_InitMountTable(void)
 
 	if (uffs_InitObjectBuf() == U_SUCC) {
 		if (uffs_DirEntryBufInit() == U_SUCC) {
+			uffs_InitGlobalFsLock();
 			return U_SUCC;
 		}
 	}
@@ -133,6 +135,7 @@ URET uffs_ReleaseMountTable(void)
 
 	if (uffs_ReleaseObjectBuf() == U_SUCC) {
 		if (uffs_DirEntryBufRelease() == U_SUCC) {
+			uffs_ReleaseGlobalFsLock();
 			return U_SUCC;
 		}
 	}

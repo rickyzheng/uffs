@@ -46,28 +46,23 @@
 
 
 #ifdef CONFIG_USE_PER_DEVICE_LOCK
-URET uffs_DeviceInitLock(uffs_Device *dev)
+void uffs_DeviceInitLock(uffs_Device *dev)
 {
 	dev->lock.sem = uffs_SemCreate(1);
 	dev->lock.task_id = UFFS_TASK_ID_NOT_EXIST;
 	dev->lock.counter = 0;
-
-	return U_SUCC;
 }
 
-URET uffs_DeviceReleaseLock(uffs_Device *dev)
+void uffs_DeviceReleaseLock(uffs_Device *dev)
 {
 	if (dev->lock.sem) {
 		uffs_SemDelete(dev->lock.sem);
 		dev->lock.sem = 0;
 	}
-
-	return U_SUCC;
 }
 
-URET uffs_DeviceLock(uffs_Device *dev)
+void uffs_DeviceLock(uffs_Device *dev)
 {
-
 	uffs_SemWait(dev->lock.sem);
 	
 	if (dev->lock.counter != 0) {
@@ -75,13 +70,10 @@ URET uffs_DeviceLock(uffs_Device *dev)
 	}
 
 	dev->lock.counter++;
-
-	return U_SUCC;
 }
 
-URET uffs_DeviceUnLock(uffs_Device *dev)
+void uffs_DeviceUnLock(uffs_Device *dev)
 {
-
 	dev->lock.counter--;
 
 	if (dev->lock.counter != 0) {
@@ -89,8 +81,6 @@ URET uffs_DeviceUnLock(uffs_Device *dev)
 	}
 	
 	uffs_SemSignal(dev->lock.sem);
-
-	return U_SUCC;
 }
 
 #endif

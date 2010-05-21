@@ -176,23 +176,24 @@ struct uffs_DeviceSt {
 #ifdef CONFIG_USE_PER_DEVICE_LOCK
 
 /** create the lock for uffs device */
-URET uffs_DeviceInitLock(uffs_Device *dev);
+void uffs_DeviceInitLock(uffs_Device *dev);
 
 /** delete the lock of uffs device */
-URET uffs_DeviceReleaseLock(uffs_Device *dev);
+void uffs_DeviceReleaseLock(uffs_Device *dev);
 
 /** lock uffs device */
-URET uffs_DeviceLock(uffs_Device *dev);
+void uffs_DeviceLock(uffs_Device *dev);
 
 /** unlock uffs device */
-URET uffs_DeviceUnLock(uffs_Device *dev);
+void uffs_DeviceUnLock(uffs_Device *dev);
 
 #else
 
-#define uffs_DeviceInitLock(dev)
-#define uffs_DeviceReleaseLock(dev)
-#define uffs_DeviceLock(dev)
-#define uffs_DeviceUnLock(dev)
+/* dummy stubs */
+#define uffs_DeviceInitLock(dev)	do{}while(0)
+#define uffs_DeviceReleaseLock(dev)	do{}while(0)
+#define uffs_DeviceLock(dev)		do{}while(0)
+#define uffs_DeviceUnLock(dev)		do{}while(0)
 
 #endif
 

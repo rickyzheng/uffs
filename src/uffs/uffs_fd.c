@@ -189,6 +189,7 @@ int uffs_open(const char *name, int oflag, ...)
 	int ret = 0;
 
 	uffs_GlobalFsLockLock();
+
 	obj = uffs_GetObject();
 	if (obj == NULL) {
 		uffs_set_error(-UEMFILE);
@@ -204,6 +205,7 @@ int uffs_open(const char *name, int oflag, ...)
 			ret = OBJ2FD(obj);
 		}
 	}
+
 	uffs_GlobalFsLockUnlock();
 
 	return ret;

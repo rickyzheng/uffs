@@ -73,6 +73,7 @@ void uffs_GlobalFsLockUnlock(void)
 {
 	uffs_SemSignal(_global_lock);
 }
+
 #endif
 
 
@@ -235,7 +236,9 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 	if (ret == U_SUCC && uffs_BuildTree(dev) == U_FAIL) {
 		ret = U_FAIL;
 	}
+
 	uffs_GlobalFsLockUnlock();
+
 	return ret;
 }
 
