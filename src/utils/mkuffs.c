@@ -82,6 +82,7 @@ int conf_pages_data_size = 512;
 int conf_pages_spare_size = 16;
 int conf_status_byte_offset = 5;
 int conf_total_blocks =	128;
+int conf_ecc_option = UFFS_ECC_SOFT;
 
 #define PAGE_SIZE				(conf_pages_data_size + conf_pages_spare_size)
 #define BLOCK_DATA_SIZE				(conf_pages_per_block * conf_pages_data_size)
@@ -157,8 +158,8 @@ static void setup_emu_storage(struct uffs_StorageAttrSt *attr)
 	attr->pages_per_block = conf_pages_per_block;		/* pages per block */
 
 	attr->block_status_offs = conf_status_byte_offset;	/* block status offset is 5th byte in spare */
-	attr->ecc_opt = UFFS_ECC_SOFT;				/* let UFFS handle the ECC */
-	attr->layout_opt = UFFS_LAYOUT_UFFS;		/* let UFFS handle layout */
+	attr->ecc_opt = conf_ecc_option;					/* ECC option */
+	attr->layout_opt = UFFS_LAYOUT_UFFS;				/* let UFFS handle layout */
 }
 
 static void setup_emu_private(uffs_FileEmu *emu)
@@ -293,16 +294,17 @@ static int parse_options(int argc, char *argv[])
 					usage++;
                 else if (sscanf(argv[iarg], "%i", &conf_pages_data_size) < 1)
 					usage++;
-				if (conf_pages_data_size <= 0 || (conf_pages_data_size % 512))
-					usage++;
             }
             else if (!strcmp(arg, "-s") || !strcmp(arg, "--spare-size")) {
                 if (++iarg >= argc) 
 					usage++;
                 else if (sscanf(argv[iarg], "%i", &conf_pages_spare_size) < 1) 
 					usage++;
-				if (conf_pages_spare_size < 16 || (conf_pages_spare_size % 4))
+				if (conf_pages_spare_size < sizeof(struct uffs_TagStoreSt) + 1 ||
+					(conf_pages_spare_size % 4) != 0) {
+					printf("ERROR: Invalid spare size\n");
 					usage++;
+				}
             }
             else if (!strcmp(arg, "-o") || !strcmp(arg, "--status-offset")) {
                 if (++iarg >= argc) 
@@ -346,6 +348,24 @@ static int parse_options(int argc, char *argv[])
 					conf_exec_script = 1;
 				}
 			}
+			else if (!strcmp(arg, "-x") || !strcmp(arg, "--ecc-option")) {
+				if (++iarg > argc)
+					usage++;
+				else {
+					if (!strcmp(argv[iarg], "none"))
+						conf_ecc_option = UFFS_ECC_NONE;
+					else if (!strcmp(argv[iarg], "soft"))
+						conf_ecc_option = UFFS_ECC_SOFT;
+					else if (!strcmp(argv[iarg], "hw"))
+						conf_ecc_option = UFFS_ECC_HW;
+					else if (!strcmp(argv[iarg], "auto"))
+						conf_ecc_option = UFFS_ECC_HW_AUTO;
+					else {
+						printf("ERROR: Invalid ECC option\n");
+						usage++;
+					}
+				}
+			}
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 			else if (!strcmp(arg, "-a") || !strcmp(arg, "--alloc")) {
 				if (++iarg > argc) 
@@ -369,18 +389,19 @@ static int parse_options(int argc, char *argv[])
     
     if (usage) {
         printf("Usage: %s [options]\n", argv[0]);
-        printf("  -h  --help                        show usage\n");
-        printf("  -c  --command-line                command line mode\n");
-        printf("  -v  --verbose                     verbose mode\n");
-        printf("  -f  --file           <file>       uffs image file\n");
-        printf("  -p  --page-size      <n>          page data size, default=512\n");
-        printf("  -s  --spare-size     <n>          page spare size, default=16\n");
-		printf("  -o  --status-offset  <n>          status byte offset, default=5\n");
-        printf("  -b  --block-pages    <n>          pages per block\n");
-        printf("  -t  --total-blocks   <n>          total blocks\n");
+        printf("  -h  --help                                show usage\n");
+        printf("  -c  --command-line                        command line mode\n");
+        printf("  -v  --verbose                             verbose mode\n");
+        printf("  -f  --file           <file>               uffs image file\n");
+        printf("  -p  --page-size      <n>                  page data size, default=512\n");
+        printf("  -s  --spare-size     <n>                  page spare size, default=16\n");
+		printf("  -o  --status-offset  <n>                  status byte offset, default=5\n");
+        printf("  -b  --block-pages    <n>                  pages per block\n");
+        printf("  -t  --total-blocks   <n>                  total blocks\n");
         printf("  -m  --mount          <mount_point,start,end> , for example: -m /,0,-1\n");
-		printf("  -i  --id-man         <id>         set manufacture ID, default=0xEC\n");
-        printf("  -e  --exec           <file>       execute a script file\n");
+		printf("  -i  --id-man         <id>                 set manufacture ID, default=0xEC\n");
+		printf("  -x  --ecc-option     <none|soft|hw|auto>  ECC option, default=soft\n");
+        printf("  -e  --exec           <file>               execute a script file\n");
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 		printf("  -a  --alloc          <size>       allocate size(KB) of memory for uffs, default 100\n");
 #endif		

@@ -48,7 +48,7 @@
 #define SPOOL(dev) &((dev)->mem.spare_pool)
 #define HEADER(buf) ((struct uffs_MiniHeaderSt *)(buf)->header)
 
-#define ECC_SIZE(dev) (3 * (dev)->attr->page_data_size / 256)
+#define ECC_SIZE(dev) (3 * ((((dev)->attr->page_data_size - 1) / 256) + 1))
 #define TAG_STORE_SIZE	(sizeof(struct uffs_TagStoreSt))
 
 
@@ -96,8 +96,10 @@ static void InitSpareLayout(uffs_Device *dev)
 
 		/* spare ecc layout */
 		p = dev->attr->_uffs_ecc_layout;
-		*p++ = TAG_STORE_SIZE + 1;
-		*p++ = ECC_SIZE(dev);
+		if (dev->attr->ecc_opt != UFFS_ECC_NONE) {
+			*p++ = TAG_STORE_SIZE + 1;
+			*p++ = ECC_SIZE(dev);
+		}
 		*p++ = 0xFF;
 		*p++ = 0;
 	}
@@ -112,17 +114,19 @@ static void InitSpareLayout(uffs_Device *dev)
 
 		/* spare ecc layout */
 		p = dev->attr->_uffs_ecc_layout;
-		if (s < TAG_STORE_SIZE + ECC_SIZE(dev)) {
-			if (s > TAG_STORE_SIZE) {
-				*p++ = TAG_STORE_SIZE;
-				*p++ = s - TAG_STORE_SIZE;
+		if (dev->attr->ecc_opt != UFFS_ECC_NONE) {
+			if (s < TAG_STORE_SIZE + ECC_SIZE(dev)) {
+				if (s > TAG_STORE_SIZE) {
+					*p++ = TAG_STORE_SIZE;
+					*p++ = s - TAG_STORE_SIZE;
+				}
+				*p++ = s + 1;
+				*p++ = TAG_STORE_SIZE + ECC_SIZE(dev) - s;
 			}
-			*p++ = s + 1;
-			*p++ = TAG_STORE_SIZE + ECC_SIZE(dev) - s;
-		}
-		else {
-			*p++ = TAG_STORE_SIZE;
-			*p++ = ECC_SIZE(dev);
+			else {
+				*p++ = TAG_STORE_SIZE;
+				*p++ = ECC_SIZE(dev);
+			}
 		}
 		*p++ = 0xFF;
 		*p++ = 0;
@@ -139,7 +143,7 @@ static int CalculateSpareDataSize(uffs_Device *dev)
 	int ecc_size, tag_size;
 	int n;
 
-	ecc_size = ECC_SIZE(dev);
+	ecc_size = (dev->attr->ecc_opt == UFFS_ECC_NONE ? 0 : ECC_SIZE(dev));
 	
 	p = dev->attr->ecc_layout;
 	if (p) {

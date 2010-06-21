@@ -68,21 +68,6 @@ struct uffs_TagStoreSt {
 
 #define TAG_ECC_DEFAULT (0xFFF)	//!< 12-bit '1'
 
-/**
- * \struct uffs_TagStoreSt_8
- * \brief this data structure describes the page status, for 8 bytes page spare.
- * \note there is no tag ecc for this !
- */
-struct uffs_TagStoreSt_8 {
-	u32 dirty:1;			//!< 0: dirty, 1: clear
-	u32 valid:1;			//!< 0: valid, 1: invalid
-	u32 type:2;				//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
-	u32 block_ts:2;			//!< time stamp of block;
-	u32 page_id:5;			//!< page id
-	u32 parent:7;			//!< parent's serial number
-	u32 serial:8;			//!< serial number
-	u32 data_len:8;			//!< length of page data
-};
 
 /** 
  * \struct uffs_TagsSt
