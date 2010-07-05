@@ -53,7 +53,8 @@
 #define DEBUG_LOGFILE	"log.txt"
 #endif
 
-void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const char *errFmt, ...)
+void uffs_DebugMessage(int level, const char *prefix,
+					   const char *suffix, const char *errFmt, ...)
 {
 
 #ifdef ENABLE_DEBUG

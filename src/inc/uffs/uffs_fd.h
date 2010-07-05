@@ -78,13 +78,13 @@ extern "C"{
  * \brief POSIX dirent
  */
 struct uffs_dirent {
-    int d_ino;					/* inode number (serial number or this record) */
-    char d_name[MAX_FILENAME_LENGTH];		/* name of this record */
+    int d_ino;		/* inode number (serial number of this object) */
+    char d_name[MAX_FILENAME_LENGTH];	/* name of this object */
 
-    int d_off;					/* offset to this dirent */
+    int d_off;		/* offset to this dirent */
     unsigned short int d_reclen;		/* length of this uffs_dirent */
     unsigned short int d_namelen;		/* length of this d_name */
-    unsigned char d_type;			/* type of this record */
+    unsigned char d_type;				/* type of this record */
 };
 
 /**

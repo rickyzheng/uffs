@@ -74,14 +74,17 @@
 
 /**
  * \def MAX_SPARE_BUFFERS
- * \note spare buffers are used for lower level flash operations, 5 should be enough.
+ * \note spare buffers are used for lower level flash operations,
+ *		 5 should be enough.
  */
 #define MAX_SPARE_BUFFERS		5
 
 
 /**
  * \def MAX_DIRTY_PAGES_IN_A_BLOCK 
- * \note this value should be between '2' and the lesser of 'max pages per block' and (MAX_PAGE_BUFFERS - CLONE_BUFFERS_THRESHOLD - 1).
+ * \note this value should be between '2' and the lesser of
+ *		 'max pages per block' and (MAX_PAGE_BUFFERS - CLONE_BUFFERS_THRESHOLD - 1).
+ *
  *       the smaller the value the frequently the buffer will be flushed.
  */
 #define MAX_DIRTY_PAGES_IN_A_BLOCK	7
@@ -102,7 +105,8 @@
 
 /**
  * \def CONFIG_USE_PER_DEVICE_LOCK
- * \note use per-device lock. this is required if you use fs APIs in multi-thread environment.
+ * \note use per-device lock.
+ *		 this is required if you use fs APIs in multi-thread environment.
  */
 //#define CONFIG_USE_PER_DEVICE_LOCK
 
@@ -205,7 +209,8 @@
 /**
  * \def CONFIG_BAD_BLOCK_POLICY_STRICT
  * \note If this is enabled, UFFS will report the block as 'bad' if any bit-flips found;
- *       otherwise, UFFS report bad block only when ECC failed or reported by low level flash driver.
+ *       otherwise, UFFS report bad block only when ECC failed or reported
+ *		 by low level flash driver.
  *
  * \note Enable this will ensure your data always be stored on completely good blocks.
  */

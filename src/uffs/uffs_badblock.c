@@ -51,9 +51,11 @@ void uffs_BadBlockInit(uffs_Device *dev)
 
 
 /** 
- * \brief process bad block: erase bad block, mark it as 'bad' and put the node to bad block list.
+ * \brief process bad block: erase bad block, mark it as 'bad'
+ *			and put the node to bad block list.
  * \param[in] dev uffs device
- * \param[in] node bad block tree node (before the block turn 'bad', it must belong to something ...)
+ * \param[in] node bad block tree node
+ *			(before the block turn 'bad', it must belong to something ...)
  */
 void uffs_BadBlockProcess(uffs_Device *dev, TreeNode *node)
 {
@@ -122,7 +124,8 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 			succRecov = U_FALSE;
 			break;
 		}
-		//NOTE: since this is a bad block, we can't guarantee the data is ECC ok, so just load data even ECC is not OK.
+		//NOTE: since this is a bad block, we can't guarantee the data is ECC ok,
+		//		so just load data even ECC is not OK.
 		ret = uffs_LoadPhyDataToBufEccUnCare(dev, buf, bc->block, page);
 		if (ret == U_FAIL) {
 			uffs_Perror(UFFS_ERR_SERIOUS, "I/O error ?");
@@ -158,7 +161,8 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 
 
 	if (succRecov == U_TRUE) {
-		//successful recover bad block, so need to mark bad block, and replace with good one
+		// successful recover bad block, so need to mark bad block,
+		// and replace with good one
 
 		region = SEARCH_REGION_DIR|SEARCH_REGION_FILE|SEARCH_REGION_DATA;
 		bad = uffs_TreeFindNodeByBlock(dev, dev->bad.block, &region);
@@ -178,14 +182,18 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 			}
 			
 			//from now, the 'bad' is actually good block :)))
-			uffs_Perror(UFFS_ERR_NOISY, "new bad block %d found, and replaced by %d!", dev->bad.block, good->u.list.block);
+			uffs_Perror(UFFS_ERR_NOISY,
+						"new bad block %d found, and replaced by %d!",
+						dev->bad.block, good->u.list.block);
 			uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 			//we reuse the 'good' node as bad block node, and process the bad block.
 			good->u.list.block = dev->bad.block;
 			uffs_BadBlockProcess(dev, good);
 		}
 		else {
-			uffs_Perror(UFFS_ERR_SERIOUS, "can't find the reported bad block(%d) in the tree???", dev->bad.block);
+			uffs_Perror(UFFS_ERR_SERIOUS,
+						"can't find the reported bad block(%d) in the tree???",
+						dev->bad.block);
 			if (goodBlockIsDirty == U_TRUE)
 				dev->ops->EraseBlock(dev, good->u.list.block);
 			uffs_TreeInsertToErasedListTail(dev, good);

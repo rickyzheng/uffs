@@ -47,7 +47,8 @@ static char version_buf[8];
 
 const char * uffs_Version2Str(int ver)
 {
-	sprintf(version_buf, "%1d.%02d.%04d", (ver&0xff000000) >> 24, (ver&0xff0000) >> 16, (ver&0xffff));
+	sprintf(version_buf, "%1d.%02d.%04d",
+			(ver&0xff000000) >> 24, (ver&0xff0000) >> 16, (ver&0xffff));
 	return version_buf;
 }
 

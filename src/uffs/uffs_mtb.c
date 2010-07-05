@@ -90,15 +90,20 @@ URET uffs_InitMountTable(void)
 	int dev_num = 0;
 
 	for (work = tbl; work; work = work->next) {
-		uffs_Perror(UFFS_ERR_NOISY, "init device for mount point %s ...", work->mount);
+		uffs_Perror(UFFS_ERR_NOISY,
+					"init device for mount point %s ...",
+					work->mount);
 		if (work->dev->Init(work->dev) == U_FAIL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, "init device for mount point %s fail", work->mount);
+			uffs_Perror(UFFS_ERR_SERIOUS,
+						"init device for mount point %s fail",
+						work->mount);
 			return U_FAIL;
 		}
 
 		work->dev->par.start = work->start_block;
 		if (work->end_block < 0) {
-			work->dev->par.end = work->dev->attr->total_blocks + work->end_block;
+			work->dev->par.end = 
+				work->dev->attr->total_blocks + work->end_block;
 		}
 		else {
 			work->dev->par.end = work->end_block;
@@ -211,7 +216,8 @@ uffs_Device * uffs_GetDeviceFromMountPointEx(const char *mount, int len)
 	struct uffs_MountTableEntrySt *devTab = uffs_GetMountTable();
 
 	while (devTab) {
-		if (strlen(devTab->mount) == len && strncmp(mount, devTab->mount, len) == 0) {
+		if (strlen(devTab->mount) == len &&
+				strncmp(mount, devTab->mount, len) == 0) {
 			devTab->dev->ref_count++;
 			return devTab->dev;
 		}
@@ -226,7 +232,8 @@ uffs_Device * uffs_GetDeviceFromMountPointEx(const char *mount, int len)
  * return mount point from device
  *
  * \param[in] dev uffs device
- * \return NULL if mount point is not found, otherwise return mount point name in mount table.
+ * \return NULL if mount point is not found, 
+ *		otherwise return mount point name in mount table.
  */
 const char * uffs_GetDeviceMountPoint(uffs_Device *dev)
 {

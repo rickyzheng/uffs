@@ -89,7 +89,8 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 
 	buf = uffs_BufClone(dev, NULL);
 	if (buf == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, "Alloc page buffer fail ! Format stoped.");
+		uffs_Perror(UFFS_ERR_SERIOUS,
+					"Alloc page buffer fail ! Format stoped.");
 		goto ext;
 	}
 
@@ -107,7 +108,8 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 		ret = dev->ops->WritePageData(dev, block, i, pageBuf, pageSize, NULL);
 		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 			goto bad_out;
-		ret = dev->ops->WritePageSpare(dev, block, i, pageBuf, 0, dev->attr->spare_size, U_TRUE);
+		ret = dev->ops->WritePageSpare(dev, block, i, pageBuf, 0,
+										dev->attr->spare_size, U_TRUE);
 		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 			goto bad_out;
 	}
@@ -119,7 +121,8 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 				goto bad_out;
 		}
 		memset(pageBuf, 0xFF, dev->attr->spare_size);
-		dev->ops->ReadPageSpare(dev, block, i, pageBuf, 0, dev->attr->spare_size);
+		dev->ops->ReadPageSpare(dev, block, i, pageBuf, 0,
+									dev->attr->spare_size);
 		for (j = 0; j < dev->attr->spare_size; j++) {
 			if(pageBuf[j] != 0)
 				goto bad_out;
@@ -139,7 +142,8 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 				goto bad_out;
 		}
 		memset(pageBuf, 0, dev->attr->spare_size);
-		dev->ops->ReadPageSpare(dev, block, i, pageBuf, 0, dev->attr->spare_size);
+		dev->ops->ReadPageSpare(dev, block, i, pageBuf, 0,
+									dev->attr->spare_size);
 		for (j = 0; j < dev->attr->spare_size; j++) {
 			if(pageBuf[j] != 0xFF)
 				goto bad_out;
@@ -178,7 +182,9 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 	ret = uffs_BufFlushAll(dev);
 
 	if (dev->ref_count > 1 && force != U_TRUE) {
-		uffs_Perror(UFFS_ERR_NORMAL, "can't format when dev->ref_count = %d", dev->ref_count);
+		uffs_Perror(UFFS_ERR_NORMAL,
+					"can't format when dev->ref_count = %d",
+					dev->ref_count);
 		ret = U_FAIL;
 	}
 
@@ -188,7 +194,10 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 		uffs_FdSignatureIncrease();
 	}
 
-	if (ret == U_SUCC && uffs_BufIsAllFree(dev) == U_FALSE && force == U_TRUE) {
+	if (ret == U_SUCC &&
+		uffs_BufIsAllFree(dev) == U_FALSE &&
+		force == U_TRUE)
+	{
 		uffs_Perror(UFFS_ERR_NORMAL, "some page still in used!");
 		ret = U_FAIL;
 	}
@@ -205,7 +214,8 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 
 
 	if (ret == U_SUCC && uffs_BlockInfoIsAllFree(dev) == U_FALSE) {
-		uffs_Perror(UFFS_ERR_NORMAL, "there still have block info cache ? fail to format");
+		uffs_Perror(UFFS_ERR_NORMAL,
+					"there still have block info cache ? fail to format");
 		ret = U_FAIL;
 	}
 

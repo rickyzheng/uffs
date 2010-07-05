@@ -50,7 +50,11 @@ static void ResetFindInfo(uffs_FindInfo *f)
 	f->pos = 0;
 }
 
-static URET _LoadObjectInfo(uffs_Device *dev, TreeNode *node, uffs_ObjectInfo *info, int type, int *err)
+static URET _LoadObjectInfo(uffs_Device *dev,
+							TreeNode *node,
+							uffs_ObjectInfo *info,
+							int type,
+							int *err)
 {
 	uffs_Buf *buf;
 
@@ -121,7 +125,8 @@ URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info, int *err)
  */
 URET uffs_FindObjectOpen(uffs_FindInfo *f, uffs_Object *dir)
 {
-	if (f == NULL || dir == NULL || dir->dev == NULL || dir->open_succ != U_TRUE)
+	if (f == NULL || dir == NULL ||
+			dir->dev == NULL || dir->open_succ != U_TRUE)
 		return U_FAIL;
 
 	f->dev = dir->dev;
@@ -300,7 +305,8 @@ URET uffs_FindObjectNext(uffs_ObjectInfo *info, uffs_FindInfo * f)
 /**
  * Rewind a find object process.
  *
- * \note After rewind, you can call uffs_FindObjectFirst() to start find object process.
+ * \note After rewind, you can call uffs_FindObjectFirst() to
+ *			start find object process.
  */
 URET uffs_FindObjectRewind(uffs_FindInfo *f)
 {
@@ -336,7 +342,8 @@ URET uffs_FindObjectClose(uffs_FindInfo * f)
  * \param[in] f uffs_FindInfo structure, openned by uffs_FindObjectOpen().
  *
  * \return object counts
- * \note after call this function, you need to call uffs_FindObjectRewind() to start finding process.
+ * \note after call this function, you need to call
+ *		 uffs_FindObjectRewind() to start finding process.
  */
 int uffs_FindObjectCount(uffs_FindInfo *f)
 {

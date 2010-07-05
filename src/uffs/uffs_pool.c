@@ -74,7 +74,8 @@
  * \param[in] num_bufs number of buffers
  * \return Returns U_SUCC if successful.
  */
-URET uffs_PoolInit(uffs_Pool *pool, void *mem, u32 mem_size, u32 buf_size, u32 num_bufs)
+URET uffs_PoolInit(uffs_Pool *pool,
+				   void *mem, u32 mem_size, u32 buf_size, u32 num_bufs)
 {
 	unsigned int i;
 	uffs_PoolEntry *e1, *e2;
@@ -82,8 +83,10 @@ URET uffs_PoolInit(uffs_Pool *pool, void *mem, u32 mem_size, u32 buf_size, u32 n
 	uffs_Assert(pool, "pool missing");
 	uffs_Assert(mem, "pool memory missing");
 	uffs_Assert(num_bufs > 0, "not enough buffers");
-	uffs_Assert(buf_size % sizeof(void *) == 0, "buffer size not aligned to pointer size");
-	uffs_Assert(mem_size == num_bufs * buf_size, "pool memory size is wrong");
+	uffs_Assert(buf_size % sizeof(void *) == 0,
+					"buffer size not aligned to pointer size");
+	uffs_Assert(mem_size == num_bufs * buf_size,
+					"pool memory size is wrong");
 
 	pool->mem = (u8 *)mem;
 	pool->buf_size = buf_size;
@@ -112,10 +115,10 @@ URET uffs_PoolInit(uffs_Pool *pool, void *mem, u32 mem_size, u32 buf_size, u32 n
  */
 UBOOL uffs_PoolVerify(uffs_Pool *pool, void *p)
 {
-	return  p &&
-			(u8 *)p >= pool->mem &&
-			(u8 *)p < pool->mem + (pool->buf_size * pool->num_bufs) &&
-			(((u8 *)p - pool->mem) % pool->buf_size) == 0	? U_TRUE : U_FALSE;
+	return p &&
+		(u8 *)p >= pool->mem &&
+		(u8 *)p < pool->mem + (pool->buf_size * pool->num_bufs) &&
+		(((u8 *)p - pool->mem) % pool->buf_size) == 0 ? U_TRUE : U_FALSE;
 }
 
 /**
@@ -229,7 +232,8 @@ int uffs_PoolPutLocked(uffs_Pool *pool, void *p)
 void *uffs_PoolGetBufByIndex(uffs_Pool *pool, u32 index)
 {
 	uffs_Assert(pool, "pool missing");
-	uffs_Assert(index >= 0 && index < pool->num_bufs, "index(%d) out of range(max %d)", index, pool->num_bufs);
+	uffs_Assert(index >= 0 && index < pool->num_bufs,
+				"index(%d) out of range(max %d)", index, pool->num_bufs);
 
 	return (u8 *) pool->mem + index * pool->buf_size;
 }
@@ -277,9 +281,12 @@ static void * FindNextAllocatedInSmallPool(uffs_Pool *pool, void *from)
 	for (e = pool->free_list; e; e = e->next)
 		map |= (1 << uffs_PoolGetIndex(pool, e));
 
-	for (i = uffs_PoolGetIndex(pool, from); (map & (1 << i)) && i < 32 && i < pool->num_bufs; i++);
+	for (i = uffs_PoolGetIndex(pool, from);
+			(map & (1 << i)) && i < 32 && i < pool->num_bufs;
+				i++);
 
-	return i < 32 && i < pool->num_bufs ? uffs_PoolGetBufByIndex(pool, i) : NULL;
+	return i < 32 && i < pool->num_bufs ?
+			uffs_PoolGetBufByIndex(pool, i) : NULL;
 }
 
 

@@ -52,7 +52,8 @@ extern "C"{
 /** initialize bad block management data structures for uffs device */
 void uffs_BadBlockInit(uffs_Device *dev);
 
-/** processing bad block: erase bad block, mark it as 'bad' and put it to bad block list */
+/** processing bad block: erase bad block,
+	mark it as 'bad' and put it to bad block list */
 void uffs_BadBlockProcess(uffs_Device *dev, TreeNode *node);
 
 /** try to recover data from a new discovered bad block */

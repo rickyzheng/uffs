@@ -61,7 +61,8 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj)
 {
 	switch (src - obj) {
 	case 0:
-		uffs_Perror(UFFS_ERR_SERIOUS,  "the two block have the same time stamp ?");
+		uffs_Perror(UFFS_ERR_SERIOUS,
+					"the two block have the same time stamp ?");
 		break;
 	case 1:
 	case -2:
@@ -79,7 +80,8 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj)
 
 
 /** 
- * \brief given a page, search the block to find a better page with the same page id
+ * \brief given a page, search the block to find
+ *			a better page with the same page id
  *
  * \param[in] dev uffs device
  * \param[in] bc block info
@@ -154,7 +156,8 @@ u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
  * \retval >=0 page number
  * \retval UFFS_INVALID_PAGE page not found
  */
-u16 uffs_FindPageInBlockWithPageId(uffs_Device *dev, uffs_BlockInfo *bc, u16 page_id)
+u16 uffs_FindPageInBlockWithPageId(uffs_Device *dev,
+								   uffs_BlockInfo *bc, u16 page_id)
 {
 	u16 page;
 	uffs_Tags *tag;
@@ -227,7 +230,8 @@ int uffs_GetBlockTimeStamp(uffs_Device *dev, uffs_BlockInfo *bc)
  * \retval UFFS_INVALID_PAGE no free page found
  * \retval >=0 the first free page number
  */
-u16 uffs_FindFirstFreePage(uffs_Device *dev, uffs_BlockInfo *bc, u16 pageFrom)
+u16 uffs_FindFirstFreePage(uffs_Device *dev,
+						   uffs_BlockInfo *bc, u16 pageFrom)
 {
 	u16 i;
 
@@ -310,9 +314,12 @@ u16 uffs_MakeSum16(const void *p, int len)
  * \param[in] serial serial num of this new file
  * \param[in] bc block information
  * \param[in] fi file information
- * \note parent, serial, bc must be provided before, and all information in fi should be filled well before.
+ * \note parent, serial, bc must be provided before,
+ *		 and all information in fi should be filled well before.
  */
-URET uffs_CreateNewFile(uffs_Device *dev, u16 parent, u16 serial, uffs_BlockInfo *bc, uffs_FileInfo *fi)
+URET uffs_CreateNewFile(uffs_Device *dev,
+						u16 parent, u16 serial,
+						uffs_BlockInfo *bc, uffs_FileInfo *fi)
 {
 	uffs_Tags *tag;
 	uffs_Buf *buf;
@@ -353,7 +360,8 @@ int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type)
 	u16 lastPage = dev->attr->pages_per_block - 1;
 
 	// TODO: Need to speed up this procedure!
-	// First try the last page. will hit it if it's the full loaded file/data block.
+	// First try the last page. will hit it
+	// if it's the full loaded file/data block.
 	uffs_BlockInfoLoad(dev, bc, lastPage);
 	tag = GET_TAG(bc, lastPage);
 
@@ -372,7 +380,8 @@ int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type)
 		}
 	}
 
-	// ok, it's not the full loaded file/data block, need to read all spares....
+	// ok, it's not the full loaded file/data block,
+	// need to read all spares....
 	uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
 	tag = GET_TAG(bc, 0);
 	if (TAG_TYPE(tag) == UFFS_TYPE_FILE) {
@@ -439,7 +448,8 @@ UBOOL uffs_IsPageErased(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 }
 
 /** 
- * \brief Is this block the last block of file ? (no free pages, and full filled with full page_id)
+ * \brief Is this block the last block of file ?
+ *		 (no free pages, and full filled with full page_id)
  */
 UBOOL uffs_IsDataBlockReguFull(uffs_Device *dev, uffs_BlockInfo *bc)
 {
@@ -460,8 +470,11 @@ UBOOL uffs_IsDataBlockReguFull(uffs_Device *dev, uffs_BlockInfo *bc)
  */
 int uffs_GetDeviceUsed(uffs_Device *dev)
 {
-	return (dev->par.end - dev->par.start + 1 - dev->tree.bad_count
-				- dev->tree.erased_count) * dev->attr->page_data_size * dev->attr->pages_per_block;
+	return (dev->par.end - dev->par.start + 1 -
+			dev->tree.bad_count	- dev->tree.erased_count
+			) *
+				dev->attr->page_data_size *
+					dev->attr->pages_per_block;
 }
 
 /** 
@@ -469,7 +482,9 @@ int uffs_GetDeviceUsed(uffs_Device *dev)
  */
 int uffs_GetDeviceFree(uffs_Device *dev)
 {
-	return dev->tree.erased_count * dev->attr->page_data_size * dev->attr->pages_per_block;
+	return dev->tree.erased_count *
+			dev->attr->page_data_size *
+				dev->attr->pages_per_block;
 }
 
 /** 
@@ -477,15 +492,19 @@ int uffs_GetDeviceFree(uffs_Device *dev)
  */
 int uffs_GetDeviceTotal(uffs_Device *dev)
 {
-	return (dev->par.end - dev->par.start + 1) * dev->attr->page_data_size * dev->attr->pages_per_block;
+	return (dev->par.end - dev->par.start + 1) *
+				dev->attr->page_data_size *
+					dev->attr->pages_per_block;
 }
 
 /**
  * load mini hader from flash
  */
-URET uffs_LoadMiniHeader(uffs_Device *dev, int block, u16 page, struct uffs_MiniHeaderSt *header)
+URET uffs_LoadMiniHeader(uffs_Device *dev,
+						 int block, u16 page, struct uffs_MiniHeaderSt *header)
 {
-	int ret = dev->ops->ReadPageData(dev, block, page, (u8 *)header, sizeof(struct uffs_MiniHeaderSt), NULL);
+	int ret = dev->ops->ReadPageData(dev, block, page, (u8 *)header,
+										sizeof(struct uffs_MiniHeaderSt), NULL);
 
 	dev->st.page_header_read_count++;
 

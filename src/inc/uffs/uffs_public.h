@@ -175,6 +175,11 @@ UBOOL uffs_IsBlockBad(uffs_Device *dev, uffs_BlockInfo *bc);
  * \brief macro for invalid page number
  */
 #define UFFS_INVALID_PAGE	(0xfffe)
+
+/** 
+ * \def UFFS_INVALID_BLOCK
+ * \brief macro for invalid block number
+ */
 #define UFFS_INVALID_BLOCK	(0xfffe)
 
 

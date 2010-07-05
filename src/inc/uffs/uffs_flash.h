@@ -153,7 +153,8 @@ struct uffs_FlashOpsSt {
 	 * \note flash driver DO NOT need to do ecc correction for spare data,
 	 *		UFFS will take care of spare data ecc.
 	 */
-	int (*ReadPageSpareWithLayout)(uffs_Device *dev, u32 block, u32 page, u8 *tag, int len, u8 *ecc);
+	int (*ReadPageSpareWithLayout)(uffs_Device *dev, u32 block, u32 page,
+									u8 *tag, int len, u8 *ecc);
 
 	/**
 	 * Write page data.
@@ -167,7 +168,8 @@ struct uffs_FlashOpsSt {
 	 *
 	 * \note pad 0xFF for calculating ECC if len < page_data_size
 	 */
-	int (*WritePageData)(uffs_Device *dev, u32 block, u32 page, const u8 *data, int len, u8 *ecc);
+	int (*WritePageData)(uffs_Device *dev, u32 block, u32 page,
+							const u8 *data, int len, u8 *ecc);
 
 
 	/**
@@ -179,7 +181,8 @@ struct uffs_FlashOpsSt {
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page, const u8 *spare, int ofs, int len, UBOOL eod);
+	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page,
+							const u8 *spare, int ofs, int len, UBOOL eod);
 	
 	/**
 	 * Write full page, include page data and spare.
@@ -193,7 +196,8 @@ struct uffs_FlashOpsSt {
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WriteFullPage)(uffs_Device *dev, u32 block, u32 page, const u8* data, int len, const u8 *ts, int ts_len, const u8 *ecc);
+	int (*WriteFullPage)(uffs_Device *dev, u32 block, u32 page,
+							const u8* data, int len, const u8 *ts, int ts_len, const u8 *ecc);
 
 	/**
 	 * check block status.

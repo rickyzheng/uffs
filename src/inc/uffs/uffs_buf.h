@@ -56,7 +56,7 @@ extern "C"{
 #define UFFS_BUF_DIRTY		2			//!< buffer data is modified
 
 /** for uffs_BufSt::ext_mark */
-#define UFFS_BUF_EXT_MARK_TRUNC_TAIL		1	//!<
+#define UFFS_BUF_EXT_MARK_TRUNC_TAIL 1	//!< the last page of file (when truncating a file)
 
 /** uffs page buffer */
 struct uffs_BufSt{

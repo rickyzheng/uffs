@@ -46,54 +46,77 @@
 
 #define FD_OFFSET		3	//!< just make file handler more like POSIX (0, 1, 2 for stdin/stdout/stderr)
 
-#define OBJ2FD(obj)		((uffs_PoolGetIndex(uffs_GetObjectPool(), obj) | (_fd_signature << FD_SIGNATURE_SHIFT)) + FD_OFFSET)
+#define OBJ2FD(obj)	\
+	( \
+		( \
+			uffs_PoolGetIndex(uffs_GetObjectPool(), obj) | \
+			(_fd_signature << FD_SIGNATURE_SHIFT) \
+		) \
+		+ FD_OFFSET \
+	)
 
-#define CHK_OBJ_LOCK(fd, obj, ret)	do { \
-								uffs_GlobalFsLockLock(); \
-								fd -= FD_OFFSET; \
-								if ( (fd >> FD_SIGNATURE_SHIFT) != _fd_signature ) { \
-									uffs_set_error(-UEBADF); \
-									uffs_Perror(UFFS_ERR_NOISY, "invalid fd: %d (sig: %d, expect: %d)", \
-											fd + FD_OFFSET, fd >> FD_SIGNATURE_SHIFT, _fd_signature); \
-									uffs_GlobalFsLockUnlock(); \
-									return (ret); \
-								} \
-								fd = fd & ((1 << FD_SIGNATURE_SHIFT) - 1); \
-								obj = (uffs_Object *)uffs_PoolGetBufByIndex(uffs_GetObjectPool(), fd); \
-								if ((obj) == NULL || \
-										uffs_PoolVerify(uffs_GetObjectPool(), (obj)) == U_FALSE || \
-										uffs_PoolCheckFreeList(uffs_GetObjectPool(), (obj)) == U_TRUE) { \
-									uffs_set_error(-UEBADF); \
-									uffs_Perror(UFFS_ERR_NOISY, "invalid obj"); \
-									uffs_GlobalFsLockUnlock(); \
-									return (ret); \
-								} \
-							} while(0)
+/**
+ * check #fd signature, convert #fd to #obj
+ * if success, hold global file system lock, otherwise return with #ret
+ */
+#define CHK_OBJ_LOCK(fd, obj, ret)	\
+	do { \
+		uffs_GlobalFsLockLock(); \
+		fd -= FD_OFFSET; \
+		if ( (fd >> FD_SIGNATURE_SHIFT) != _fd_signature ) { \
+			uffs_set_error(-UEBADF); \
+			uffs_Perror(UFFS_ERR_NOISY, "invalid fd: %d (sig: %d, expect: %d)", \
+					fd + FD_OFFSET, fd >> FD_SIGNATURE_SHIFT, _fd_signature); \
+			uffs_GlobalFsLockUnlock(); \
+			return (ret); \
+		} \
+		fd = fd & ((1 << FD_SIGNATURE_SHIFT) - 1); \
+		obj = (uffs_Object *)uffs_PoolGetBufByIndex(uffs_GetObjectPool(), fd); \
+		if ((obj) == NULL || \
+				uffs_PoolVerify(uffs_GetObjectPool(), (obj)) == U_FALSE || \
+				uffs_PoolCheckFreeList(uffs_GetObjectPool(), (obj)) == U_TRUE) { \
+			uffs_set_error(-UEBADF); \
+			uffs_Perror(UFFS_ERR_NOISY, "invalid obj"); \
+			uffs_GlobalFsLockUnlock(); \
+			return (ret); \
+		} \
+	} while(0)
 
-#define CHK_DIR_LOCK(dirp, ret)	do { \
-								uffs_GlobalFsLockLock(); \
-								if ((dirp) == NULL || \
-										uffs_PoolVerify(&_dir_pool, (dirp)) == U_FALSE || \
-										uffs_PoolCheckFreeList(&_dir_pool, (dirp)) == U_TRUE) { \
-									uffs_set_error(-UEBADF); \
-									uffs_Perror(UFFS_ERR_NOISY, "invalid dirp"); \
-									uffs_GlobalFsLockUnlock(); \
-									return (ret); \
-								} \
-							} while(0)
+/**
+ * check #dirp signature,
+ * if success, hold global file system lock,
+ * otherwise return with #ret
+ */
+#define CHK_DIR_LOCK(dirp, ret)	\
+	do { \
+		uffs_GlobalFsLockLock(); \
+		if ((dirp) == NULL || \
+				uffs_PoolVerify(&_dir_pool, (dirp)) == U_FALSE || \
+				uffs_PoolCheckFreeList(&_dir_pool, (dirp)) == U_TRUE) { \
+			uffs_set_error(-UEBADF); \
+			uffs_Perror(UFFS_ERR_NOISY, "invalid dirp"); \
+			uffs_GlobalFsLockUnlock(); \
+			return (ret); \
+		} \
+	} while(0)
 
-#define CHK_DIR_VOID_LOCK(dirp)	do { \
-								uffs_GlobalFsLockLock(); \
-								if ((dirp) == NULL || \
-										uffs_PoolVerify(&_dir_pool, (dirp)) == U_FALSE || \
-										uffs_PoolCheckFreeList(&_dir_pool, (dirp)) == U_TRUE) { \
-									uffs_set_error(-UEBADF); \
-									uffs_Perror(UFFS_ERR_NOISY, "invalid dirp"); \
-									uffs_GlobalFsLockUnlock(); \
-									return; \
-								} \
-							} while(0)
-
+/**
+ * check #dirp signature,
+ * if success, hold global file system lock,
+ * otherwise return void
+ */
+#define CHK_DIR_VOID_LOCK(dirp)	\
+	do { \
+		uffs_GlobalFsLockLock(); \
+		if ((dirp) == NULL || \
+				uffs_PoolVerify(&_dir_pool, (dirp)) == U_FALSE || \
+				uffs_PoolCheckFreeList(&_dir_pool, (dirp)) == U_TRUE) { \
+			uffs_set_error(-UEBADF); \
+			uffs_Perror(UFFS_ERR_NOISY, "invalid dirp"); \
+			uffs_GlobalFsLockUnlock(); \
+			return; \
+		} \
+	} while(0)
 
 
 static int _dir_pool_data[sizeof(uffs_DIR) * MAX_DIR_HANDLE / sizeof(int)];
@@ -114,8 +137,9 @@ void uffs_FdSignatureIncrease(void)
  */
 URET uffs_DirEntryBufInit(void)
 {
-	return uffs_PoolInit(&_dir_pool, _dir_pool_data, sizeof(_dir_pool_data),
-			sizeof(uffs_DIR), MAX_DIR_HANDLE);
+	return uffs_PoolInit(&_dir_pool, _dir_pool_data,
+							sizeof(_dir_pool_data),
+							sizeof(uffs_DIR), MAX_DIR_HANDLE);
 }
 
 /**
@@ -136,7 +160,8 @@ int uffs_DirEntryBufPutAll(uffs_Device *dev)
 
 	do {
 		dirp = (uffs_DIR *) uffs_PoolFindNextAllocated(&_dir_pool, dirp);
-		if (dirp && dirp->obj && dirp->obj->dev && dirp->obj->dev->dev_num == dev->dev_num) {
+		if (dirp && dirp->obj && dirp->obj->dev &&
+				dirp->obj->dev->dev_num == dev->dev_num) {
 			uffs_PoolPut(&_dir_pool, dirp);
 			count++;
 		}

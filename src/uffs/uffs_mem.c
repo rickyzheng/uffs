@@ -47,9 +47,8 @@
 
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 
-#define HEAP_MAGIC_SIZE	8		/* heap magic size, this block is for memory protection */
-
-
+/* heap magic size, this block is for memory protection */
+#define HEAP_MAGIC_SIZE	8
 
 
 /* the 'BEST FIT' arithmetic,
@@ -559,13 +558,19 @@ void uffs_MemInitHeap(void *addr, int size)
 	uffs_CriticalExit();
 }
 
-/******************************************************************************************/
+/************************************************************/
 
 
-static void *__umalloc(uffs_MemAllocator *mem, unsigned int size, HeapHashTable * hash_tbl);
-static void *__ucalloc(uffs_MemAllocator *mem, unsigned int num, unsigned int size, HeapHashTable *hash_tbl);
-static void *__urealloc(uffs_MemAllocator *mem, void *block, unsigned int size, HeapHashTable *hash_tbl);
-static int __ufree(uffs_MemAllocator *mem, void *p, HeapHashTable * hash_tbl);
+static void *__umalloc(uffs_MemAllocator *mem,
+					   unsigned int size, HeapHashTable * hash_tbl);
+static void *__ucalloc(uffs_MemAllocator *mem,
+					   unsigned int num,
+					   unsigned int size, HeapHashTable *hash_tbl);
+static void *__urealloc(uffs_MemAllocator *mem,
+						void *block,
+						unsigned int size, HeapHashTable *hash_tbl);
+static int __ufree(uffs_MemAllocator *mem,
+						void *p, HeapHashTable * hash_tbl);
 
 
 /* release all alloced memory from hash table,
@@ -608,7 +613,8 @@ static void *uffs_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 
 
 /* alloc one block with given size, return the block pointer */
-static void *__umalloc(uffs_MemAllocator *mem, unsigned int size, HeapHashTable *hash_tbl)
+static void *__umalloc(uffs_MemAllocator *mem,
+					   unsigned int size, HeapHashTable *hash_tbl)
 {
 	void *p;
 	HeapMm *node;
@@ -648,14 +654,18 @@ static void *__umalloc(uffs_MemAllocator *mem, unsigned int size, HeapHashTable 
 }
 
 /* Allocates an array in memory with elements initialized to 0 */
-static void *__ucalloc(uffs_MemAllocator *mem, unsigned int num, unsigned int size, HeapHashTable *hash_tbl)
+static void *__ucalloc(uffs_MemAllocator *mem,
+					   unsigned int num,
+					   unsigned int size, HeapHashTable *hash_tbl)
 {
 	return __umalloc(mem, num * size, hash_tbl);
 }
 
 
 /* realloc one block with given size, return the block pointer */
-static void *__urealloc(uffs_MemAllocator *mem, void *block, unsigned int size, HeapHashTable *hash_tbl)
+static void *__urealloc(uffs_MemAllocator *mem,
+						void *block,
+						unsigned int size, HeapHashTable *hash_tbl)
 {
 	void *p, *pNew;
 	HeapMm *prev, *node;
@@ -694,7 +704,8 @@ static void *__urealloc(uffs_MemAllocator *mem, void *block, unsigned int size, 
 
 	/* ok, begin call kernel API to realloc memory */
 
-	p = (void *)((char *)block - HEAP_MAGIC_SIZE);	/* get real pointer which kernel need */
+	/* get real pointer which kernel need */
+	p = (void *)((char *)block - HEAP_MAGIC_SIZE);
 	pNew = _krealloc(p, HEAP_MAGIC_SIZE + size + HEAP_MAGIC_SIZE);
 
 	if (pNew == NULL) {	/* realloc fail */
@@ -708,7 +719,8 @@ static void *__urealloc(uffs_MemAllocator *mem, void *block, unsigned int size, 
 		return block;
 	}
 
-	/* new block is difference with old block, we need to change hash table ... */
+	/* new block is difference with old block,
+		we need to change hash table ... */
 	if (prev){
 		/* prev is not the first */
 		prev->next = node->next;
@@ -762,7 +774,9 @@ static int __ufree(uffs_MemAllocator *mem, void *p, HeapHashTable *hash_tbl)
 				mem->count -= node->size;
 				
 				uffs_CriticalExit();
-				if (_kfree(node) == -1)	/* calling kernel routine release node */
+
+				/* calling kernel routine release node */
+				if (_kfree(node) == -1)
 					return -1;			/* fail, return -1 */
 				
 				/* calling kernel routine and return */
@@ -815,7 +829,8 @@ URET uffs_MemReleaseNativeAllocator(uffs_Device *dev)
 	if (dev) {
 		count = ReleaseHeap(&dev->mem, dev->mem.tbl);
 		if (count < 0) {
-			uffs_Perror(UFFS_ERR_SERIOUS, "Release native memory allocator fail!");
+			uffs_Perror(UFFS_ERR_SERIOUS,
+						"Release native memory allocator fail!");
 			ret = U_FAIL;
 		}
 		else if (count > 0) {
@@ -870,18 +885,23 @@ static void * static_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 	size += (size % sizeof(long) ? sizeof(long) - (size % sizeof(long)) : 0);
 
 	if (mem->buf_size - mem->pos < (int)size) {
-		uffs_Perror(UFFS_ERR_SERIOUS, "Memory alloc failed! (alloc %d, free %d)", size, mem->buf_size - mem->pos);
+		uffs_Perror(UFFS_ERR_SERIOUS,
+					"Memory alloc failed! (alloc %d, free %d)",
+					size, mem->buf_size - mem->pos);
 	}
 	else {
 		p = mem->buf_start + mem->pos;
 		mem->pos += size;
-		uffs_Perror(UFFS_ERR_NOISY, "0x%p: Allocated %d, free %d", p, size, mem->buf_size - mem->pos);
+		uffs_Perror(UFFS_ERR_NOISY,
+					"0x%p: Allocated %d, free %d",
+					p, size, mem->buf_size - mem->pos);
 	}
 
 	return p;
 }
 
-void uffs_MemSetupStaticAllocator(uffs_MemAllocator *allocator, void *pool, int size)
+void uffs_MemSetupStaticAllocator(uffs_MemAllocator *allocator,
+								  void *pool, int size)
 {
 	allocator->buf_start = (unsigned char *)pool;
 	allocator->buf_size = size;
@@ -889,7 +909,8 @@ void uffs_MemSetupStaticAllocator(uffs_MemAllocator *allocator, void *pool, int 
 	allocator->malloc = static_malloc;
 	allocator->free = NULL;  //never free memory for static memory allocator
 
-	uffs_Perror(UFFS_ERR_NOISY, "System static memory: %d bytes", allocator->buf_size);
+	uffs_Perror(UFFS_ERR_NOISY,
+				"System static memory: %d bytes", allocator->buf_size);
 	
 }
 

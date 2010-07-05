@@ -48,7 +48,9 @@ extern "C"{
 typedef struct uffs_FindInfoSt {
 	uffs_Device *dev;				//!< the device to be searched
 	u16 serial;						//!< the dir serial number
-	int step;						//!< step: 0 - working on dir entries, 1 - working on file entries, 2 - stoped.
+	int step;						//!< step:	0 - working on dir entries,
+									//			1 - working on file entries,
+									//			2 - stoped.
 	int hash;						//!< hash entry, internal used
 	TreeNode *work;					//!< working node, internal used.
 	int pos;						//!< current position

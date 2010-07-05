@@ -143,6 +143,8 @@ typedef struct uffs_FlashStatSt {
 	int page_header_read_count;
 	int spare_write_count;
 	int spare_read_count;
+	unsigned long io_read;
+	unsigned long io_write;
 } uffs_FlashStat;
 
 

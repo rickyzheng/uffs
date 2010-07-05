@@ -295,6 +295,8 @@ BOOL cmdSt(const char *tail)
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Read Page:             %d" TENDSTR, s->page_read_count - s->page_header_read_count);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Read Header:           %d" TENDSTR, s->page_header_read_count);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Read Spare:            %d" TENDSTR, s->spare_read_count);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "I/O Read:              %lu" TENDSTR, s->io_read);
+	uffs_PerrorRaw(UFFS_ERR_NORMAL, "I/O Write:             %lu" TENDSTR, s->io_write);
 
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "--------- partition info for '%s' ---------" TENDSTR, mount);
 	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Space total:           %d" TENDSTR, uffs_GetDeviceTotal(dev));

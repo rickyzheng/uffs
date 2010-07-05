@@ -72,16 +72,16 @@ int uffs_MemReleaseNativeAllocator(uffs_Device *dev);
 
 /** uffs native memory allocator */
 typedef struct uffs_memAllocatorSt {
-	URET (*init)(struct uffs_DeviceSt *dev);			/* init memory allocator, setup buffer sizes */
-	URET (*release)(struct uffs_DeviceSt *dev);			/* release memory allocator (for dynamic memory allocation) */
+	URET (*init)(struct uffs_DeviceSt *dev);			//!< init memory allocator, setup buffer sizes
+	URET (*release)(struct uffs_DeviceSt *dev);			//!< release memory allocator (for dynamic memory allocation)
 	
-	void * (*malloc)(struct uffs_DeviceSt *dev, unsigned int size); /* allocate memory (for dynamic memory allocation) */
-	URET (*free)(struct uffs_DeviceSt *dev, void *p);   /* free memory (for dynamic memory allocation) */
+	void * (*malloc)(struct uffs_DeviceSt *dev, unsigned int size); //!< allocate memory (for dynamic memory allocation)
+	URET (*free)(struct uffs_DeviceSt *dev, void *p);   //!< free memory (for dynamic memory allocation)
 
-	void * blockinfo_pool_buf;				//!< block info cache buffers
-	void * pagebuf_pool_buf;				//!< page buffers
-	void * tree_nodes_pool_buf;				//!< tree nodes buffer
-	void * spare_pool_buf;					//!< spare buffers
+	void * blockinfo_pool_buf;			//!< block info cache buffers
+	void * pagebuf_pool_buf;			//!< page buffers
+	void * tree_nodes_pool_buf;			//!< tree nodes buffer
+	void * spare_pool_buf;				//!< spare buffers
 
 	int blockinfo_pool_size;			//!< block info cache buffers size
 	int pagebuf_pool_size;				//!< page buffers size

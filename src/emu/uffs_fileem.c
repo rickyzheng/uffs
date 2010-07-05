@@ -180,6 +180,8 @@ static int femu_WritePageData(uffs_Device *dev, u32 block, u32 page_num, const u
 			printf("femu: write page I/O error ?\n");
 			goto err;
 		}
+
+		dev->st.io_write += written;
 	}
 
 	dev->st.page_write_count++;
@@ -233,6 +235,8 @@ static int femu_WritePageSpare(uffs_Device *dev, u32 block, u32 page_num, const 
 			printf("femu: write spare I/O error ?\n");
 			goto err;
 		}
+
+		dev->st.io_write += written;
 	}
 
 	if (eod == U_TRUE) {
@@ -284,6 +288,7 @@ static URET femu_ReadPageData(uffs_Device *dev, u32 block, u32 page_num, u8 *dat
 			printf("femu: read page I/O error ?\n");
 			goto err;
 		}
+		dev->st.io_read += nread;
 	}
 
 	dev->st.page_read_count++;
@@ -332,6 +337,7 @@ static URET femu_ReadPageSpare(uffs_Device *dev, u32 block, u32 page_num, u8 *sp
 			printf("femu: read spare I/O error ?\n");
 			goto err;
 		}
+		dev->st.io_read += nread;
 	}	
 
 	dev->st.spare_read_count++;
