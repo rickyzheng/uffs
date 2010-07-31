@@ -43,7 +43,7 @@
 #define PFX "ver: "
 
 
-static char version_buf[8];
+static char version_buf[16];
 
 const char * uffs_Version2Str(int ver)
 {
