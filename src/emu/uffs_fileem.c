@@ -458,8 +458,6 @@ static URET femu_releaseDevice(uffs_Device *dev)
 			emu->fp = NULL;
 		}
 
-		memset(emu, 0, sizeof(uffs_FileEmu));
-
 		if (emu->em_monitor_page)
 			free(emu->em_monitor_page);
 		if (emu->em_monitor_spare) 
