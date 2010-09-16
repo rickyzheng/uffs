@@ -199,7 +199,6 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 					"'WriteFullPage' function!");
 		return U_FAIL;
 	}
-
 	if (!dev->ops->WritePageSpare && !dev->ops->MarkBadBlock) {
 		uffs_Perror(UFFS_ERR_SERIOUS, "flash driver must provide "
 						"'WritePageSpare' or 'MarkBadBlock' function!");
@@ -208,6 +207,7 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 	if (!dev->ops->ReadPageSpare && !dev->ops->IsBadBlock) {
 		uffs_Perror(UFFS_ERR_SERIOUS, "flash driver must provide "
 						"'ReadPageSpare' or 'IsBadBlock' function!");
+	}
 
 	if (dev->ops->WriteFullPage == NULL &&
 		(dev->ops->WritePageSpare == NULL || dev->ops->WritePageData == NULL))
@@ -679,7 +679,6 @@ ext:
 URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block)
 {
 	u8 status = 0;
-	u8 *spare;
 	int ret;
 
 	uffs_Perror(UFFS_ERR_NORMAL, "Mark bad block: %d", block);
@@ -693,9 +692,8 @@ URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block)
 		// note: event EraseBlock return UFFS_FLASH_BAD_BLK,
 		//			we still still process it ...
 #endif
-		ret = dev->ops->WritePageSpare(dev, block, 0, &status,
+	ret = dev->ops->WritePageSpare(dev, block, 0, &status,
 								dev->attr->block_status_offs, 1, U_FALSE);
-	}
 
 #ifdef CONFIG_ERASE_BLOCK_BEFORE_MARK_BAD
 	}
