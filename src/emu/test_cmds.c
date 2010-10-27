@@ -111,7 +111,7 @@ static BOOL cmdTestPageReadWrite(const char *tail)
 		}
 	}
 
-	ret = uffs_FlashReadPageSpare(dev, block, page, tag, NULL);
+	ret = uffs_FlashReadPageSpare(dev, block, page, tag);
 	if (UFFS_FLASH_HAVE_ERR(ret)) {
 		uffs_Perror(UFFS_ERR_SERIOUS, "Read tag (page spare) error: %d", ret);
 		goto ext;

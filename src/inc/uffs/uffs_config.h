@@ -51,6 +51,11 @@
 #define UFFS_MAX_SPARE_SIZE ((UFFS_MAX_PAGE_SIZE / 256) * 8)
 
 /**
+ * \def UFFS_MAX_ECC_SIZE
+ */
+#define UFFS_MAX_ECC_SIZE  ((UFFS_MAX_PAGE_SIZE / 256) * 5)
+
+/**
  * \def MAX_CACHED_BLOCK_INFO
  * \note uffs cache the block info for opened directories and files,
  *       a practical value is 5 ~ MAX_OBJECT_HANDLE

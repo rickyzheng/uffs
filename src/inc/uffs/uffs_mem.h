@@ -39,10 +39,6 @@
 extern "C"{
 #endif
 
-#define MAX_ECC_SIZE	(3 * UFFS_MAX_PAGE_SIZE / 256)
-#define MAX_SPARE_SIZE	(8 * UFFS_MAX_PAGE_SIZE / 256)
-#define MAX_SPARE_BUF	10
-
 
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 
@@ -91,7 +87,8 @@ typedef struct uffs_memAllocatorSt {
 	uffs_Pool tree_pool;
 	uffs_Pool spare_pool;
 
-	int spare_data_size;				//!< spare data size, calculated by UFFS.
+	int spare_data_size;				//!< spare size consumed by UFFS, 
+										//!< calculated by UFFS according to the layout information.
 
 
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0

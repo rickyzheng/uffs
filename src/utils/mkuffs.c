@@ -77,21 +77,16 @@ const char * conf_emu_filename = DEFAULT_EMU_FILENAME;
 
 
 /* default basic parameters of the NAND device */
-int conf_pages_per_block = 32;
-int conf_pages_data_size = 512;
-int conf_pages_spare_size = 16;
-int conf_status_byte_offset = 5;
-int conf_total_blocks =	128;
-int conf_ecc_option = UFFS_ECC_SOFT;
+static int conf_pages_per_block = 32;
+static int conf_page_data_size = 512;
+static int conf_page_spare_size = 16;
+static int conf_status_byte_offset = 5;
+static int conf_total_blocks =	128;
+static int conf_ecc_option = UFFS_ECC_SOFT;
+static int conf_ecc_size = 0; // 0 means 'auto'
 
-#define PAGE_SIZE				(conf_pages_data_size + conf_pages_spare_size)
-#define BLOCK_DATA_SIZE				(conf_pages_per_block * conf_pages_data_size)
-#define TOTAL_DATA_SIZE				(conf_total_blocks * BLOCK_DATA_SIZE)
-#define BLOCK_SIZE				(conf_pages_per_block * PAGE_SIZE)
-#define TOTAL_SIZE				(BLOCK_SIZE * conf_total_blocks)
-
-#define MAX_MOUNT_TABLES			10
-#define MAX_MOUNT_POINT_NAME			32
+#define MAX_MOUNT_TABLES		10
+#define MAX_MOUNT_POINT_NAME	32
 
 static struct uffs_MountTableEntrySt conf_mounts[MAX_MOUNT_TABLES] = {0};
 static uffs_Device conf_devices[MAX_MOUNT_TABLES] = {0};
@@ -153,12 +148,13 @@ static struct cli_commandset basic_cmdset[] =
 static void setup_emu_storage(struct uffs_StorageAttrSt *attr)
 {
 	attr->total_blocks = conf_total_blocks;				/* total blocks */
-	attr->page_data_size = conf_pages_data_size;		/* page data size */
-	attr->spare_size = conf_pages_spare_size;			/* page spare size */
+	attr->page_data_size = conf_page_data_size;			/* page data size */
+	attr->spare_size = conf_page_spare_size;			/* page spare size */
 	attr->pages_per_block = conf_pages_per_block;		/* pages per block */
 
 	attr->block_status_offs = conf_status_byte_offset;	/* block status offset is 5th byte in spare */
 	attr->ecc_opt = conf_ecc_option;					/* ECC option */
+	attr->ecc_size = conf_ecc_size;						/* ECC size */
 	attr->layout_opt = UFFS_LAYOUT_UFFS;				/* let UFFS handle layout */
 }
 
@@ -292,16 +288,20 @@ static int parse_options(int argc, char *argv[])
             else if (!strcmp(arg, "-p") || !strcmp(arg, "--page-size")) {
                 if (++iarg >= argc) 
 					usage++;
-                else if (sscanf(argv[iarg], "%i", &conf_pages_data_size) < 1)
+                else if (sscanf(argv[iarg], "%i", &conf_page_data_size) < 1)
 					usage++;
+				if (conf_page_data_size <= 0 || conf_page_data_size > UFFS_MAX_PAGE_SIZE) {
+					printf("ERROR: Invalid page data size\n");
+					usage++;
+				}
             }
             else if (!strcmp(arg, "-s") || !strcmp(arg, "--spare-size")) {
                 if (++iarg >= argc) 
 					usage++;
-                else if (sscanf(argv[iarg], "%i", &conf_pages_spare_size) < 1) 
+                else if (sscanf(argv[iarg], "%i", &conf_page_spare_size) < 1) 
 					usage++;
-				if (conf_pages_spare_size < sizeof(struct uffs_TagStoreSt) + 1 ||
-					(conf_pages_spare_size % 4) != 0) {
+				if (conf_page_spare_size < sizeof(struct uffs_TagStoreSt) + 1 ||
+					(conf_page_spare_size % 4) != 0 || conf_page_spare_size > UFFS_MAX_SPARE_SIZE) {
 					printf("ERROR: Invalid spare size\n");
 					usage++;
 				}
@@ -309,7 +309,7 @@ static int parse_options(int argc, char *argv[])
             else if (!strcmp(arg, "-o") || !strcmp(arg, "--status-offset")) {
                 if (++iarg >= argc) 
 					usage++;
-                else if (sscanf(argv[iarg], "%i", &conf_status_byte_offset) < 1) 
+                else if (sscanf(argv[iarg], "%i", &conf_status_byte_offset) < 1)
 					usage++;
 				if (conf_status_byte_offset < 0)
 					usage++;
@@ -323,7 +323,7 @@ static int parse_options(int argc, char *argv[])
 					usage++;
             }
             else if (!strcmp(arg, "-t") || !strcmp(arg, "--total-blocks")) {
-                if (++iarg >= argc) 
+                if (++iarg >= argc)
 					usage++;
                 else if (sscanf(argv[iarg], "%i", &conf_total_blocks) < 1)
 					usage++;
@@ -331,7 +331,7 @@ static int parse_options(int argc, char *argv[])
 					usage++;
             }
             else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose")) {
-				conf_verbose_mode = 1;
+				conf_verbose_mode++;
             }
             else if (!strcmp(arg, "-m") || !strcmp(arg, "--mount")) {
 				if (++iarg > argc)
@@ -364,6 +364,16 @@ static int parse_options(int argc, char *argv[])
 						printf("ERROR: Invalid ECC option\n");
 						usage++;
 					}
+				}
+			}
+			else if (!strcmp(arg, "-z") || !strcmp(arg, "--ecc-size")) {
+                if (++iarg >= argc)
+					usage++;
+                else if (sscanf(argv[iarg], "%i", &conf_ecc_size) < 1)
+					usage++;
+				if (conf_ecc_size < 0 || conf_ecc_size > UFFS_MAX_ECC_SIZE) {
+					printf("ERROR: Invalid ecc size\n");
+					usage++;
 				}
 			}
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
@@ -399,8 +409,8 @@ static int parse_options(int argc, char *argv[])
         printf("  -b  --block-pages    <n>                  pages per block\n");
         printf("  -t  --total-blocks   <n>                  total blocks\n");
         printf("  -m  --mount          <mount_point,start,end> , for example: -m /,0,-1\n");
-		printf("  -i  --id-man         <id>                 set manufacture ID, default=0xEC\n");
 		printf("  -x  --ecc-option     <none|soft|hw|auto>  ECC option, default=soft\n");
+		printf("  -z  --ecc-size       <n>                  ECC size, default=3 per 256 bytes\n");
         printf("  -e  --exec           <file>               execute a script file\n");
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 		printf("  -a  --alloc          <size>       allocate size(KB) of memory for uffs, default 100\n");
@@ -432,10 +442,12 @@ static void print_mount_points(void)
 static void print_params(void)
 {
 	printf("uffs image file: %s\n", conf_emu_filename);
-	printf("page size: %d\n", conf_pages_data_size);
-	printf("page spare size: %d\n", conf_pages_spare_size);
+	printf("page size: %d\n", conf_page_data_size);
+	printf("page spare size: %d\n", conf_page_spare_size);
 	printf("pages per block: %d\n", conf_pages_per_block);
 	printf("total blocks: %d\n", conf_total_blocks);
+	printf("ecc option: %d\n", conf_ecc_option);
+	printf("bad block status offset: %d\n", conf_status_byte_offset);
 }
 
 static void exec_script()

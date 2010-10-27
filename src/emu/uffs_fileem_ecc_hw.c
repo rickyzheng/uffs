@@ -1,7 +1,7 @@
 /*
   This file is part of UFFS, the Ultra-low-cost Flash File System.
   
-  Copyright (C) 2005-2009 Ricky Zheng <ricky_gz_zheng@yahoo.co.nz>
+  Copyright (C) 2005-2010 Ricky Zheng <ricky_gz_zheng@yahoo.co.nz>
 
   UFFS is free software; you can redistribute it and/or modify it under
   the GNU Library General Public License as published by the Free Software 
@@ -30,33 +30,29 @@
   on this file might be covered by the GNU General Public License.
 */
 
-/** 
- * \file uffs_fileem.h
- * \brief Emulate NAND flash with host file.
- * \author Ricky Zheng
+/**
+ * \file uffs_fileem_ecc_hw.c
+ * \brief emulate uffs file system for hardware ECC
+ * \author Ricky Zheng @ Oct, 2010
  */
 
-#ifndef _UFFS_FILEEM_H_
-#define _UFFS_FILEEM_H_
+#include <sys/types.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "uffs/uffs_device.h"
+#include "uffs_fileem.h"
 
-extern struct uffs_FlashOpsSt g_femu_ops_ecc_soft;		// for software ECC or no ECC.
-extern struct uffs_FlashOpsSt g_femu_ops_ecc_hw;		// for hardware ECC
-extern struct uffs_FlashOpsSt g_femu_ops_ecc_hw_auto;	// for auto hardware ECC
+#define PFX "femu: "
 
-#define PAGE_DATA_WRITE_COUNT_LIMIT		1
-#define PAGE_SPARE_WRITE_COUNT_LIMIT	1
 
-typedef struct uffs_FileEmuSt {
-	int initCount;
-	FILE *fp;
-	u8 *em_monitor_page;
-	u8 * em_monitor_spare;
-	const char *emu_filename;
-} uffs_FileEmu;
-
-void uffs_fileem_setup_device(uffs_Device *dev);
-
-#endif
-
+uffs_FlashOps g_femu_ops_ecc_hw = {
+	NULL,				// ReadPage()
+	NULL,				// ReadPageWithLayout()
+	NULL,				// WritePage()
+	NULL,				// WirtePageWithLayout()
+	NULL,				// IsBadBlock(), let UFFS take care of it.
+	NULL,				// MarkBadBlock(), let UFFS take care of it.
+	NULL,				// EraseBlock(), init it later
+};

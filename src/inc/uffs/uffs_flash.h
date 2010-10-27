@@ -98,6 +98,7 @@ struct uffs_StorageAttrSt {
 	u8 block_status_offs;	//!< block status byte offset in spare
 	int ecc_opt;			//!< ecc option ( #UFFS_ECC_[NONE|SOFT|HW|HW_AUTO] )
 	int layout_opt;			//!< layout option (#UFFS_LAYOUT_UFFS or #UFFS_LAYOUT_FLASH)
+	int ecc_size;			//!< ecc size in bytes
 	const u8 *ecc_layout;	//!< page data ECC layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
 	const u8 *data_layout;	//!< spare data layout: [ofs1, size1, ofs2, size2, ..., 0xFF, 0]
 	u8 _uffs_ecc_layout[UFFS_SPARE_LAYOUT_SIZE];	//!< uffs spare ecc layout
@@ -112,100 +113,98 @@ struct uffs_StorageAttrSt {
  */
 struct uffs_FlashOpsSt {
 	/**
-	 * Read page data.
+	 * Read a full nand page, UFFS do the layout.
 	 * 
-	 * if ecc_opt is UFFS_ECC_HW, flash driver must calculate and return ecc (if ecc != NULL).
-	 *
-	 * if ecc_opt is UFFS_ECC_HW_AUTO, flash driver do ecc correction aganist ecc in spare area.
+	 * \param[out] ecc ecc of page data
+	 *   if ecc_opt is UFFS_ECC_HW, flash driver must calculate and return ecc of data(if ecc != NULL).
+	 *   if ecc_opt is UFFS_ECC_HW_AUTO, flash driver do ecc correction before return data and flash driver do not need to return ecc.
+	 *   if ecc_opt is UFFS_ECC_NONE or UFFS_ECC_SOFT, flash driver do not need to calculate data ecc and return ecc.
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success and/or has no flip bits.
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_ECC_FAIL: page data has flip bits and ecc correct failed.
 	 *			#UFFS_FLASH_ECC_OK: page data has flip bits and corrected by ecc.
+	 *          #UFFS_FLASH_BAD_BLK: if the block is a bad block (e.g., the bad block mark byte is not 0xFF).
+	 *
+	 * \note if data is NULL, do not return data; if spare is NULL, do not return spare; if both data and spare are all NULL,
+	 *       then read bad block mark and return UFFS_FLASH_BAD_BLK if bad block mark is not 0xFF.
 	 *
 	 * \note pad 0xFF for calculating ECC if len < page_data_size
 	 */
-	int (*ReadPageData)(uffs_Device *dev, u32 block, u32 page, u8 *data, int len, u8 *ecc);
-
-
-	/**
-	 * Read page spare [len] bytes from [ofs].
-	 *
-	 * \note flash driver must privide this function.
-	 *
-	 * \return	#UFFS_FLASH_NO_ERR: success
-	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
-	 *
-	 * \note flash driver DO NOT need to do ecc correction for spare data,
-	 *		UFFS will take care of spare data ecc.
-	 */
-	int (*ReadPageSpare)(uffs_Device *dev, u32 block, u32 page, u8 *spare, int ofs, int len);
+	int (*ReadPage)(uffs_Device *dev, u32 block, u32 page, u8 *data, int data_len, u8 *ecc,
+						u8 *spare, int spare_len);
 
 	/**
-	 * Read page spare, unload to tag and ecc.
+	 * Read a full nand page, driver do the layout.
+	 *
+	 * \param[out] ecc ecc of page data
+	 *   if ecc_opt is UFFS_ECC_HW, flash driver must calculate and return ecc of data(if ecc != NULL).
+	 *   if ecc_opt is UFFS_ECC_HW_AUTO, flash driver do ecc correction before return data and flash driver do not need to return ecc.
+	 *   if ecc_opt is UFFS_ECC_NONE or UFFS_ECC_SOFT, flash driver do not need calculate data ecc and return ecc.
+	 *
+	 * \param[out] ecc_store ecc store on spare area
+	 *   if ecc_opt is UFFS_ECC_NONE or UFFS_ECC_HW_AUTO, do not need to return ecc_store.
 	 *
 	 * \note flash driver must provide this function if layout_opt is UFFS_LAYOUT_FLASH.
 	 *       UFFS will use this function (if exist) prio to 'ReadPageSpare()'
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
+	 *			#UFFS_FLASH_ECC_FAIL: page data has flip bits and ecc correct failed.
+	 *			#UFFS_FLASH_ECC_OK: page data has flip bits and corrected by ecc.
+	 *          #UFFS_FLASH_BAD_BLK: if the block is a bad block (e.g., the bad block mark byte is not 0xFF).
 	 *
-	 * \note flash driver DO NOT need to do ecc correction for spare data,
-	 *		UFFS will take care of spare data ecc.
+	 * \note if data is NULL, do not return data; if ts is NULL, do not read tag; if both data and ts are NULL,
+	 *       then read bad block mark and return UFFS_FLASH_BAD_BLK if bad block mark is not 0xFF.
+	 *
+	 * \note flash driver DO NOT need to do ecc correction for tag,
+	 *		UFFS will take care of tag ecc.
 	 */
-	int (*ReadPageSpareWithLayout)(uffs_Device *dev, u32 block, u32 page,
-									u8 *tag, int len, u8 *ecc);
+	int (*ReadPageWithLayout)(uffs_Device *dev, u32 block, u32 page, u8* data, int data_len, u8 *ecc,
+									uffs_TagStore *ts, u8 *ecc_store);
 
 	/**
-	 * Write page data.
+	 * Write a full page, UFFS do the layout for spare area.
 	 *
-	 * if ecc_opt is UFFS_ECC_HW, flash driver must calculate and return the ecc.
-	 * if ecc_opt is UFFS_ECC_HW_AUTO, do not need to return ecc.
+	 * \note If you have ecc_opt UFFS_ECC_HW or UFFS_ECC_HW_AUTO, you MUST implement WritePageWithLayout().
+	 *       Implement WritePage() function if you have ecc_opt UFFS_ECC_NONE or UFFS_ECC_SOFT and
+	 *       WritePageWithLayout() is not implemented.
 	 *
-	 * \return	#UFFS_FLASH_NO_ERR: success
-	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
-	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
-	 *
-	 * \note pad 0xFF for calculating ECC if len < page_data_size
-	 */
-	int (*WritePageData)(uffs_Device *dev, u32 block, u32 page,
-							const u8 *data, int len, u8 *ecc);
-
-
-	/**
-	 * Write [len] bytes to page spare from [ofs].
-	 *
-	 * \note flash driver must privide this function.
+	 * \note If data == NULL && spare == NULL, driver should mark this block as a 'bad block'.
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WritePageSpare)(uffs_Device *dev, u32 block, u32 page,
-							const u8 *spare, int ofs, int len, UBOOL eod);
-	
+	int (*WritePage)(uffs_Device *dev, u32 block, u32 page,
+							const u8 *data, int data_len, const u8 *spare, int spare_len);
+
 	/**
-	 * Write full page, include page data and spare.
+	 * Write full page, flash driver do the layout for spare area.
 	 *
-	 * you need to pack spare within nand driver.
+	 * \note if layout_opt is UFFS_LAYOUT_FLASH or ecc_opt is UFFS_ECC_HW/UFFS_ECC_HW_AUTO, flash driver MUST implement
+	 *       this function. UFFS will use this function (if provided) prio to 'WritePage()'
 	 *
-	 * \note if layout_opt is UFFS_LAYOUT_FLASH, flash driver must implement this function.
-	 *       UFFS will use this function (if provided) prio to 'WritePageData() + WritePageSpare()'
+	 * \param[in] ecc ecc of data. if ecc_opt is UFFS_ECC_SOFT and this function is implemented,
+	 *                UFFS will calculate page data ecc and pass it to WritePageWithLayout().
+	 *            if ecc_opt is UFFS_ECC_NONE/UFFS_ECC_HW/UFFS_ECC_HW_AUTO, UFFS pass ecc = NULL.
+	 *
+	 * \note If data == NULL && ts == NULL, driver should mark this block as a 'bad block'.
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
-	int (*WriteFullPage)(uffs_Device *dev, u32 block, u32 page,
-							const u8* data, int len, const u8 *ts, int ts_len, const u8 *ecc);
+	int (*WritePageWithLayout)(uffs_Device *dev, u32 block, u32 page,
+							const u8 *data, int data_len, const u8 *ecc, const uffs_TagStore *ts);
 
 	/**
-	 * check block status.
+	 * Check block status.
 	 *
 	 * \note flash driver may maintain a bad block table to speed up bad block checking or
 	 *		it will require one or two read spare I/O to check block status.
 	 *
-	 * \note if this function is not provided, UFFS check the block_status byte in spare.
+	 * \note if this function is not implented by driver, UFFS check the block_status byte in spare.
 	 *
 	 * \return 1 if it's a bad block, 0 if it's not.
 	 */
@@ -214,12 +213,15 @@ struct uffs_FlashOpsSt {
 	/**
 	 * Mark a new bad block.
 	 *
+	 * \note if this function is not implemented, UFFS mark bad block by call 'WritePage()/WritePageWithLayout()'
+	 *       with: data == NULL && spare == NULL && ts == NULL.
+	 *
 	 * \return 0 if success, otherwise return -1.
 	 */
 	int (*MarkBadBlock)(uffs_Device *dev, u32 block);
 
 	/**
-	 * Erase a block.
+	 * Erase a block, driver MUST implement this function.
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
@@ -231,8 +233,8 @@ struct uffs_FlashOpsSt {
 /** make spare from tag store and ecc */
 void uffs_FlashMakeSpare(uffs_Device *dev, uffs_TagStore *ts, const u8 *ecc, u8* spare);
 
-/** read page spare, fill tag and ECC */
-int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag, u8 *ecc);
+/** read page spare and fill to tag */
+int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag);
 
 /** read page data to page buf and do ECC correct */
 int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf);

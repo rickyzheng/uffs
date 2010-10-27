@@ -49,6 +49,7 @@
 
 #define PFX "util: "
 
+#define SPOOL(dev) &((dev)->mem.spare_pool)
 
 #ifdef CONFIG_USE_GLOBAL_FS_LOCK
 static int _global_lock = 0;
@@ -80,12 +81,13 @@ void uffs_GlobalFsLockUnlock(void)
 #ifdef CONFIG_ENABLE_BAD_BLOCK_VERIFY
 static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 {
-	u8 *pageBuf;
-	int pageSize;
 	int i, j;
-	uffs_Buf *buf;
+	uffs_Buf *buf = NULL;
 	UBOOL bad = U_TRUE;
-	int ret;
+	URET ret;
+	struct uffs_FlashOpsSt *ops = dev->ops;
+	struct uffs_TagStoreSt ts;
+	u8 *spare = NULL;
 
 	buf = uffs_BufClone(dev, NULL);
 	if (buf == NULL) {
@@ -94,59 +96,88 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 		goto ext;
 	}
 
-	pageSize = dev->com.pg_data_size;
-	pageBuf = buf->data;
-
+	spare = (u8 *)uffs_PoolGet(SPOOL(dev));
+	if (spare == NULL)
+		goto ext;
 
 	//step 1: Erase, fully fill with 0x0, and check
-	ret = dev->ops->EraseBlock(dev, block);
+	ret = uffs_FlashEraseBlock(dev, block);
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 		goto bad_out;
 
-	memset(pageBuf, 0, pageSize);
+	memset(buf->header, 0, dev->com.pg_size);
+	memset(&ts, 0, sizeof(ts));
+	memset(spare, 0, dev->attr->spare_size);
+
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		ret = dev->ops->WritePageData(dev, block, i, pageBuf, pageSize, NULL);
-		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
-			goto bad_out;
-		ret = dev->ops->WritePageSpare(dev, block, i, pageBuf, 0,
-										dev->attr->spare_size, U_TRUE);
+		if (ops->WritePageWithLayout)
+			ret = ops->WritePageWithLayout(dev, block, i, buf->header, dev->com.pg_size, NULL, &ts);
+		else
+			ret = ops->WritePage(dev, block, i, buf->header, dev->com.pg_size, spare, dev->attr->spare_size);
+
 		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 			goto bad_out;
 	}
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		memset(pageBuf, 0xFF, pageSize);
-		dev->ops->ReadPageData(dev, block, i, pageBuf, pageSize, NULL);
-		for (j = 0; j < pageSize; j++) {
-			if(pageBuf[j] != 0)
+		memset(buf->header, 0xFF, dev->com.pg_size);
+		memset(&ts, 0xFF, sizeof(ts));
+		memset(spare, 0xFF, dev->attr->spare_size);
+
+		if (ops->ReadPageWithLayout) {
+			ret = ops->ReadPageWithLayout(dev, block, i, buf->header, dev->com.pg_size, NULL, &ts, NULL);
+			if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 				goto bad_out;
+			for (j = 0; j < dev->com.pg_size; j++)
+				if (buf->header[j] != 0)
+					goto bad_out;
+			for (j = 0; j < sizeof(ts); j++)
+				if (((u8 *)&ts)[j] != 0)
+					goto bad_out;
 		}
-		memset(pageBuf, 0xFF, dev->attr->spare_size);
-		dev->ops->ReadPageSpare(dev, block, i, pageBuf, 0,
-									dev->attr->spare_size);
-		for (j = 0; j < dev->attr->spare_size; j++) {
-			if(pageBuf[j] != 0)
+		else {
+			ret = ops->ReadPage(dev, block, i, buf->header, dev->com.pg_size, NULL, spare, dev->attr->spare_size);
+			if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 				goto bad_out;
+			for (j = 0; j < dev->com.pg_size; j++)
+				if (buf->header[j] != 0)
+					goto bad_out;
+			for (j = 0; j < dev->attr->spare_size; j++)
+				if (spare[j] != 0)
+					goto bad_out;
 		}
 	}
 
 	//step 2: Erase, and check
-	ret = dev->ops->EraseBlock(dev, block);
+	ret = uffs_FlashEraseBlock(dev, block);
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 		goto bad_out;
 
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		memset(pageBuf, 0, pageSize);
-		dev->ops->ReadPageData(dev, block, i, pageBuf, pageSize, NULL);
-		for (j = 0; j < pageSize; j++) {
-			if(pageBuf[j] != 0xFF)
+		memset(buf->header, 0, dev->com.pg_size);
+		memset(&ts, 0, sizeof(ts));
+		memset(spare, 0, dev->attr->spare_size);
+
+		if (ops->ReadPageWithLayout) {
+			ret = ops->ReadPageWithLayout(dev, block, i, buf->header, dev->com.pg_size, NULL, &ts, NULL);
+			if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 				goto bad_out;
+			for (j = 0; j < dev->com.pg_size; j++)
+				if (buf->header[j] != 0xFF)
+					goto bad_out;
+			for (j = 0; j < sizeof(ts); j++)
+				if (((u8 *)&ts)[j] != 0xFF)
+					goto bad_out;
 		}
-		memset(pageBuf, 0, dev->attr->spare_size);
-		dev->ops->ReadPageSpare(dev, block, i, pageBuf, 0,
-									dev->attr->spare_size);
-		for (j = 0; j < dev->attr->spare_size; j++) {
-			if(pageBuf[j] != 0xFF)
+		else {
+			ret = ops->ReadPage(dev, block, i, buf->header, dev->com.pg_size, NULL, spare, dev->attr->spare_size);
+			if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 				goto bad_out;
+			for (j = 0; j < dev->com.pg_size; j++)
+				if (buf->header[j] != 0xFF)
+					goto bad_out;
+			for (j = 0; j < dev->attr->spare_size; j++)
+				if (spare[j] != 0xFF)
+					goto bad_out;
 		}
 	}
 
@@ -159,6 +190,9 @@ bad_out:
 ext:
 	if (buf) 
 		uffs_BufFreeClone(dev, buf);
+
+	if (spare)
+		uffs_PoolPut(SPOOL(dev), spare);
 
 	return;
 }

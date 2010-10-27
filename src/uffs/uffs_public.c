@@ -503,8 +503,16 @@ int uffs_GetDeviceTotal(uffs_Device *dev)
 URET uffs_LoadMiniHeader(uffs_Device *dev,
 						 int block, u16 page, struct uffs_MiniHeaderSt *header)
 {
-	int ret = dev->ops->ReadPageData(dev, block, page, (u8 *)header,
-										sizeof(struct uffs_MiniHeaderSt), NULL);
+	int ret;
+	struct uffs_FlashOpsSt *ops = dev->ops;
+
+	if (ops->ReadPageWithLayout) {
+		ret = ops->ReadPageWithLayout(dev, block, page, (u8 *)header, 
+										sizeof(struct uffs_MiniHeaderSt), NULL, NULL, NULL);
+	}
+	else {
+		ret = ops->ReadPage(dev, block, page, (u8 *)header, sizeof(struct uffs_MiniHeaderSt), NULL, NULL, 0);
+	}
 
 	dev->st.page_header_read_count++;
 
