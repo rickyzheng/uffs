@@ -234,7 +234,7 @@ struct uffs_FlashOpsSt {
 void uffs_FlashMakeSpare(uffs_Device *dev, uffs_TagStore *ts, const u8 *ecc, u8* spare);
 
 /** read page spare and fill to tag */
-int uffs_FlashReadPageSpare(uffs_Device *dev, int block, int page, uffs_Tags *tag);
+int uffs_FlashReadPageTag(uffs_Device *dev, int block, int page, uffs_Tags *tag);
 
 /** read page data to page buf and do ECC correct */
 int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf);

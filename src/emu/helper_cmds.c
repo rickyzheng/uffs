@@ -37,6 +37,7 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include "uffs/uffs_config.h"
 #include "uffs/uffs_public.h"
@@ -47,6 +48,7 @@
 #include "uffs/uffs_find.h"
 #include "cmdline.h"
 #include "uffs/uffs_fd.h"
+#include "uffs_fileem.h"
 
 #define PFX "cmd: "
 
@@ -253,6 +255,45 @@ BOOL cmdRen(const char *tail)
 	else {
 		uffs_Perror(UFFS_ERR_NORMAL, "Rename from '%s' to '%s' fail!", oldname, newname);
 	}
+	return TRUE;
+}
+
+static void dump_msg_to_stdout(struct uffs_DeviceSt *dev, const char *fmt, ...)
+{
+	uffs_FileEmu *emu = (uffs_FileEmu *)(dev->attr->_private);
+	va_list args;
+
+	va_start(args, fmt);
+	//vprintf(fmt, args);
+	if (emu && emu->dump_fp)
+		vfprintf(emu->dump_fp, fmt, args);
+	va_end(args);
+}
+
+BOOL cmdDump(const char *tail)
+{
+	uffs_Device *dev;
+	uffs_FileEmu *emu;
+	const char *mount = "/";
+
+	if (tail) {
+		mount = cli_getparam(tail, NULL);
+	}
+
+	dev = uffs_GetDeviceFromMountPoint(mount);
+	if (dev == NULL) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't get device from mount point %s", mount);
+		return TRUE;
+	}
+
+	emu = (uffs_FileEmu *)(dev->attr->_private);
+	emu->dump_fp = fopen("dump.txt", "w");
+
+	uffs_DumpDevice(dev, dump_msg_to_stdout);
+
+	if (emu->dump_fp)
+		fclose(emu->dump_fp);
+
 	return TRUE;
 }
 
@@ -845,6 +886,7 @@ static struct cli_commandset cmdset[] =
     { cmdPwd,		"pwd",			NULL,				"show current dir" },
     { cmdCd,		"cd",			"<path>",			"change current dir" },
     { cmdMount,		"mount",		NULL,				"list mounted file systems" },
+	{ cmdDump,		"dump",			"[<mount>]",		"dump file system", },
 
     { NULL, NULL, NULL, NULL }
 };

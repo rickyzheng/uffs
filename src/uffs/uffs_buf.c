@@ -623,6 +623,8 @@ retry:
 		goto ext;
 	}
 
+	//uffs_Perror(UFFS_ERR_NOISY, "flush buffer with block cover to %d", newBlock);
+
 	uffs_BlockInfoLoad(dev, newBc, UFFS_ALL_PAGES);
 	timeStamp = uffs_GetNextBlockTimeStamp(uffs_GetBlockTimeStamp(dev, bc));
 
@@ -742,6 +744,9 @@ retry:
 			// deal with it immediately (mark it as 'bad' and put into bad block list).
 			uffs_BadBlockProcess(dev, newNode);
 		}
+
+		uffs_Perror(UFFS_ERR_NORMAL, "Retry block cover ...");
+
 		goto retry; // retry on a new erased block ...
 	}
 
@@ -789,6 +794,7 @@ retry:
 
 		// if the recovered block is a bad block, it's time to process it.
 		if (HAVE_BADBLOCK(dev) && dev->bad.block == newNode->u.list.block) {
+			//uffs_Perror(UFFS_ERR_SERIOUS, "Still have bad block ?");
 			uffs_BadBlockProcess(dev, newNode);
 		}
 		else {
@@ -812,7 +818,7 @@ retry:
 
 	if (dev->buf.dirtyGroup[slot].dirty != NULL ||
 			dev->buf.dirtyGroup[slot].count != 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, "still has dirty buffer ?");
+		uffs_Perror(UFFS_ERR_NORMAL, "still have dirty buffer ?");
 	}
 
 	uffs_BlockInfoPut(dev, newBc);
@@ -892,7 +898,7 @@ URET
 	int x;
 
 //	uffs_Perror(UFFS_ERR_NOISY,
-//					"Flush buffers with Enough Free Page, in block %d",
+//					"Flush buffers with Enough Free Page to block %d",
 //					bc->block);
 	ret = U_FAIL;
 	for (page = dev->attr->pages_per_block - freePages;	//page: free page num
@@ -923,6 +929,7 @@ URET
 			goto ext;
 		}
 		else if (x == UFFS_FLASH_BAD_BLK) {
+			uffs_Perror(UFFS_ERR_NORMAL, "Bad blcok found, start block cover ...");
 			ret = uffs_BufFlush_Exist_With_BlockCover(dev, slot, node, bc);
 			goto ext;
 		}

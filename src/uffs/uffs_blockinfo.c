@@ -222,7 +222,7 @@ URET uffs_BlockInfoLoad(uffs_Device *dev, uffs_BlockInfo *work, int page)
 			if (spare->expired == 0)
 				continue;
 			
-			ret = uffs_FlashReadPageSpare(dev, work->block, i,
+			ret = uffs_FlashReadPageTag(dev, work->block, i,
 											&(spare->tag));
 			if (UFFS_FLASH_HAVE_ERR(ret)) {
 				uffs_Perror(UFFS_ERR_SERIOUS,
@@ -241,7 +241,7 @@ URET uffs_BlockInfoLoad(uffs_Device *dev, uffs_BlockInfo *work, int page)
 		}
 		spare = &(work->spares[page]);
 		if (spare->expired != 0) {
-			ret = uffs_FlashReadPageSpare(dev, work->block, page,
+			ret = uffs_FlashReadPageTag(dev, work->block, page,
 											&(spare->tag));
 			if (UFFS_FLASH_HAVE_ERR(ret)) {
 				uffs_Perror(UFFS_ERR_SERIOUS,

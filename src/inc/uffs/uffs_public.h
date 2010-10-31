@@ -48,6 +48,9 @@
 extern "C"{
 #endif
 
+#define ARRAY_SIZE(ar) (sizeof(ar) / sizeof(ar[0]))
+
+
 /**
  * \struct uffs_TagStoreSt
  * \brief uffs tag, 8 bytes, will be store in page spare area.

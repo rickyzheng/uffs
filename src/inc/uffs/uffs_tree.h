@@ -42,12 +42,24 @@
 extern "C"{
 #endif
 
-
 #define UFFS_TYPE_DIR		0
 #define UFFS_TYPE_FILE		1
 #define UFFS_TYPE_DATA		2
 #define UFFS_TYPE_RESV		3
 #define UFFS_TYPE_INVALID	0xFF
+
+struct uffs_NodeTypeNameMapSt {
+	int type;
+	const char *name;
+};
+
+#define UFFS_TYPE_NAME_MAP { \
+	{UFFS_TYPE_DIR, "DIR"}, \
+	{UFFS_TYPE_FILE, "FILE"}, \
+	{UFFS_TYPE_DATA, "DATA"}, \
+	{UFFS_TYPE_RESV, "RESV"}, \
+	{UFFS_TYPE_INVALID, "INVALID"} \
+}
 
 struct BlockListSt {	/* 10 bytes */
 	struct uffs_TreeNodeSt * next;

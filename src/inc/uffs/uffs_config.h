@@ -203,7 +203,7 @@
  * \def CONFIG_ERASE_BLOCK_BEFORE_MARK_BAD
  * \note erase block again before mark bad block
  */
-#define CONFIG_ERASE_BLOCK_BEFORE_MARK_BAD
+//#define CONFIG_ERASE_BLOCK_BEFORE_MARK_BAD
 
 /**
  * \def CONFIG_PAGE_WRITE_VERIFY

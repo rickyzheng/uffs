@@ -333,7 +333,7 @@ static void UnloadSpare(uffs_Device *dev,
  *			#UFFS_FLASH_ECC_FAIL: spare data has flip bits and ecc correct failed.
  *			#UFFS_FLASH_ECC_OK: spare data has flip bits and corrected by ecc.
 */
-int uffs_FlashReadPageSpare(uffs_Device *dev,
+int uffs_FlashReadPageTag(uffs_Device *dev,
 							int block, int page, uffs_Tags *tag)
 {
 	uffs_FlashOps *ops = dev->ops;
@@ -482,11 +482,34 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf)
 	}
 
 ext:
+	switch(ret) {
+		case UFFS_FLASH_IO_ERR:
+			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d I/O error", block, page);
+			break;
+		case UFFS_FLASH_ECC_FAIL:
+			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d ECC failed", block, page);
+			ret = UFFS_FLASH_BAD_BLK;	// treat ECC FAIL as BAD BLOCK
+			is_bad = U_TRUE;
+			break;
+		case UFFS_FLASH_ECC_OK:
+			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d bit flip corrected by ECC", block, page);
+			break;
+		case UFFS_FLASH_BAD_BLK:
+			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d BAD BLOCK found", block, page);
+			break;
+		case UFFS_FLASH_UNKNOWN_ERR:
+			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d UNKNOWN error!", block, page);
+			break;
+		default:
+			break;
+	}
+
 	if (is_bad)
 		uffs_BadBlockAdd(dev, block);
 
 	if (spare)
 		uffs_PoolPut(SPOOL(dev), spare);
+
 
 	return ret;
 }
@@ -618,6 +641,10 @@ int uffs_FlashWritePageCombine(uffs_Device *dev,
 				ret = UFFS_FLASH_BAD_BLK;
 			}
 		}
+
+		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+			is_bad = U_TRUE;
+
 		uffs_BufFreeClone(dev, verify_buf);
 	}
 #endif

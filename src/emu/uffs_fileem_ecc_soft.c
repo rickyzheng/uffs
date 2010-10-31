@@ -98,12 +98,6 @@ static int femu_WritePage(uffs_Device *dev, u32 block, u32 page_num,
 			goto err;
 		}
 		
-		// simulate power lost ! produce an unclean page.
-		if (0 && block == 3 && page_num == 2) {
-			fflush(emu->fp);
-			exit(1);
-		}
-
 		fseek(emu->fp, abs_page * full_page_size + attr->page_data_size, SEEK_SET);
 		written = fwrite(spare, 1, spare_len, emu->fp);
 		if (written != spare_len) {
@@ -160,12 +154,6 @@ static URET femu_ReadPage(uffs_Device *dev, u32 block, u32 page_num, u8 *data, i
 		fseek(emu->fp, abs_page * full_page_size, SEEK_SET);
 		nread = fread(data, 1, data_len, emu->fp);
 
-		// for ECC testing.
-		if (1 && block == 2 && page_num == 3 && data_len > 13) {
-			printf("--- ECC error inject to block %d page %d ---\n", block, page_num);
-			data[13] = (data[13] & ~0x40) | (~(data[13] & 0x40) & 0x40) ;
-		}
-		
 		if (nread != data_len) {
 			printf("femu: read page I/O error ?\n");
 			goto err;

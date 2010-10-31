@@ -42,6 +42,7 @@
 extern "C"{
 #endif
 
+
 //get UFFS disk version, if fail, return 0
 int uffs_GetUFFSVersion(struct uffs_DeviceSt *dev);
 
@@ -63,6 +64,9 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force);
 }
 #endif
 
+typedef void dump_msg_cb(struct uffs_DeviceSt *dev, const char *fmt, ...);
+
+void uffs_DumpDevice(struct uffs_DeviceSt *dev, dump_msg_cb *dump);
 
 #endif
 

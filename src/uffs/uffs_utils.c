@@ -286,3 +286,113 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 	return ret;
 }
 
+static const char * GetTagName(struct uffs_TagStoreSt *s)
+{
+	const char *name = "UNKNOWN";
+	struct uffs_NodeTypeNameMapSt maps[] = UFFS_TYPE_NAME_MAP;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(maps); i++) {
+		if (s->type == maps[i].type)
+			name = maps[i].name;
+	}
+
+	return name;
+}
+
+static void DumpBufHex(struct uffs_DeviceSt *dev, const u8* buf, int len, dump_msg_cb *dump)
+{
+	int i;
+	for (i = 0; i < len; i++)
+		dump(dev, "%02X ", buf[i]);
+}
+
+// return -1 if do not need to read next tag
+static int DumpTag(struct uffs_DeviceSt *dev, int block, int page, uffs_Tags *tag, dump_msg_cb *dump)
+{
+	struct uffs_TagStoreSt *s = &tag->s;
+	struct uffs_MiniHeaderSt header;
+	URET ret;
+
+	if (!TAG_IS_DIRTY(tag)) {
+		// is a clean page ?
+		ret = uffs_LoadMiniHeader(dev, block, page, &header);
+		if (ret == U_FAIL) {
+			dump(dev, "Fail to load mini header from page 0\n");
+		}
+		else {
+			if (header.status == 0xFF)
+				dump(dev, "page %d CLEAN\n", page);
+			else {
+				dump(dev, "page %d NOT clean ! header: ", page);
+				DumpBufHex(dev, (u8 *)&header, sizeof(header), dump);
+				dump(dev, ", tag: ");
+				DumpBufHex(dev, (u8 *)s, sizeof(struct uffs_TagStoreSt), dump);
+				dump(dev, "\n");
+			}
+		}
+		return -1;
+	}
+
+	if (tag->block_status != 0xFF) {
+		dump(dev, "page %d badblock mark %d\n", page, tag->block_status);
+		return -1;
+	}
+	
+	dump(dev, " - page %2d/%2d %s %d/%d len%4d\n", page, s->page_id, GetTagName(s), s->serial, s->parent, s->data_len);
+	
+	return 0;
+}
+
+static void DumpBlock(struct uffs_DeviceSt *dev, int block, dump_msg_cb *dump)
+{
+	int i;
+	struct uffs_StorageAttrSt *attr = dev->attr;
+	uffs_Tags tag;
+	URET ret;
+
+	dump(dev, "--- Block %d ---\n", block);
+
+	if (uffs_FlashIsBadBlock(dev, block)) {
+		dump(dev, "Bad block\n\n");
+		return;
+	}
+
+	for (i = 0; i < attr->pages_per_block; i++) {
+
+		memset(&tag, 0xFF, sizeof(tag));
+		ret = uffs_FlashReadPageTag(dev, block, i, &tag);
+
+		if (ret == UFFS_FLASH_IO_ERR) {
+			dump(dev, "page %d tag I/O error\n", i);
+			continue;
+		}
+		else if (ret == UFFS_FLASH_ECC_FAIL) {
+			dump(dev, "page %d tag ECC error\n", i);
+			continue;
+		}
+		else if (ret == UFFS_FLASH_NO_ERR || ret == UFFS_FLASH_ECC_OK) {
+			if (ret == UFFS_FLASH_ECC_OK)
+				dump(dev, "page %d tag has bit flip, corrected by ECC\n", i);
+
+			if (DumpTag(dev, block, i, &tag, dump) == 0)
+				continue;
+			else
+				break;
+		}
+		else {
+			dump(dev, "read page %d tag return unexpected: %d\n", i, ret);
+			continue;
+		}
+		dump(dev, "--------------------------------\n");
+	}
+	dump(dev, "\n");
+}
+
+void uffs_DumpDevice(struct uffs_DeviceSt *dev, dump_msg_cb *dump)
+{
+	int i;
+	for (i = dev->par.start; i <= dev->par.end; i++) {
+		DumpBlock(dev, i, dump);
+	}	
+}

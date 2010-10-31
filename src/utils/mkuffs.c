@@ -81,7 +81,7 @@ static int conf_pages_per_block = 32;
 static int conf_page_data_size = 512;
 static int conf_page_spare_size = 16;
 static int conf_status_byte_offset = 5;
-static int conf_total_blocks =	128;
+static int conf_total_blocks =	20;
 static int conf_ecc_option = UFFS_ECC_SOFT;
 static int conf_ecc_size = 0; // 0 means 'auto'
 
@@ -94,7 +94,6 @@ static char mount_point_name[MAX_MOUNT_TABLES][MAX_MOUNT_POINT_NAME] = {0};
 
 static struct uffs_StorageAttrSt emu_storage = {0};
 static struct uffs_FileEmuSt emu_private = {0};
-
 
 
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
