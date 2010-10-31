@@ -284,10 +284,10 @@ URET uffs_FlashInterfaceRelease(uffs_Device *dev)
 /**
  * unload spare to tag and ecc.
  */
-static void UnloadSpare(uffs_Device *dev,
-						const u8 *spare, uffs_Tags *tag, u8 *ecc)
+void uffs_FlashUnloadSpare(uffs_Device *dev,
+						const u8 *spare, struct uffs_TagStoreSt *ts, u8 *ecc)
 {
-	u8 *p_tag = (u8 *)&tag->s;
+	u8 *p_tag = (u8 *)ts;
 	int tag_size = TAG_STORE_SIZE;
 	int ecc_size = dev->attr->ecc_size;
 	int n;
@@ -306,7 +306,7 @@ static void UnloadSpare(uffs_Device *dev,
 	}
 
 	// unload tag
-	if (tag) {
+	if (ts) {
 		p = dev->attr->data_layout;
 		while (*p != 0xFF && tag_size > 0) {
 			n = (p[1] > tag_size ? tag_size : p[1]);
@@ -315,8 +315,6 @@ static void UnloadSpare(uffs_Device *dev,
 			p_tag += n;
 			p += 2;
 		}
-
-		tag->block_status = spare[dev->attr->block_status_offs];
 	}
 }
 
@@ -354,7 +352,7 @@ int uffs_FlashReadPageTag(uffs_Device *dev,
 									spare_buf, dev->mem.spare_data_size);
 
 		if (!UFFS_FLASH_HAVE_ERR(ret))
-			UnloadSpare(dev, spare_buf, tag, NULL);
+			uffs_FlashUnloadSpare(dev, spare_buf, &tag->s, NULL);
 	}
 
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
@@ -421,7 +419,7 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf)
 	u8 ecc_buf[UFFS_MAX_ECC_SIZE];
 	u8 ecc_store[UFFS_MAX_ECC_SIZE];
 	UBOOL is_bad = U_FALSE;
-	uffs_Tags tag;
+	struct uffs_TagStoreSt ts;
 
 	u8 * spare;
 	int ret = UFFS_FLASH_UNKNOWN_ERR;
@@ -431,7 +429,7 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf)
 		goto ext;
 
 	if (ops->ReadPageWithLayout) {
-		ret = ops->ReadPageWithLayout(dev, block, page, buf->header, size, ecc_buf, &(tag.s), ecc_store);
+		ret = ops->ReadPageWithLayout(dev, block, page, buf->header, size, ecc_buf, &ts, ecc_store);
 	}
 	else {
 		ret = ops->ReadPage(dev, block, page, buf->header, size, ecc_buf, spare, dev->mem.spare_data_size);
@@ -449,14 +447,14 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf)
 	// unload tag and ecc_store if driver doesn't do the layout
 	if (ops->ReadPageWithLayout == NULL) {
 		if (attr->ecc_opt == UFFS_ECC_SOFT || attr->ecc_opt == UFFS_ECC_HW)
-			UnloadSpare(dev, spare, &tag, ecc_store);
+			uffs_FlashUnloadSpare(dev, spare, &ts, ecc_store);
 		else
-			UnloadSpare(dev, spare, &tag, NULL); // skip ecc_store for UFFS_ECC_NONE or UFFS_ECC_HW_AUTO
+			uffs_FlashUnloadSpare(dev, spare, &ts, NULL); // skip ecc_store for UFFS_ECC_NONE or UFFS_ECC_HW_AUTO
 	}
 
 	// check tag ecc. if ECC enabled, UFFS always use soft ecc for tag.
 	if (attr->ecc_opt != UFFS_ECC_NONE) {
-		ret = TagEccCorrect(&(tag.s));
+		ret = TagEccCorrect(&ts);
 		ret = (ret < 0 ? UFFS_FLASH_ECC_FAIL :
 				(ret > 0 ? UFFS_FLASH_ECC_OK : UFFS_FLASH_NO_ERR));
 

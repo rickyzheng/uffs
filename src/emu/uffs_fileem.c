@@ -50,10 +50,13 @@
 static u8 em_page_buf[UFFS_MAX_PAGE_SIZE + UFFS_MAX_SPARE_SIZE];
 
 static URET emu_initDevice(uffs_Device *dev);
+
 static URET femu_ReadPage_wrap(uffs_Device *dev, u32 block, u32 page, u8 *data, int data_len, u8 *ecc,
 							u8 *spare, int spare_len);
 static int femu_WritePage_wrap(uffs_Device *dev, u32 block, u32 page,
 							const u8 *data, int data_len, const u8 *spare, int spare_len);
+static int femu_WritePageWithLayout_wrap(uffs_Device *dev, u32 block, u32 page, u8* data, int data_len, u8 *ecc,
+									uffs_TagStore *ts, u8 *ecc_store);
 static URET femu_EraseBlock_wrap(uffs_Device *dev, u32 blockNumber);
 
 static URET CheckInit(uffs_Device *dev)
@@ -277,50 +280,76 @@ static URET femu_ReadPage_wrap(uffs_Device *dev, u32 block, u32 page, u8 *data, 
 	return emu->ops_orig.ReadPage(dev, block, page, data, data_len, ecc, spare, spare_len);
 }
 
-static int femu_WritePage_wrap(uffs_Device *dev, u32 block, u32 page,
-							const u8 *data, int data_len, const u8 *spare, int spare_len)
-{
-	uffs_FileEmu *emu = (uffs_FileEmu *)(dev->attr->_private);
 
+static void InjectBitFlip(uffs_Device *dev, u32 block, u32 page)
+{
 #ifdef FILEEMU_WRITE_BIT_FLIP
+	uffs_FileEmu *emu = (uffs_FileEmu *)(dev->attr->_private);
 	struct uffs_FileEmuBitFlip flips[] = FILEEMU_WRITE_BIT_FLIP;
 	struct uffs_FileEmuBitFlip *x;
 	u8 buf[UFFS_MAX_PAGE_SIZE + UFFS_MAX_SPARE_SIZE];
+	u8 *data = buf;
+	u8 *spare = buf + dev->attr->page_data_size;
+	int full_page_size = dev->attr->page_data_size + dev->attr->spare_size;
+	int blk_size = full_page_size * dev->attr->pages_per_block;
+	int page_offset = (dev->par.start + block) * blk_size + full_page_size * page;
+
 	int i;
 	u8 *p;
 
-	if (data) {
-		memcpy(buf, data, data_len);
-		data = buf;
-	}
-	if (spare) {
-		memcpy(buf + UFFS_MAX_PAGE_SIZE, spare, spare_len);
-		spare = buf + UFFS_MAX_PAGE_SIZE;
-	}
+	fseek(emu->fp, page_offset, SEEK_SET);
+	fread(buf, 1, full_page_size, emu->fp);
 
 	for (i = 0; i < ARRAY_SIZE(flips); i++) {
 		x = &flips[i];
 		if (x->block == block && x->page == page) {
-			p = NULL;
-			if (x->offset > 0 && data && x->offset < data_len) {
+			if (x->offset >= 0) {
 				printf(" --- Inject data bit flip at block%d, page%d, offset%d, mask%d --- \n", block, page, x->offset, x->mask);
 				p = (u8 *)(data + x->offset);
 			}
-			else if (x->offset < 0 && spare && -(x->offset ) < spare_len) {
+			else {
 				printf(" --- Inject spare bit flip at block%d, page%d, offset%d, mask%d --- \n", block, page, -x->offset, x->mask);
 				p = (u8 *)(spare - x->offset);
 			}
-			if (p) {
-				*p = (*p & ~x->mask) | (~(*p & x->mask) & x->mask);
-			}
+			*p = (*p & ~x->mask) | (~(*p & x->mask) & x->mask);
 		}
 	}
-#endif
+
+	fseek(emu->fp, page_offset, SEEK_SET);
+	fwrite(buf, 1, full_page_size, emu->fp);
+#endif	
+}
+
+static int femu_WritePage_wrap(uffs_Device *dev, u32 block, u32 page,
+							const u8 *data, int data_len, const u8 *spare, int spare_len)
+{
+	uffs_FileEmu *emu = (uffs_FileEmu *)(dev->attr->_private);
+	int ret;
 
 	//printf("femu: Write block %d page %d data %d spare %d\n", block, page, data_len, spare_len);	
 	
-	return emu->ops_orig.WritePage(dev, block, page, data, data_len, spare, spare_len);
+	ret = emu->ops_orig.WritePage(dev, block, page, data, data_len, spare, spare_len);
+
+	InjectBitFlip(dev, block, page);
+
+	return ret;
 }
+
+static int femu_WritePageWithLayout_wrap(uffs_Device *dev, u32 block, u32 page, u8* data, int data_len, u8 *ecc,
+									uffs_TagStore *ts, u8 *ecc_store)
+{
+	uffs_FileEmu *emu = (uffs_FileEmu *)(dev->attr->_private);
+	int ret;
+
+	//printf("femu: Write block %d page %d data %d spare %d\n", block, page, data_len, spare_len);	
+	
+	ret = emu->ops_orig.WritePageWithLayout(dev, block, page, data, data_len, ecc, ts, ecc_store);
+
+	InjectBitFlip(dev, block, page);
+
+	return ret;
+}
+
 
 static URET femu_EraseBlock_wrap(uffs_Device *dev, u32 blockNumber)
 {

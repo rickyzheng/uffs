@@ -333,11 +333,6 @@ static int DumpTag(struct uffs_DeviceSt *dev, int block, int page, uffs_Tags *ta
 		}
 		return -1;
 	}
-
-	if (tag->block_status != 0xFF) {
-		dump(dev, "page %d badblock mark %d\n", page, tag->block_status);
-		return -1;
-	}
 	
 	dump(dev, " - page %2d/%2d %s %d/%d len%4d\n", page, s->page_id, GetTagName(s), s->serial, s->parent, s->data_len);
 	

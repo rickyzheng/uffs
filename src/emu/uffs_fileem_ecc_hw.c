@@ -43,15 +43,184 @@
 
 #include "uffs/uffs_device.h"
 #include "uffs_fileem.h"
+#include "uffs/uffs_ecc.h"
 
 #define PFX "femu: "
+
+static int femu_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
+							const u8 *data, int data_len, const u8 *ecc, const uffs_TagStore *ts)
+{
+	int written;
+	int abs_page;
+	int full_page_size;
+	uffs_FileEmu *emu;
+	struct uffs_StorageAttrSt *attr = dev->attr;
+	u8 spare[UFFS_MAX_SPARE_SIZE];
+	int spare_len;
+
+
+	emu = (uffs_FileEmu *)(dev->attr->_private);
+
+	if (!emu || !(emu->fp)) {
+		goto err;
+	}
+
+	abs_page = attr->pages_per_block * block + page;
+	full_page_size = attr->page_data_size + attr->spare_size;
+
+	if (data && data_len > 0) {
+		if (data_len > attr->page_data_size)
+			goto err;
+
+		emu->em_monitor_page[abs_page]++;
+		if (emu->em_monitor_page[abs_page] > PAGE_DATA_WRITE_COUNT_LIMIT) {
+			printf("Warrning: block %d page %d exceed it's maximum write time!\r\n", block, page);
+			goto err;
+		}
+		
+		fseek(emu->fp, abs_page * full_page_size, SEEK_SET);
+
+		written = fwrite(data, 1, data_len, emu->fp);
+		
+		if (written != data_len) {
+			printf("femu: write page I/O error ?\n");
+			goto err;
+		}
+
+		dev->st.page_write_count++;
+		dev->st.io_write += written;
+
+		if (ecc) {
+			// calculate ECC for data
+			uffs_EccMake(data, data_len, ecc);
+		}
+	}
+
+	if (ts) {
+
+		emu->em_monitor_spare[abs_page]++;
+		if (emu->em_monitor_spare[abs_page] > PAGE_SPARE_WRITE_COUNT_LIMIT) {
+			printf("Warrning: block %d page %d (spare) exceed it's maximum write time!\r\n", block, page);
+			goto err;
+		}
+
+		uffs_FlashMakeSpare(dev, ts, ecc, spare);
+		spare_len = dev->mem.spare_data_size;
+		
+		fseek(emu->fp, abs_page * full_page_size + attr->page_data_size, SEEK_SET);
+		written = fwrite(spare, 1, spare_len, emu->fp);
+		if (written != spare_len) {
+			printf("femu: write spare I/O error ?\n");
+			goto err;
+		}
+
+		dev->st.spare_write_count++;
+		dev->st.io_write += written;
+	}
+
+	if (data == NULL && spare == NULL) {
+		// mark bad block
+		fseek(emu->fp, abs_page * full_page_size + attr->page_data_size + attr->block_status_offs, SEEK_SET);
+		written = fwrite("\0", 1, 1, emu->fp);
+		if (written != 1) {
+			printf("femu: write bad block mark I/O error ?\n");
+			goto err;
+		}
+		dev->st.io_write++;
+	}
+
+	fflush(emu->fp);
+	return UFFS_FLASH_NO_ERR;
+err:
+	fflush(emu->fp);
+	return UFFS_FLASH_IO_ERR;
+}
+
+
+static URET femu_ReadPageWithLayout(uffs_Device *dev, u32 block, u32 page, u8* data, int data_len, u8 *ecc,
+									uffs_TagStore *ts, u8 *ecc_store)
+{
+	int nread;
+	uffs_FileEmu *emu;
+	int abs_page;
+	int full_page_size;
+	struct uffs_StorageAttrSt *attr = dev->attr;
+	unsigned char status;
+	u8 spare[UFFS_MAX_SPARE_SIZE];
+	int spare_len;
+
+	emu = (uffs_FileEmu *)(dev->attr->_private);
+
+	if (!emu || !(emu->fp)) {
+		goto err;
+	}
+
+	abs_page = attr->pages_per_block * block + page;
+	full_page_size = attr->page_data_size + attr->spare_size;
+
+	if (data && data_len > 0) {
+		if (data_len > attr->page_data_size)
+			goto err;
+
+		fseek(emu->fp, abs_page * full_page_size, SEEK_SET);
+		nread = fread(data, 1, data_len, emu->fp);
+
+		if (nread != data_len) {
+			printf("femu: read page I/O error ?\n");
+			goto err;
+		}
+		dev->st.io_read += nread;
+		dev->st.page_read_count++;
+
+		if (ecc) {
+			// calculate ECC for data
+			uffs_EccMake(data, data_len, ecc);
+		}
+	}
+
+	if (ts) {
+
+		spare_len = dev->mem.spare_data_size;
+		fseek(emu->fp, abs_page * full_page_size + attr->page_data_size, SEEK_SET);
+		nread = fread(spare, 1, spare_len, emu->fp);
+
+		if (nread != spare_len) {
+			printf("femu: read page spare I/O error ?\n");
+			goto err;
+		}
+
+		// unload ts and ecc from spare
+		uffs_FlashUnloadSpare(dev, spare, ts, ecc_store);
+
+		dev->st.io_read += nread;
+		dev->st.spare_read_count++;
+	}
+
+	if (data == NULL && spare == NULL) {
+		// read bad block mark
+		fseek(emu->fp, abs_page * full_page_size + attr->page_data_size + attr->block_status_offs, SEEK_SET);
+		nread = fread(&status, 1, 1, emu->fp);
+
+		if (nread != 1) {
+			printf("femu: read badblock mark I/O error ?\n");
+			goto err;
+		}
+		dev->st.io_read++;
+
+		return status == 0xFF ? UFFS_FLASH_NO_ERR : UFFS_FLASH_BAD_BLK;
+	}
+
+	return UFFS_FLASH_NO_ERR;
+err:
+	return UFFS_FLASH_IO_ERR;
+}
 
 
 uffs_FlashOps g_femu_ops_ecc_hw = {
 	NULL,				// ReadPage()
-	NULL,				// ReadPageWithLayout()
+	femu_ReadPageWithLayout,
 	NULL,				// WritePage()
-	NULL,				// WirtePageWithLayout()
+	femu_WritePageWithLayout,
 	NULL,				// IsBadBlock(), let UFFS take care of it.
 	NULL,				// MarkBadBlock(), let UFFS take care of it.
 	NULL,				// EraseBlock(), init it later

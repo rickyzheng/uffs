@@ -122,8 +122,8 @@ struct uffs_FlashOpsSt {
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success and/or has no flip bits.
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
-	 *			#UFFS_FLASH_ECC_FAIL: page data has flip bits and ecc correct failed.
-	 *			#UFFS_FLASH_ECC_OK: page data has flip bits and corrected by ecc.
+	 *			#UFFS_FLASH_ECC_FAIL: page data has flip bits and ecc correct failed (when ecc_opt == UFFS_ECC_HW_AUTO)
+	 *			#UFFS_FLASH_ECC_OK: page data has flip bits and corrected by ecc (when ecc_opt == UFFS_ECC_HW_AUTO)
 	 *          #UFFS_FLASH_BAD_BLK: if the block is a bad block (e.g., the bad block mark byte is not 0xFF).
 	 *
 	 * \note if data is NULL, do not return data; if spare is NULL, do not return spare; if both data and spare are all NULL,
@@ -150,9 +150,9 @@ struct uffs_FlashOpsSt {
 	 *
 	 * \return	#UFFS_FLASH_NO_ERR: success
 	 *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
-	 *			#UFFS_FLASH_ECC_FAIL: page data has flip bits and ecc correct failed.
-	 *			#UFFS_FLASH_ECC_OK: page data has flip bits and corrected by ecc.
-	 *          #UFFS_FLASH_BAD_BLK: if the block is a bad block (e.g., the bad block mark byte is not 0xFF).
+	 *			#UFFS_FLASH_ECC_FAIL: page data has flip bits and ecc correct failed (when ecc_opt == UFFS_ECC_HW_AUTO)
+	 *			#UFFS_FLASH_ECC_OK: page data has flip bits and corrected by ecc (when ecc_opt == UFFS_ECC_HW_AUTO)
+	 *          #UFFS_FLASH_BAD_BLK: if the block is a bad block (e.g., the bad block mark byte is not 0xFF)
 	 *
 	 * \note if data is NULL, do not return data; if ts is NULL, do not read tag; if both data and ts are NULL,
 	 *       then read bad block mark and return UFFS_FLASH_BAD_BLK if bad block mark is not 0xFF.
@@ -232,6 +232,9 @@ struct uffs_FlashOpsSt {
 
 /** make spare from tag store and ecc */
 void uffs_FlashMakeSpare(uffs_Device *dev, uffs_TagStore *ts, const u8 *ecc, u8* spare);
+
+/** unload tag and ecc from spare */
+void uffs_FlashUnloadSpare(uffs_Device *dev, const u8 *spare, struct uffs_TagStoreSt *ts, u8 *ecc);
 
 /** read page spare and fill to tag */
 int uffs_FlashReadPageTag(uffs_Device *dev, int block, int page, uffs_Tags *tag);

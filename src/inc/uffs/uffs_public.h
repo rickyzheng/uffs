@@ -81,12 +81,6 @@ struct uffs_TagsSt {
 	/** data_sum for file or dir name */
 	u16 data_sum;
 
-	/**
-	 * block_status is not covered by tag_ecc.
-	 * it's loaded from flash but not directly write to flash.
-	 */
-	u8 block_status;
-
 	/** internal used */
 	u8 _dirty:1;			//!< raw data, before doing ecc correction
 	u8 _valid:1;			//!< raw data, before doing ecc correction

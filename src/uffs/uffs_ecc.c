@@ -113,10 +113,10 @@ static const u8 column_parity_tbl[256] = {
  * \param[out] ecc output ecc
  * \param[in] length of data in bytes
  */
-static void uffs_EccMakeChunk256(void *data, void *ecc, u16 len)
+static void uffs_EccMakeChunk256(const void *data, void *ecc, u16 len)
 {
 	u8 *pecc = (u8 *)ecc;
-	u8 *p = (u8 *)data;
+	const u8 *p = (const u8 *)data;
 	u8 b, col_parity = 0, line_parity = 0, line_parity_prime = 0;
 	u16 i;
 
@@ -151,9 +151,9 @@ static void uffs_EccMakeChunk256(void *data, void *ecc, u16 len)
  *
  * \return length of ECC in byte. (3 bytes ECC per 256 data) 
  */
-int uffs_EccMake(void *data, int data_len, void *ecc)
+int uffs_EccMake(const void *data, int data_len, void *ecc)
 {
-	u8 *p_data = (u8 *)data, *p_ecc = (u8 *)ecc;
+	const u8 *p_data = (const u8 *)data, *p_ecc = (u8 *)ecc;
 	int len;
 
 	if (data == NULL || ecc == NULL)
