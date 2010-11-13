@@ -81,7 +81,7 @@ static int conf_pages_per_block = 32;
 static int conf_page_data_size = 512;
 static int conf_page_spare_size = 16;
 static int conf_status_byte_offset = 5;
-static int conf_total_blocks =	20;
+static int conf_total_blocks =	64;
 //static int conf_ecc_option = UFFS_ECC_SOFT;
 static int conf_ecc_option = UFFS_ECC_HW;
 static int conf_ecc_size = 0; // 0 means 'auto'
@@ -92,9 +92,6 @@ static int conf_ecc_size = 0; // 0 means 'auto'
 static struct uffs_MountTableEntrySt conf_mounts[MAX_MOUNT_TABLES] = {0};
 static uffs_Device conf_devices[MAX_MOUNT_TABLES] = {0};
 static char mount_point_name[MAX_MOUNT_TABLES][MAX_MOUNT_POINT_NAME] = {0};
-
-static struct uffs_StorageAttrSt emu_storage = {0};
-static struct uffs_FileEmuSt emu_private = {0};
 
 
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
@@ -144,8 +141,7 @@ static struct cli_commandset basic_cmdset[] =
     { NULL, NULL, NULL, NULL }
 };
 
-
-static void setup_emu_storage(struct uffs_StorageAttrSt *attr)
+static void setup_storage(struct uffs_StorageAttrSt *attr)
 {
 	attr->total_blocks = conf_total_blocks;				/* total blocks */
 	attr->page_data_size = conf_page_data_size;			/* page data size */
@@ -156,6 +152,14 @@ static void setup_emu_storage(struct uffs_StorageAttrSt *attr)
 	attr->ecc_opt = conf_ecc_option;					/* ECC option */
 	attr->ecc_size = conf_ecc_size;						/* ECC size */
 	attr->layout_opt = UFFS_LAYOUT_UFFS;				/* let UFFS handle layout */
+}
+
+
+static void setup_device(uffs_Device *dev)
+{
+	dev->Init = femu_InitDevice;
+	dev->Release = femu_ReleaseDevice;
+	dev->attr = femu_GetStorage();
 }
 
 static void setup_emu_private(uffs_FileEmu *emu)
@@ -183,12 +187,7 @@ static int init_uffs_fs(void)
 	}
 #endif
 
-	setup_emu_storage(&emu_storage);
-	setup_emu_private(&emu_private);
-	emu_storage._private = &emu_private;
-	
 	while (mtbl->dev) {
-		mtbl->dev->attr = &emu_storage;
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 		uffs_MemSetupNativeAllocator(&mtbl->dev->mem);
 #endif
@@ -196,7 +195,7 @@ static int init_uffs_fs(void)
 #if CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 0
 		uffs_MemSetupSystemAllocator(&mtbl->dev->mem);
 #endif
-		uffs_fileem_setup_device(mtbl->dev);
+		setup_device(mtbl->dev);
 		uffs_RegisterMountTable(mtbl);
 		mtbl++;
 	}
@@ -477,7 +476,6 @@ static void exec_script()
 
 int main(int argc, char *argv[])
 {
-
 	int ret;
 
 	if (parse_options(argc, argv) < 0) {
@@ -495,6 +493,12 @@ int main(int argc, char *argv[])
 		printf("struct FdataSt: %d\n", sizeof(struct FdataSt));
 		#endif
 	}
+
+	// setup file emulator storage with parameters from command line
+	setup_storage(femu_GetStorage());
+
+	// setup file emulator private data
+	setup_emu_private(femu_GetPrivate());
 
 	ret = init_uffs_fs();
 	if (ret != 0) {

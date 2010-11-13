@@ -41,27 +41,9 @@
 
 #include "uffs/uffs_device.h"
 
-struct uffs_FileEmuBitFlip {
-	int block;
-	int page;
-	int offset;
-	u8 mask;
-};
+#define UFFS_FEMU_FILE_NAME		"uffsemfile.bin"
 
-/* simulate bad blocks */
-#define FILEEMU_STOCK_BAD_BLOCKS	{5, 18}		// bad block come from manufacture
-#define FILEEMU_ERASE_BAD_BLOCKS	{10, 15}	// new bad block discovered when erasing
-
-/* simulating bit flip */
-#define FILEEMU_WRITE_BIT_FLIP \
-	{ \
-		{2, 2, 10, 1 << 4}, /* block 2, page 2, offset 10, bit 4 */	\
-		{2, 4, -3, 1 << 2}, /* block 2, page 4, spare offset 3, bit 2*/ \
-		{6, 1, 5, 1 << 3},	/* block 6, page 1, offset 5, bit 3 */ \
-		{6, 1, 15, 1 << 7},	/* block 6, page 1, offset 300, bit 7 */ \
-		{8, 2, 2, 1 << 1},	/* block 8, page 2, offset 2, bit 1 */ \
-		{8, 2, 100, 1 << 5},/* block 8, page 2, offset 100, bit 5 */ \
-	}
+#define UFFS_FEMU_ENABLE_INJECTION		// enable bad block & ecc error injection
 
 extern struct uffs_FlashOpsSt g_femu_ops_ecc_soft;		// for software ECC or no ECC.
 extern struct uffs_FlashOpsSt g_femu_ops_ecc_hw;		// for hardware ECC
@@ -77,10 +59,27 @@ typedef struct uffs_FileEmuSt {
 	u8 *em_monitor_page;
 	u8 * em_monitor_spare;
 	const char *emu_filename;
+#ifdef UFFS_FEMU_ENABLE_INJECTION
 	struct uffs_FlashOpsSt ops_orig;
+	UBOOL wrap_inited;
+#endif
 } uffs_FileEmu;
 
-void uffs_fileem_setup_device(uffs_Device *dev);
+/* file emulator device init/release entry */
+URET femu_InitDevice(uffs_Device *dev);
+URET femu_ReleaseDevice(uffs_Device *dev);
+
+struct uffs_StorageAttrSt * femu_GetStorage(void);
+struct uffs_FileEmuSt * femu_GetPrivate(void);
+
+#ifdef UFFS_FEMU_ENABLE_INJECTION
+void femu_setup_wrapper_functions(uffs_Device *dev);
+#endif
+
+/* internal used functions, shared by all ecc option implementations */
+int femu_InitFlash(uffs_Device *dev);
+int femu_ReleaseFlash(uffs_Device *dev);
+int femu_EraseBlock(uffs_Device *dev, u32 blockNumber);
 
 #endif
 

@@ -208,6 +208,12 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 					dev->mem.spare_pool_size,
 					UFFS_MAX_SPARE_SIZE, MAX_SPARE_BUFFERS);
 
+	// init flash driver
+	if (dev->ops->InitFlash) {
+		if (dev->ops->InitFlash(dev) < 0)
+			goto ext;
+	}
+
 	if (dev->ops->WritePage == NULL && dev->ops->WritePageWithLayout == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, "Flash driver must provide 'WritePage' or 'WritePageWithLayout' function!");
 		goto ext;
@@ -268,7 +274,7 @@ ext:
 URET uffs_FlashInterfaceRelease(uffs_Device *dev)
 {
 	uffs_Pool *pool;
-	
+
 	pool = SPOOL(dev);
 	if (pool->mem && dev->mem.free) {
 		dev->mem.free(dev, pool->mem);
@@ -277,6 +283,12 @@ URET uffs_FlashInterfaceRelease(uffs_Device *dev)
 	}
 	uffs_PoolRelease(pool);
 	memset(pool, 0, sizeof(uffs_Pool));
+
+	// release flash driver
+	if (dev->ops->ReleaseFlash) {
+		if (dev->ops->ReleaseFlash(dev) < 0)
+			return U_FAIL;
+	}
 
 	return U_SUCC;
 }
@@ -604,6 +616,9 @@ int uffs_FlashWritePageCombine(uffs_Device *dev,
 		uffs_EccMake(buf->header, size, ecc_buf);
 		ecc = ecc_buf;
 	}
+	else if (dev->attr->ecc_opt == UFFS_ECC_HW) {
+		ecc = ecc_buf;
+	}
 
 	if (ops->WritePageWithLayout) {
 		ret = ops->WritePageWithLayout(dev, block, page,
@@ -720,7 +735,7 @@ URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block)
 	ret = dev->ops->EraseBlock(dev, block);
 	if (ret != UFFS_FLASH_IO_ERR) {
 		// note: even EraseBlock return UFFS_FLASH_BAD_BLK,
-		//			we still still process it ... not recommended for normal NAND flash.
+		//			we still process it ... not recommended for most NAND flash.
 #endif
 	if (dev->ops->WritePageWithLayout)
 		ret = dev->ops->WritePageWithLayout(dev, block, 0, NULL, 0, NULL, NULL);
@@ -747,21 +762,15 @@ UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block)
 		ret = (ops->IsBadBlock(dev, block) == 0 ? U_FALSE : U_TRUE);
 	}
 	else {
-		/* otherwise we check the 'status' byte of spare */
+		/* otherwise we call ReadPage[WithLayout]() to get bad block status byte */
 		/* check the first page */
 		if (ops->ReadPageWithLayout) {
 			ret = (ops->ReadPageWithLayout(dev, block, 0, NULL, 0, NULL, NULL, NULL)
 												== UFFS_FLASH_BAD_BLK ? U_TRUE : U_FALSE);
 		}
 		else {
-			spare = (u8 *) uffs_PoolGet(SPOOL(dev));
-			if (spare) {
-				if (ops->ReadPage(dev, block, 0, NULL, 0, NULL, spare, dev->mem.spare_data_size) == UFFS_FLASH_BAD_BLK)
-					ret = U_TRUE;
-				else if (spare[dev->attr->block_status_offs] != 0xFF)
-					ret = U_TRUE;
-				uffs_PoolPut(SPOOL(dev), spare);
-			}
+			ret = (ops->ReadPage(dev, block, 0, NULL, 0, NULL, NULL, 0)
+												== UFFS_FLASH_BAD_BLK ? U_TRUE : U_FALSE);
 		}
 
 		if (ret == U_FALSE) {
@@ -771,17 +780,13 @@ UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block)
 													== UFFS_FLASH_BAD_BLK ? U_TRUE : U_FALSE);
 			}
 			else {
-				spare = (u8 *) uffs_PoolGet(SPOOL(dev));
-				if (spare) {
-					if (ops->ReadPage(dev, block, 0, NULL, 0, NULL, spare, dev->mem.spare_data_size) == UFFS_FLASH_BAD_BLK)
-						ret = U_TRUE;
-					else if (spare[dev->attr->block_status_offs] != 0xFF)
-						ret = U_TRUE;
-					uffs_PoolPut(SPOOL(dev), spare);
-				}
+				ret = (ops->ReadPage(dev, block, 0, NULL, 0, NULL, NULL, 0)
+													== UFFS_FLASH_BAD_BLK ? U_TRUE : U_FALSE);
 			}
 		}
 	}
+
+	//uffs_Perror(UFFS_ERR_NOISY, "Block %d is %s", block, ret ? "BAD" : "GOOD");
 
 	return ret;
 }

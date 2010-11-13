@@ -32,7 +32,7 @@
 
 /**
  * \file uffs_fileem_ecc_hw_auto.c
- * \brief emulate uffs file system for auto hardware ECC (or RS)
+ * \brief emulate uffs file system for auto hardware ECC or RS error collection
  * \author Ricky Zheng @ Oct, 2010
  */
 
@@ -48,11 +48,13 @@
 
 
 uffs_FlashOps g_femu_ops_ecc_hw_auto = {
-	NULL,				// ReadPage()
-	NULL,				// ReadPageWithLayout()
-	NULL,				// WritePage()
-	NULL,				// WirtePageWithLayout()
-	NULL,				// IsBadBlock(), let UFFS take care of it.
-	NULL,				// MarkBadBlock(), let UFFS take care of it.
-	NULL,				// EraseBlock(), init it later
+	NULL,						// InitFlash()
+	NULL,						// ReleaseFlash()
+	NULL,						// ReadPage()
+	NULL,						// ReadPageWithLayout()
+	NULL,						// WritePage()
+	NULL,						// WirtePageWithLayout()
+	NULL,						// IsBadBlock(), let UFFS take care of it.
+	NULL,						// MarkBadBlock(), let UFFS take care of it.
+	femu_EraseBlock,			// EraseBlock()
 };

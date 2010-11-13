@@ -93,12 +93,6 @@ URET uffs_InitMountTable(void)
 		uffs_Perror(UFFS_ERR_NOISY,
 					"init device for mount point %s ...",
 					work->mount);
-		if (work->dev->Init(work->dev) == U_FAIL) {
-			uffs_Perror(UFFS_ERR_SERIOUS,
-						"init device for mount point %s fail",
-						work->mount);
-			return U_FAIL;
-		}
 
 		work->dev->par.start = work->start_block;
 		if (work->end_block < 0) {
@@ -108,6 +102,14 @@ URET uffs_InitMountTable(void)
 		else {
 			work->dev->par.end = work->end_block;
 		}
+
+		if (work->dev->Init(work->dev) == U_FAIL) {
+			uffs_Perror(UFFS_ERR_SERIOUS,
+						"init device for mount point %s fail",
+						work->mount);
+			return U_FAIL;
+		}
+
 		uffs_Perror(UFFS_ERR_NOISY, "mount partiton: %d,%d",
 			work->dev->par.start, work->dev->par.end);
 

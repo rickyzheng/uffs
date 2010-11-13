@@ -50,7 +50,354 @@
 
 #define PFX "test:"
 
+static URET do_write_test_file(int fd, int size)
+{
+	long pos;
+	unsigned char buf[100];
+	unsigned char data;
+	int i, len;
 
+	while (size > 0) {
+		pos = uffs_seek(fd, 0, USEEK_CUR);
+		len = (size > sizeof(buf) ? sizeof(buf) : size);
+		data = pos & 0xFF;
+		for (i = 0; i < len; i++, data++) {
+			buf[i] = data;
+		}
+		if (uffs_write(fd, buf, len) != len) {
+			uffs_Perror(UFFS_ERR_NORMAL, "Write file failed, size %d at %d", len, pos);
+			return U_FAIL;
+		}
+		size -= len;
+	}
+
+	return U_SUCC;
+}
+
+static URET test_write_file(const char *file_name, int pos, int size)
+{
+	int ret = U_FAIL;
+	int fd = -1;
+
+	if ((fd = uffs_open(file_name, UO_RDWR|UO_CREATE)) < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open file %s for write.", file_name);
+		goto test_exit;
+	}
+
+	if (uffs_seek(fd, pos, USEEK_SET) != pos) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't seek file %s at pos %d", file_name, pos);
+		goto test_failed;
+	}
+
+	if (do_write_test_file(fd, size) == U_FAIL) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Write file %s failed.", file_name);
+		goto test_failed;
+	}
+	ret = U_SUCC;
+
+test_failed:
+	uffs_close(fd);
+
+test_exit:
+
+	return ret;
+}
+
+
+static URET test_verify_file(const char *file_name)
+{
+	int fd;
+	int ret = U_FAIL;
+	unsigned char buf[100];
+	int i, pos, len;
+
+	if ((fd = uffs_open(file_name, UO_RDONLY)) < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open file %s for read.", file_name);
+		goto test_exit;
+	}
+
+	pos = 0;
+	while (!uffs_eof(fd)) {
+		len = uffs_read(fd, buf, sizeof(buf));
+		if (len <= 0)
+			goto test_failed;
+		for (i = 0; i < len; i++) {
+			if (buf[i] != (pos++ & 0xFF)) {
+				pos--;
+				uffs_Perror(UFFS_ERR_NORMAL, "Verify file %s failed at: %d, expect %x but got %x", file_name, pos, pos & 0xFF, buf[i]);
+				goto test_failed;
+			}
+		}
+	}
+
+	if (pos != uffs_seek(fd, 0, USEEK_END)) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Verify file %s failed. invalid file length.", file_name);
+		goto test_failed;
+	}
+
+	uffs_Perror(UFFS_ERR_NORMAL, "Verify file %s succ.", file_name);
+	ret = U_SUCC;
+
+test_failed:
+	uffs_close(fd);
+
+test_exit:
+
+	return ret;
+}
+
+static URET test_append_file(const char *file_name, int size)
+{
+	int ret = U_FAIL;
+	int fd = -1;
+
+	if ((fd = uffs_open(file_name, UO_RDWR|UO_APPEND|UO_CREATE)) < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open file %s for append.", file_name);
+		goto test_exit;
+	}
+
+	uffs_seek(fd, 0, USEEK_END);
+
+	if (do_write_test_file(fd, size) == U_FAIL) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Write file %s failed.", file_name);
+		goto test_failed;
+	}
+	ret = U_SUCC;
+
+test_failed:
+	uffs_close(fd);
+
+test_exit:
+
+	return ret;
+}
+
+
+/* test create file, write file and read back */
+static BOOL cmdTest1(const char *tail)
+{
+	int fd;
+	URET ret;
+	char buf[100];
+	const char *name;
+
+	if (!tail) {
+		return FALSE;
+	}
+
+	name = cli_getparam(tail, NULL);
+
+	fd = uffs_open(name, UO_RDWR|UO_CREATE|UO_TRUNC);
+	if (fd < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s", name);
+		goto fail;
+	}
+
+	sprintf(buf, "123456789ABCDEF");
+	ret = uffs_write(fd, buf, strlen(buf));
+	uffs_Perror(UFFS_ERR_NORMAL, "write %d bytes to file, content: %s", ret, buf);
+
+	ret = uffs_seek(fd, 3, USEEK_SET);
+	uffs_Perror(UFFS_ERR_NORMAL, "new file position: %d", ret);
+
+	memset(buf, 0, sizeof(buf));
+	ret = uffs_read(fd, buf, 5);
+	uffs_Perror(UFFS_ERR_NORMAL, "read %d bytes, content: %s", ret, buf);
+
+	uffs_close(fd);
+
+fail:
+
+	return TRUE;
+}
+
+
+static URET DoTest2(void)
+{
+	int fd = -1;
+	URET ret = U_FAIL;
+	char buf[100], buf_1[100];
+
+	fd = uffs_open("/abc/", UO_RDWR|UO_DIR);
+	if (fd < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open dir abc, err: %d", uffs_get_error());
+		uffs_Perror(UFFS_ERR_NORMAL, "Try to create a new one...");
+		fd = uffs_open("/abc/", UO_RDWR|UO_CREATE|UO_DIR);
+		if (fd < 0) {
+			uffs_Perror(UFFS_ERR_NORMAL, "Can't create new dir /abc/");
+			goto exit_test;
+		}
+		else {
+			uffs_close(fd);
+		}
+	}
+	else {
+		uffs_close(fd);
+	}
+	
+	fd = uffs_open("/abc/test.txt", UO_RDWR|UO_CREATE);
+	if (fd < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open /abc/test.txt");
+		goto exit_test;
+	}
+
+	sprintf(buf, "123456789ABCDEF");
+	ret = uffs_write(fd, buf, strlen(buf));
+	uffs_Perror(UFFS_ERR_NORMAL, "write %d bytes to file, content: %s", ret, buf);
+
+	ret = uffs_seek(fd, 3, USEEK_SET);
+	uffs_Perror(UFFS_ERR_NORMAL, "new file position: %d", ret);
+
+	memset(buf_1, 0, sizeof(buf_1));
+	ret = uffs_read(fd, buf_1, 5);
+	uffs_Perror(UFFS_ERR_NORMAL, "read %d bytes, content: %s", ret, buf_1);
+
+	if (memcmp(buf + 3, buf_1, 5) != 0) {
+		ret = U_FAIL;
+	}
+	else {
+		ret = U_SUCC;
+	}
+
+	uffs_close(fd);
+
+exit_test:
+
+	return ret;
+}
+
+
+static BOOL cmdTest2(const char *tail)
+{
+	uffs_Perror(UFFS_ERR_NORMAL, "Test return: %s !", DoTest2() == U_SUCC ? "succ" : "failed");
+
+	return TRUE;
+}
+
+/* Test file append and 'random' write */
+static BOOL cmdTest3(const char *tail)
+{
+	const char *name;
+	int i;
+	int write_test_seq[] = { 20, 10, 500, 40, 1140, 900, 329, 4560, 352, 1100 };
+
+	if (!tail) {
+		return FALSE;
+	}
+
+	name = cli_getparam(tail, NULL);
+	uffs_Perror(UFFS_ERR_NORMAL, "Test append file %s ...", name);
+	for (i = 1; i < 500; i += 29) {
+		if (test_append_file(name, i) != U_SUCC) {
+			uffs_Perror(UFFS_ERR_NORMAL, "Append file %s test failed at %d !", name, i);
+			return TRUE;
+		}
+	}
+
+	uffs_Perror(UFFS_ERR_NORMAL, "Check file %s ... ", name);
+	if (test_verify_file(name) != U_SUCC) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Verify file %s failed.", name);
+		return TRUE;
+	}
+
+	uffs_Perror(UFFS_ERR_NORMAL, "Test write file ...");
+	for (i = 0; i < sizeof(write_test_seq) / sizeof(int) - 1; i++) {
+		if (test_write_file(name, write_test_seq[i], write_test_seq[i+1]) != U_SUCC) {
+			uffs_Perror(UFFS_ERR_NORMAL, "Test write file failed !");
+			return TRUE;
+		}
+	}
+
+	uffs_Perror(UFFS_ERR_NORMAL, "Check file %s ... ", name);
+	if (test_verify_file(name) != U_SUCC) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Verify file %s failed.", name);
+		return TRUE;
+	}
+
+	uffs_Perror(UFFS_ERR_NORMAL, "Test succ !");
+
+	return TRUE;
+}
+
+/* open two files and test write */
+static BOOL cmdTest4(const char *tail)
+{
+	int fd1 = -1, fd2 = -1;
+
+	uffs_Perror(UFFS_ERR_NORMAL, "open /a ...");
+	if ((fd1 = uffs_open("/a", UO_RDWR | UO_CREATE)) < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open /a");
+		goto fail_exit;
+	}
+
+	uffs_Perror(UFFS_ERR_NORMAL, "open /b ...");
+	if ((fd2 = uffs_open("/b", UO_RDWR | UO_CREATE)) < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open /b");
+		uffs_close(fd1);
+		goto fail_exit;
+	}
+
+	uffs_Perror(UFFS_ERR_NORMAL, "write (1) to /a ...");
+	uffs_write(fd1, "Hello,", 6);
+	uffs_Perror(UFFS_ERR_NORMAL, "write (1) to /b ...");
+	uffs_write(fd2, "Hello,", 6);
+	uffs_Perror(UFFS_ERR_NORMAL, "write (2) to /a ...");
+	uffs_write(fd1, "World.", 6);
+	uffs_Perror(UFFS_ERR_NORMAL, "write (2) to /b ...");
+	uffs_write(fd2, "World.", 6);
+	uffs_Perror(UFFS_ERR_NORMAL, "close /a ...");
+	uffs_close(fd1);
+	uffs_Perror(UFFS_ERR_NORMAL, "close /b ...");
+	uffs_close(fd2);
+
+	return TRUE;
+
+fail_exit:
+	return TRUE;
+}
+
+/* test appending file */
+static BOOL cmdTest5(const char *tail)
+{
+	int fd = -1;
+	URET ret;
+	char buf[100];
+	const char *name;
+
+	if (!tail) {
+		return FALSE;
+	}
+
+	name = cli_getparam(tail, NULL);
+
+	fd = uffs_open(name, UO_RDWR|UO_APPEND);
+	if (fd < 0) {
+		uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s", name);
+		goto fail;
+	}
+
+	sprintf(buf, "append test...");
+	ret = uffs_write(fd, buf, strlen(buf));
+	if (ret != strlen(buf)) {
+		uffs_Perror(UFFS_ERR_NORMAL, "write file failed, %d/%d", ret, strlen(buf));
+	}
+	else {
+		uffs_Perror(UFFS_ERR_NORMAL, "write %d bytes to file, content: %s", ret, buf);
+	}
+
+	uffs_close(fd);
+
+fail:
+
+	return TRUE;
+}
+
+
+
+/* usage: t_pgrw
+ *
+ * This test case test page read/write
+ */
 static BOOL cmdTestPageReadWrite(const char *tail)
 {
 	TreeNode *node;
@@ -348,6 +695,11 @@ ext:
 
 static struct cli_commandset cmdset[] = 
 {
+    { cmdTest1,		"t1",			"<name>",			"test 1" },
+    { cmdTest2,		"t2",			NULL,				"test 2" },
+    { cmdTest3,		"t3",			"<name>",			"test 3" },
+    { cmdTest4,		"t4",			NULL,				"test 4" },
+    { cmdTest5,		"t5",			"<name>",			"test 5" },
     { cmdTestPageReadWrite,		"t_pgrw",		NULL,		"test page read/write" },
     { cmdTestFormat,			"t_format",		NULL,		"test format file system" },
 	{ cmdTestPopulateFiles,		"t_pfs",		"[<start> [<n>]]",	"test populate <n> files under <start>" },

@@ -198,11 +198,13 @@ err:
 
 
 uffs_FlashOps g_femu_ops_ecc_soft = {
-	femu_ReadPage,
+	femu_InitFlash,		// InitFlash()
+	femu_ReleaseFlash,	// ReleaseFlash()
+	femu_ReadPage,		// ReadPage()
 	NULL,				// ReadPageWithLayout
-	femu_WritePage,
+	femu_WritePage,		// WritePage()
 	NULL,				// WirtePageWithLayout
 	NULL,				// IsBadBlock(), let UFFS take care of it.
 	NULL,				// MarkBadBlock(), let UFFS take care of it.
-	NULL,				// EraseBlock(), init it later
+	femu_EraseBlock,	// EraseBlock()
 };

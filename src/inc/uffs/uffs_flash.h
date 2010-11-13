@@ -113,6 +113,24 @@ struct uffs_StorageAttrSt {
  */
 struct uffs_FlashOpsSt {
 	/**
+	 * Initilize flash driver, called once when UFFS initilize partition
+	 *
+	 * \return 0 if no error, return -1 when failed.
+	 *
+	 * \note This function is optional.
+	 */
+	int (*InitFlash)(uffs_Device *dev);
+
+	/**
+	 * Release flash driver, called once when UFFS unmount partition
+	 *
+	 * \return 0 if no error, return -1 when failed.
+	 *
+	 * \note This function is optional.
+	 */
+	int (*ReleaseFlash)(uffs_Device *dev);
+
+	/**
 	 * Read a full nand page, UFFS do the layout.
 	 * 
 	 * \param[out] ecc ecc of page data

@@ -539,7 +539,7 @@ static URET _BuildTreeStepTwo(uffs_Device *dev)
 
 	uffs_Perror(UFFS_ERR_NOISY, "build tree step two");
 
-	endPoint = uffs_GetCurDateTime() % dev->tree.erased_count;
+	endPoint = uffs_GetCurDateTime() % (dev->tree.erased_count + 1);
 	while (startCount < endPoint) {
 		node = uffs_TreeGetErasedNode(dev);
 		if (node == NULL) {

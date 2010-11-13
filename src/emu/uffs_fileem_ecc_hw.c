@@ -32,7 +32,11 @@
 
 /**
  * \file uffs_fileem_ecc_hw.c
- * \brief emulate uffs file system for hardware ECC
+ * \brief emulate uffs file system for hardware ECC.
+ *
+ *	 In this emulator, we call 'uffs_FlashMakeSpare()' to do the layout job
+ *	 and call 'uffs_EccMake()' to calculate ECC.
+ *
  * \author Ricky Zheng @ Oct, 2010
  */
 
@@ -118,7 +122,7 @@ static int femu_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 		dev->st.io_write += written;
 	}
 
-	if (data == NULL && spare == NULL) {
+	if (data == NULL && ts == NULL) {
 		// mark bad block
 		fseek(emu->fp, abs_page * full_page_size + attr->page_data_size + attr->block_status_offs, SEEK_SET);
 		written = fwrite("\0", 1, 1, emu->fp);
@@ -196,7 +200,7 @@ static URET femu_ReadPageWithLayout(uffs_Device *dev, u32 block, u32 page, u8* d
 		dev->st.spare_read_count++;
 	}
 
-	if (data == NULL && spare == NULL) {
+	if (data == NULL && ts == NULL) {
 		// read bad block mark
 		fseek(emu->fp, abs_page * full_page_size + attr->page_data_size + attr->block_status_offs, SEEK_SET);
 		nread = fread(&status, 1, 1, emu->fp);
@@ -217,11 +221,13 @@ err:
 
 
 uffs_FlashOps g_femu_ops_ecc_hw = {
-	NULL,				// ReadPage()
-	femu_ReadPageWithLayout,
-	NULL,				// WritePage()
-	femu_WritePageWithLayout,
-	NULL,				// IsBadBlock(), let UFFS take care of it.
-	NULL,				// MarkBadBlock(), let UFFS take care of it.
-	NULL,				// EraseBlock(), init it later
+	femu_InitFlash,				// InitFlash()
+	femu_ReleaseFlash,			// ReleaseFlash()
+	NULL,						// ReadPage()
+	femu_ReadPageWithLayout,	// ReadPageWithLayout()
+	NULL,						// WritePage()
+	femu_WritePageWithLayout,	// WritePageWithLayout()
+	NULL,						// IsBadBlock(), let UFFS take care of it.
+	NULL,						// MarkBadBlock(), let UFFS take care of it.
+	femu_EraseBlock,			// EraseBlock()
 };
