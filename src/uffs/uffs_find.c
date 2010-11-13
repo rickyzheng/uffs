@@ -205,7 +205,7 @@ static URET do_FindObject(uffs_FindInfo *f, uffs_ObjectInfo *info, u16 x)
 		//no subdirs, then lookup files ..
 		f->step++;
 		f->hash = 0;
-		x = EMPTY_NODE;
+		x = dev->tree.file_entry[f->hash];
 	}
 
 	if (f->step == 1) {
@@ -289,7 +289,7 @@ URET uffs_FindObjectNext(uffs_ObjectInfo *info, uffs_FindInfo * f)
 	uffs_Device *dev = f->dev;
 	URET ret = U_SUCC;
 
-	if (f->dev == NULL || f->step > 1) 
+	if (dev == NULL || f->step > 1) 
 		return U_FAIL;
 
 	if (f->work == NULL)
