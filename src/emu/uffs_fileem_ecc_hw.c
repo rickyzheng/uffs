@@ -51,7 +51,7 @@
 
 #define PFX "femu: "
 
-static int femu_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
+static int femu_hw_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 							const u8 *data, int data_len, const u8 *ecc, const uffs_TagStore *ts)
 {
 	int written;
@@ -141,7 +141,7 @@ err:
 }
 
 
-static URET femu_ReadPageWithLayout(uffs_Device *dev, u32 block, u32 page, u8* data, int data_len, u8 *ecc,
+static URET femu_hw_ReadPageWithLayout(uffs_Device *dev, u32 block, u32 page, u8* data, int data_len, u8 *ecc,
 									uffs_TagStore *ts, u8 *ecc_store)
 {
 	int nread;
@@ -224,9 +224,9 @@ uffs_FlashOps g_femu_ops_ecc_hw = {
 	femu_InitFlash,				// InitFlash()
 	femu_ReleaseFlash,			// ReleaseFlash()
 	NULL,						// ReadPage()
-	femu_ReadPageWithLayout,	// ReadPageWithLayout()
+	femu_hw_ReadPageWithLayout,	// ReadPageWithLayout()
 	NULL,						// WritePage()
-	femu_WritePageWithLayout,	// WritePageWithLayout()
+	femu_hw_WritePageWithLayout,// WritePageWithLayout()
 	NULL,						// IsBadBlock(), let UFFS take care of it.
 	NULL,						// MarkBadBlock(), let UFFS take care of it.
 	femu_EraseBlock,			// EraseBlock()
