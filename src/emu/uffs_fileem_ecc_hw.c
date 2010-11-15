@@ -60,6 +60,7 @@ static int femu_hw_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 	uffs_FileEmu *emu;
 	struct uffs_StorageAttrSt *attr = dev->attr;
 	u8 spare[UFFS_MAX_SPARE_SIZE];
+	u8 ecc_buf[UFFS_MAX_ECC_SIZE];
 	int spare_len;
 
 
@@ -94,10 +95,6 @@ static int femu_hw_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 		dev->st.page_write_count++;
 		dev->st.io_write += written;
 
-		if (ecc) {
-			// calculate ECC for data
-			uffs_EccMake(data, data_len, ecc);
-		}
 	}
 
 	if (ts) {
@@ -108,7 +105,9 @@ static int femu_hw_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 			goto err;
 		}
 
-		uffs_FlashMakeSpare(dev, ts, ecc, spare);
+		uffs_Assert(data != NULL, "BUG: Write spare without data ?");
+		uffs_EccMake(data, data_len, ecc_buf);
+		uffs_FlashMakeSpare(dev, ts, ecc_buf, spare);
 		spare_len = dev->mem.spare_data_size;
 		
 		fseek(emu->fp, abs_page * full_page_size + attr->page_data_size, SEEK_SET);

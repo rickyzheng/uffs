@@ -79,8 +79,8 @@ static int femu_ReadPage_wrap(uffs_Device *dev, u32 block, u32 page, u8 *data, i
 							u8 *spare, int spare_len);
 static int femu_WritePage_wrap(uffs_Device *dev, u32 block, u32 page,
 							const u8 *data, int data_len, const u8 *spare, int spare_len);
-static int femu_WritePageWithLayout_wrap(uffs_Device *dev, u32 block, u32 page, u8* data, int data_len, u8 *ecc,
-									uffs_TagStore *ts, u8 *ecc_store);
+static int femu_WritePageWithLayout_wrap(uffs_Device *dev, u32 block, u32 page, const u8* data, int data_len, const u8 *ecc,
+									const uffs_TagStore *ts);
 static int femu_EraseBlock_wrap(uffs_Device *dev, u32 blockNumber);
 
 
@@ -213,15 +213,15 @@ static int femu_WritePage_wrap(uffs_Device *dev, u32 block, u32 page,
 	return ret;
 }
 
-static int femu_WritePageWithLayout_wrap(uffs_Device *dev, u32 block, u32 page, u8* data, int data_len, u8 *ecc,
-									uffs_TagStore *ts, u8 *ecc_store)
+static int femu_WritePageWithLayout_wrap(uffs_Device *dev, u32 block, u32 page, const u8* data, int data_len, const u8 *ecc,
+									const uffs_TagStore *ts)
 {
 	uffs_FileEmu *emu = (uffs_FileEmu *)(dev->attr->_private);
 	int ret;
 
 	//printf("femu: Write block %d page %d data %d spare %d\n", block, page, data_len, spare_len);	
 	
-	ret = emu->ops_orig.WritePageWithLayout(dev, block, page, data, data_len, ecc, ts, ecc_store);
+	ret = emu->ops_orig.WritePageWithLayout(dev, block, page, data, data_len, ecc, ts);
 
 	InjectBitFlip(dev, block, page);
 

@@ -249,7 +249,7 @@ struct uffs_FlashOpsSt {
 };
 
 /** make spare from tag store and ecc */
-void uffs_FlashMakeSpare(uffs_Device *dev, uffs_TagStore *ts, const u8 *ecc, u8* spare);
+void uffs_FlashMakeSpare(uffs_Device *dev, const uffs_TagStore *ts, const u8 *ecc, u8* spare);
 
 /** unload tag and ecc from spare */
 void uffs_FlashUnloadSpare(uffs_Device *dev, const u8 *spare, struct uffs_TagStoreSt *ts, u8 *ecc);

@@ -856,7 +856,7 @@ void uffs_MemSetupNativeAllocator(uffs_MemAllocator *allocator)
 #endif //CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
 
 #if CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 0
-#include <malloc.h>
+#include <stdlib.h>
 static void * sys_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 {
 	uffs_Perror(UFFS_ERR_NORMAL, "system memory alloc %d bytes", size);

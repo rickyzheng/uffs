@@ -153,7 +153,8 @@ static void uffs_EccMakeChunk256(const void *data, void *ecc, u16 len)
  */
 int uffs_EccMake(const void *data, int data_len, void *ecc)
 {
-	const u8 *p_data = (const u8 *)data, *p_ecc = (u8 *)ecc;
+	const u8 *p_data = (const u8 *)data;
+	u8 *p_ecc = (u8 *)ecc;
 	int len;
 
 	if (data == NULL || ecc == NULL)
