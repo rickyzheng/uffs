@@ -163,6 +163,13 @@ UFFS v1.3.2:
   - Add POSIX like file system APIs.
   - Bug fixes.
   
+UFFS v1.3.3:
+  - Change Flash Interface, simplify interface.
+  - Improved bad block handling.
+  - Better support for MLC NAND flash.
+  - Added hardware ECC and RS-ECC controller emulator.
+  - Bug fixes.
+  
 LICENCE
 -------
   From v1.2.1, UFFS is released under a modified GNU GPLv2. (the same as eCos Licence)
@@ -211,3 +218,4 @@ Special thanks for your contributions to:
 * Thien Pham <thienpham2008@yahoo.com>
 * Emmanuel Blot <eblot.ml@gmail.com>
 * Michael <yowong2@gmail.com>
+* Mick D <mick-eng@sourceforge.net>
