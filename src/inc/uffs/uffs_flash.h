@@ -55,6 +55,8 @@ extern "C"{
 #define UFFS_ECC_HW			2	//!< Flash driver(or by hardware) calculate the ECC
 #define UFFS_ECC_HW_AUTO	3	//!< Hardware calculate the ECC and automatically write to spare.
 
+#define UFFS_ECC_OPTION_STRING \
+	{ "none", "soft", "hw", "auto" }	// index is the ecc option value.
 
 /** spare layout options (uffs_StorageAttrSt.layout_opt) */
 #define UFFS_LAYOUT_UFFS	0	//!< do layout by dev->attr information

@@ -46,6 +46,8 @@
 #include "uffs_fileem.h"
 
 #define PFX "femu: "
+#define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
+#define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 
 
 static struct uffs_StorageAttrSt g_femu_storage = {0};

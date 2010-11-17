@@ -60,6 +60,8 @@
 #include "uffs_fileem.h"
 
 #define PFX "femu: "
+#define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
+#define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 
 #define RS_ECC_SIZE			10
 #define PAGE_DATA_SIZE		508
@@ -165,18 +167,18 @@ static int femu_hw_auto_InitFlash(uffs_Device *dev)
 
 	// now this is a good chance to adjust page data/spare boundary
 	if (attr->page_data_size + attr->spare_size != PAGE_FULL_SIZE) {
-		uffs_Perror(UFFS_ERR_SERIOUS, "This emulator emulates only for page size %d bytes !", PAGE_FULL_SIZE);
+		MSGLN("This emulator emulates only for page size %d bytes !", PAGE_FULL_SIZE);
 		return -1;
 	}
 	if (attr->spare_size < PAGE_SPARE_SIZE) {
 		attr->page_data_size -= (PAGE_SPARE_SIZE - attr->spare_size);
 		attr->spare_size = PAGE_SPARE_SIZE;
-		uffs_Perror(UFFS_ERR_NORMAL, "Adjust page data/spare boundary to %d/%d", attr->page_data_size, attr->spare_size);
+		MSGLN("Adjust page data/spare boundary to %d/%d", attr->page_data_size, attr->spare_size);
 	}
 
 	// and fix ECC size
 	attr->ecc_size = RS_ECC_SIZE;
-	uffs_Perror(UFFS_ERR_NORMAL, "Adjust ECC size to %d bytes", attr->ecc_size);
+	MSGLN("Adjust ECC size to %d bytes", attr->ecc_size);
 	
 	return femu_InitFlash(dev);
 }
@@ -213,7 +215,7 @@ static int femu_hw_auto_WritePageWithLayout(uffs_Device *dev, u32 block, u32 pag
 
 			emu->em_monitor_page[abs_page]++;
 			if (emu->em_monitor_page[abs_page] > PAGE_DATA_WRITE_COUNT_LIMIT) {
-				printf("Warrning: block %d page %d exceed it's maximum write time!\r\n", block, page);
+				MSGLN("Warrning: block %d page %d exceed it's maximum write time!", block, page);
 				goto err;
 			}
 			
@@ -234,7 +236,7 @@ static int femu_hw_auto_WritePageWithLayout(uffs_Device *dev, u32 block, u32 pag
 
 			emu->em_monitor_spare[abs_page]++;
 			if (emu->em_monitor_spare[abs_page] > PAGE_SPARE_WRITE_COUNT_LIMIT) {
-				printf("Warrning: block %d page %d (spare) exceed it's maximum write time!\r\n", block, page);
+				MSGLN("Warrning: block %d page %d (spare) exceed it's maximum write time!", block, page);
 				goto err;
 			}
 

@@ -50,6 +50,8 @@
 #include "uffs/uffs_ecc.h"
 
 #define PFX "femu: "
+#define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
+#define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 
 static int femu_hw_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 							const u8 *data, int data_len, const u8 *ecc, const uffs_TagStore *ts)
@@ -79,7 +81,7 @@ static int femu_hw_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 
 		emu->em_monitor_page[abs_page]++;
 		if (emu->em_monitor_page[abs_page] > PAGE_DATA_WRITE_COUNT_LIMIT) {
-			printf("Warrning: block %d page %d exceed it's maximum write time!\r\n", block, page);
+			MSG("Warrning: block %d page %d exceed it's maximum write time!", block, page);
 			goto err;
 		}
 		
@@ -88,7 +90,7 @@ static int femu_hw_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 		written = fwrite(data, 1, data_len, emu->fp);
 		
 		if (written != data_len) {
-			printf("femu: write page I/O error ?\n");
+			MSG("write page I/O error ?");
 			goto err;
 		}
 
@@ -101,7 +103,7 @@ static int femu_hw_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 
 		emu->em_monitor_spare[abs_page]++;
 		if (emu->em_monitor_spare[abs_page] > PAGE_SPARE_WRITE_COUNT_LIMIT) {
-			printf("Warrning: block %d page %d (spare) exceed it's maximum write time!\r\n", block, page);
+			MSG("Warrning: block %d page %d (spare) exceed it's maximum write time!", block, page);
 			goto err;
 		}
 
@@ -113,7 +115,7 @@ static int femu_hw_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 		fseek(emu->fp, abs_page * full_page_size + attr->page_data_size, SEEK_SET);
 		written = fwrite(spare, 1, spare_len, emu->fp);
 		if (written != spare_len) {
-			printf("femu: write spare I/O error ?\n");
+			MSG("write spare I/O error ?");
 			goto err;
 		}
 
@@ -126,7 +128,7 @@ static int femu_hw_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 		fseek(emu->fp, abs_page * full_page_size + attr->page_data_size + attr->block_status_offs, SEEK_SET);
 		written = fwrite("\0", 1, 1, emu->fp);
 		if (written != 1) {
-			printf("femu: write bad block mark I/O error ?\n");
+			MSG("write bad block mark I/O error ?");
 			goto err;
 		}
 		dev->st.io_write++;
@@ -169,7 +171,7 @@ static URET femu_hw_ReadPageWithLayout(uffs_Device *dev, u32 block, u32 page, u8
 		nread = fread(data, 1, data_len, emu->fp);
 
 		if (nread != data_len) {
-			printf("femu: read page I/O error ?\n");
+			MSG("read page I/O error ?");
 			goto err;
 		}
 		dev->st.io_read += nread;
@@ -188,7 +190,7 @@ static URET femu_hw_ReadPageWithLayout(uffs_Device *dev, u32 block, u32 page, u8
 		nread = fread(spare, 1, spare_len, emu->fp);
 
 		if (nread != spare_len) {
-			printf("femu: read page spare I/O error ?\n");
+			MSG("read page spare I/O error ?");
 			goto err;
 		}
 
@@ -205,7 +207,7 @@ static URET femu_hw_ReadPageWithLayout(uffs_Device *dev, u32 block, u32 page, u8
 		nread = fread(&status, 1, 1, emu->fp);
 
 		if (nread != 1) {
-			printf("femu: read badblock mark I/O error ?\n");
+			MSG("read badblock mark I/O error ?");
 			goto err;
 		}
 		dev->st.io_read++;

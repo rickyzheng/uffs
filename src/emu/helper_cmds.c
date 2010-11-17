@@ -54,6 +54,9 @@
 
 #define MAX_PATH_LENGTH 128
 
+#define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
+#define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
+
 static BOOL cmdFormat(const char *tail)
 {
 	URET ret;
@@ -67,19 +70,19 @@ static BOOL cmdFormat(const char *tail)
 		if (next && strcmp(next, "-f") == 0)
 			force = U_TRUE;
 	}
-	uffs_Perror(UFFS_ERR_NORMAL, "Formating %s ... ", mount);
+	MSGLN("Formating %s ... ", mount);
 
 	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Can't get device from mount point.");
+		MSGLN("Can't get device from mount point.");
 	}
 	else {
 		ret = uffs_FormatDevice(dev, force);
 		if (ret != U_SUCC) {
-			uffs_Perror(UFFS_ERR_NORMAL, "Format fail.");
+			MSGLN("Format fail.");
 		}
 		else {
-			uffs_Perror(UFFS_ERR_NORMAL, "Format succ.");
+			MSGLN("Format succ.");
 		}
 		uffs_PutDevice(dev);
 	}
@@ -99,10 +102,10 @@ static BOOL cmdMkf(const char *tail)
 	name = cli_getparam(tail, NULL);
 	fd = uffs_open(name, oflags);
 	if (fd < 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Create %s fail, err: %d", name, uffs_get_error());
+		MSGLN("Create %s fail, err: %d", name, uffs_get_error());
 	}
 	else {
-		uffs_Perror(UFFS_ERR_NORMAL, "Create %s succ.", name);
+		MSGLN("Create %s succ.", name);
 		uffs_close(fd);
 	}
 	
@@ -120,10 +123,10 @@ static BOOL cmdMkdir(const char *tail)
 	name = cli_getparam(tail, NULL);
 	
 	if (uffs_mkdir(name) < 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Create %s fail, err: %d", name, uffs_get_error());
+		MSGLN("Create %s fail, err: %d", name, uffs_get_error());
 	}
 	else {
-		uffs_Perror(UFFS_ERR_NORMAL, "Create %s succ.", name);
+		MSGLN("Create %s succ.", name);
 	}	
 	return TRUE;
 }
@@ -145,13 +148,13 @@ static int CountObjectUnder(const char *dir)
 
 static BOOL cmdPwd(const char *tail)
 {
-	uffs_Perror(UFFS_ERR_NORMAL, "not supported.");
+	MSGLN("not supported.");
 	return TRUE;
 }
 
 static BOOL cmdCd(const char *tail)
 {
-	uffs_Perror(UFFS_ERR_NORMAL, "Not supported");
+	MSGLN("Not supported");
 	return TRUE;
 }
 
@@ -166,19 +169,19 @@ static BOOL cmdLs(const char *tail)
 	char *sub;
 
 	if (name == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Must provide file/dir name.");
+		MSGLN("Must provide file/dir name.");
 		return FALSE;
 	}
 
 	dirp = uffs_opendir(name);
 	if (dirp == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Can't open '%s' for list", name);
+		MSGLN("Can't open '%s' for list", name);
 	}
 	else {
-		uffs_PerrorRaw(UFFS_ERR_NORMAL, "------name-----------size---------serial-----" TENDSTR);
+		MSG("------name-----------size---------serial-----" TENDSTR);
 		ent = uffs_readdir(dirp);
 		while (ent) {
-			uffs_PerrorRaw(UFFS_ERR_NORMAL, "%9s", ent->d_name);
+			MSG("%9s", ent->d_name);
 			strcpy(buf, name);
 			sub = buf;
 			if (name[strlen(name)-1] != '/')
@@ -186,20 +189,20 @@ static BOOL cmdLs(const char *tail)
 			sub = strcat(sub, ent->d_name);
 			if (ent->d_type & FILE_ATTR_DIR) {
 				sub = strcat(sub, "/");
-				uffs_PerrorRaw(UFFS_ERR_NORMAL, "/  \t<%8d>", CountObjectUnder(sub));
+				MSG("/  \t<%8d>", CountObjectUnder(sub));
 			}
 			else {
 				uffs_stat(sub, &stat_buf);
-				uffs_PerrorRaw(UFFS_ERR_NORMAL, "   \t %8d ", stat_buf.st_size);
+				MSG("   \t %8d ", stat_buf.st_size);
 			}
-			uffs_PerrorRaw(UFFS_ERR_NORMAL, "\t%6d" TENDSTR, ent->d_ino);
+			MSG("\t%6d" TENDSTR, ent->d_ino);
 			count++;
 			ent = uffs_readdir(dirp);
 		}
 		
 		uffs_closedir(dirp);
 
-		uffs_PerrorRaw(UFFS_ERR_NORMAL, "Total: %d objects." TENDSTR, count);
+		MSG("Total: %d objects." TENDSTR, count);
 	}
 
 	return TRUE;
@@ -216,7 +219,7 @@ static BOOL cmdRm(const char *tail)
 	name = cli_getparam(tail, NULL);
 
 	if (uffs_stat(name, &st) < 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Can't stat '%s'", name);
+		MSGLN("Can't stat '%s'", name);
 		return TRUE;
 	}
 
@@ -228,9 +231,9 @@ static BOOL cmdRm(const char *tail)
 	}
 
 	if (ret == 0)
-		uffs_Perror(UFFS_ERR_NORMAL, "Delete '%s' succ.", name);
+		MSGLN("Delete '%s' succ.", name);
 	else
-		uffs_Perror(UFFS_ERR_NORMAL, "Delete '%s' fail!", name);
+		MSGLN("Delete '%s' fail!", name);
 
 	return TRUE;
 }
@@ -247,10 +250,10 @@ static BOOL cmdRen(const char *tail)
 		return FALSE;
 
 	if (uffs_rename(oldname, newname) == 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Rename from '%s' to '%s' succ.", oldname, newname);
+		MSGLN("Rename from '%s' to '%s' succ.", oldname, newname);
 	}
 	else {
-		uffs_Perror(UFFS_ERR_NORMAL, "Rename from '%s' to '%s' fail!", oldname, newname);
+		MSGLN("Rename from '%s' to '%s' fail!", oldname, newname);
 	}
 	return TRUE;
 }
@@ -279,7 +282,7 @@ static BOOL cmdDump(const char *tail)
 
 	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Can't get device from mount point %s", mount);
+		MSGLN("Can't get device from mount point %s", mount);
 		return TRUE;
 	}
 
@@ -307,52 +310,52 @@ static BOOL cmdSt(const char *tail)
 
 	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Can't get device from mount point %s", mount);
+		MSGLN("Can't get device from mount point %s", mount);
 		return TRUE;
 	}
 
 	s = &(dev->st);
 
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "----------- basic info -----------" TENDSTR);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "TreeNode size:         %d" TENDSTR, sizeof(TreeNode));
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "TagStore size:         %d" TENDSTR, sizeof(struct uffs_TagStoreSt));
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxCachedBlockInfo:    %d" TENDSTR, MAX_CACHED_BLOCK_INFO);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxPageBuffers:        %d" TENDSTR, MAX_PAGE_BUFFERS);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxDirtyPagesPerBlock: %d" TENDSTR, MAX_DIRTY_PAGES_IN_A_BLOCK);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxPathLength:         %d" TENDSTR, MAX_PATH_LENGTH);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxObjectHandles:      %d" TENDSTR, MAX_OBJECT_HANDLE);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "FreeObjectHandles:     %d" TENDSTR, uffs_PoolGetFreeCount(uffs_GetObjectPool()));
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "MaxDirHandles:         %d" TENDSTR, MAX_DIR_HANDLE);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "FreeDirHandles:        %d" TENDSTR, uffs_PoolGetFreeCount(uffs_DirEntryBufGetPool()));
+	MSG("----------- basic info -----------" TENDSTR);
+	MSG("TreeNode size:         %d" TENDSTR, sizeof(TreeNode));
+	MSG("TagStore size:         %d" TENDSTR, sizeof(struct uffs_TagStoreSt));
+	MSG("MaxCachedBlockInfo:    %d" TENDSTR, MAX_CACHED_BLOCK_INFO);
+	MSG("MaxPageBuffers:        %d" TENDSTR, MAX_PAGE_BUFFERS);
+	MSG("MaxDirtyPagesPerBlock: %d" TENDSTR, MAX_DIRTY_PAGES_IN_A_BLOCK);
+	MSG("MaxPathLength:         %d" TENDSTR, MAX_PATH_LENGTH);
+	MSG("MaxObjectHandles:      %d" TENDSTR, MAX_OBJECT_HANDLE);
+	MSG("FreeObjectHandles:     %d" TENDSTR, uffs_PoolGetFreeCount(uffs_GetObjectPool()));
+	MSG("MaxDirHandles:         %d" TENDSTR, MAX_DIR_HANDLE);
+	MSG("FreeDirHandles:        %d" TENDSTR, uffs_PoolGetFreeCount(uffs_DirEntryBufGetPool()));
 
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "----------- statistics for '%s' -----------" TENDSTR, mount);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Device Ref:            %d" TENDSTR, dev->ref_count);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Block Erased:          %d" TENDSTR, s->block_erase_count);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Write Page:            %d" TENDSTR, s->page_write_count);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Write Spare:           %d" TENDSTR, s->spare_write_count);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Read Page:             %d" TENDSTR, s->page_read_count - s->page_header_read_count);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Read Header:           %d" TENDSTR, s->page_header_read_count);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Read Spare:            %d" TENDSTR, s->spare_read_count);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "I/O Read:              %lu" TENDSTR, s->io_read);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "I/O Write:             %lu" TENDSTR, s->io_write);
+	MSG("----------- statistics for '%s' -----------" TENDSTR, mount);
+	MSG("Device Ref:            %d" TENDSTR, dev->ref_count);
+	MSG("Block Erased:          %d" TENDSTR, s->block_erase_count);
+	MSG("Write Page:            %d" TENDSTR, s->page_write_count);
+	MSG("Write Spare:           %d" TENDSTR, s->spare_write_count);
+	MSG("Read Page:             %d" TENDSTR, s->page_read_count - s->page_header_read_count);
+	MSG("Read Header:           %d" TENDSTR, s->page_header_read_count);
+	MSG("Read Spare:            %d" TENDSTR, s->spare_read_count);
+	MSG("I/O Read:              %lu" TENDSTR, s->io_read);
+	MSG("I/O Write:             %lu" TENDSTR, s->io_write);
 
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "--------- partition info for '%s' ---------" TENDSTR, mount);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Space total:           %d" TENDSTR, uffs_GetDeviceTotal(dev));
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Space used:            %d" TENDSTR, uffs_GetDeviceUsed(dev));
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Space free:            %d" TENDSTR, uffs_GetDeviceFree(dev));
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Page Size:             %d" TENDSTR, dev->attr->page_data_size);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Spare Size:            %d" TENDSTR, dev->attr->spare_size);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Pages Per Block:       %d" TENDSTR, dev->attr->pages_per_block);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Block size:            %d" TENDSTR, dev->attr->page_data_size * dev->attr->pages_per_block);
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, "Total blocks:          %d of %d" TENDSTR, (dev->par.end - dev->par.start + 1), dev->attr->total_blocks);
+	MSG("--------- partition info for '%s' ---------" TENDSTR, mount);
+	MSG("Space total:           %d" TENDSTR, uffs_GetDeviceTotal(dev));
+	MSG("Space used:            %d" TENDSTR, uffs_GetDeviceUsed(dev));
+	MSG("Space free:            %d" TENDSTR, uffs_GetDeviceFree(dev));
+	MSG("Page Size:             %d" TENDSTR, dev->attr->page_data_size);
+	MSG("Spare Size:            %d" TENDSTR, dev->attr->spare_size);
+	MSG("Pages Per Block:       %d" TENDSTR, dev->attr->pages_per_block);
+	MSG("Block size:            %d" TENDSTR, dev->attr->page_data_size * dev->attr->pages_per_block);
+	MSG("Total blocks:          %d of %d" TENDSTR, (dev->par.end - dev->par.start + 1), dev->attr->total_blocks);
 	if (dev->tree.bad) {
-		uffs_PerrorRaw(UFFS_ERR_NORMAL, "Bad blocks: ");
+		MSG("Bad blocks: ");
 		node = dev->tree.bad;
 		while(node) {
-			uffs_PerrorRaw(UFFS_ERR_NORMAL, "%d, ", node->u.list.block);
+			MSG("%d, ", node->u.list.block);
 			node = node->u.list.next;
 		}
-		uffs_PerrorRaw(UFFS_ERR_NORMAL, TENDSTR);
+		MSG(TENDSTR);
 	}
 
 	uffs_BufInspect(dev);
@@ -393,26 +396,26 @@ static BOOL cmdCp(const char *tail)
 	
 	if (src_local) {
 		if ((fp1 = fopen(src, "rb")) == NULL) {
-			uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s for copy.", src);
+			MSGLN("Can't open %s for copy.", src);
 			goto fail_ext;
 		}
 	}
 	else {
 		if ((fd1 = uffs_open(src, UO_RDONLY)) < 0) {
-			uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s for copy.", src);
+			MSGLN("Can't open %s for copy.", src);
 			goto fail_ext;
 		}
 	}
 
 	if (des_local) {
 		if ((fp2 = fopen(des, "wb")) == NULL) {
-			uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s for copy.", des);
+			MSGLN("Can't open %s for copy.", des);
 			goto fail_ext;
 		}
 	}
 	else {
 		if ((fd2 = uffs_open(des, UO_RDWR|UO_CREATE|UO_TRUNC)) < 0) {
-			uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s for copy.", des);
+			MSGLN("Can't open %s for copy.", des);
 			goto fail_ext;
 		}
 	}
@@ -427,18 +430,18 @@ static BOOL cmdCp(const char *tail)
 		if (len == 0) 
 			break;
 		if (len < 0) {
-			uffs_Perror(UFFS_ERR_NORMAL, "read file %s fail ?", src);
+			MSGLN("read file %s fail ?", src);
 			break;
 		}
 		if (des_local) {
 			if ((int)fwrite(buf, 1, len, fp2) != len) {
-				uffs_Perror(UFFS_ERR_NORMAL, "write file %s fail ? ", des);
+				MSGLN("write file %s fail ? ", des);
 				break;
 			}
 		}
 		else {
 			if (uffs_write(fd2, buf, len) != len) {
-				uffs_Perror(UFFS_ERR_NORMAL, "write file %s fail ? ", des);
+				MSGLN("write file %s fail ? ", des);
 				break;
 			}
 		}
@@ -471,7 +474,7 @@ static BOOL cmdCat(const char *tail)
 	name = cli_getparam(tail, &next);
 
 	if ((fd = uffs_open(name, UO_RDONLY)) < 0) {
-		uffs_Perror(UFFS_ERR_NORMAL, "Can't open %s", name);
+		MSGLN("Can't open %s", name);
 		goto fail;
 	}
 
@@ -493,7 +496,7 @@ static BOOL cmdCat(const char *tail)
 			if (size == 0 || printed < size) {
 				n = (size == 0 ? len : (size - printed > len ? len : size - printed));
 				buf[n] = 0;
-				uffs_PerrorRaw(UFFS_ERR_NORMAL, "%s", buf);
+				MSG("%s", buf);
 				printed += n;
 			}
 			else {
@@ -501,7 +504,7 @@ static BOOL cmdCat(const char *tail)
 			}
 		}
 	}
-	uffs_PerrorRaw(UFFS_ERR_NORMAL, TENDSTR);
+	MSG(TENDSTR);
 	uffs_close(fd);
 
 fail:
@@ -516,7 +519,7 @@ static BOOL cmdMount(const char *tail)
 	tail = tail;
 
 	while (tab) {
-		uffs_Perror(UFFS_ERR_NORMAL, " %s : (%d) ~ (%d)", tab->mount, tab->start_block, tab->end_block);
+		MSGLN(" %s : (%d) ~ (%d)", tab->mount, tab->start_block, tab->end_block);
 		tab = tab->next;
 	}
 

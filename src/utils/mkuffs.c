@@ -49,10 +49,14 @@
 #include "cmdline.h"
 #include "uffs_fileem.h"
 
+#define PFX NULL
+#define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
+#define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
+
 #if CONFIG_USE_STATIC_MEMORY_ALLOCATOR > 0
 int main()
 {
-	printf("Static memory allocator is not supported.\n");
+	MSGLN("Static memory allocator is not supported.");
 	return 0;
 }
 #else
@@ -77,18 +81,27 @@ const char * conf_emu_filename = DEFAULT_EMU_FILENAME;
 
 
 /* default basic parameters of the NAND device */
-static int conf_pages_per_block = 32;
-static int conf_page_data_size = 512;
-static int conf_page_spare_size = 16;
-static int conf_status_byte_offset = 5;
-static int conf_total_blocks =	64;
-//static int conf_ecc_option = UFFS_ECC_SOFT;
-//static int conf_ecc_option = UFFS_ECC_HW;
-static int conf_ecc_option = UFFS_ECC_HW_AUTO;
-static int conf_ecc_size = 0; // 0 means 'auto'
+#define PAGES_PER_BLOCK_DEFAULT			32
+#define PAGE_DATA_SIZE_DEFAULT			512
+#define PAGE_SPARE_SIZE_DEFAULT			16
+#define STATUS_BYTE_OFFSET_DEFAULT		4
+#define TOTAL_BLOCKS_DEFAULT			128
+#define ECC_OPTION_DEFAULT				UFFS_ECC_SOFT
+//#define ECC_OPTION_DEFAULT			UFFS_ECC_HW
+//#define ECC_OPTION_DEFAULT			UFFS_ECC_HW_AUTO
 
 #define MAX_MOUNT_TABLES		10
 #define MAX_MOUNT_POINT_NAME	32
+
+static int conf_pages_per_block = PAGES_PER_BLOCK_DEFAULT;
+static int conf_page_data_size = PAGE_DATA_SIZE_DEFAULT;
+static int conf_page_spare_size = PAGE_SPARE_SIZE_DEFAULT;
+static int conf_status_byte_offset = STATUS_BYTE_OFFSET_DEFAULT;
+static int conf_total_blocks = TOTAL_BLOCKS_DEFAULT;
+static int conf_ecc_option = ECC_OPTION_DEFAULT;
+static int conf_ecc_size = 0; // 0 - Let UFFS choose the size
+
+static const char *g_ecc_option_strings[] = UFFS_ECC_OPTION_STRING;
 
 static struct uffs_MountTableEntrySt conf_mounts[MAX_MOUNT_TABLES] = {0};
 static uffs_Device conf_devices[MAX_MOUNT_TABLES] = {0};
@@ -112,20 +125,21 @@ BOOL cmdMeminfo(const char *tail)
 	dev = uffs_GetDeviceFromMountPoint(mount);
 
 	if (!dev) {
-		printf("can't get device from mount point %s\n", mount);
+		MSGLN("can't get device from mount point %s", mount);
 		return TRUE;
 	}
 	
 	for (i = 0; i < HEAP_HASH_SIZE; i++) {
 		mm = dev->mem.tbl[i];
 		while (mm) {
-			printf("%d, ", mm->size);
+			MSG("%d, ", mm->size);
 			count += mm->size;
 			blocks++;
 			mm = mm->next;
 		}
 	}
-	printf("\n>>> total allocated %d blocks (%d bytes), max %d bytes. <<<\n", blocks, count, dev->mem.maxused);
+	MSGLN("");
+	MSGLN(">>> total allocated %d blocks (%d bytes), max %d bytes. <<<", blocks, count, dev->mem.maxused);
 	
 	uffs_PutDevice(dev);
 
@@ -266,6 +280,7 @@ static int parse_options(int argc, char *argv[])
     int usage = 0;
 	int m_idx = 0;
     static char em_file[128];
+	int i;
 
     for (iarg = 1; iarg < argc && !usage; iarg++) {
         const char *arg = argv[iarg];
@@ -291,7 +306,7 @@ static int parse_options(int argc, char *argv[])
                 else if (sscanf(argv[iarg], "%i", &conf_page_data_size) < 1)
 					usage++;
 				if (conf_page_data_size <= 0 || conf_page_data_size > UFFS_MAX_PAGE_SIZE) {
-					printf("ERROR: Invalid page data size\n");
+					MSGLN("ERROR: Invalid page data size");
 					usage++;
 				}
             }
@@ -302,7 +317,7 @@ static int parse_options(int argc, char *argv[])
 					usage++;
 				if (conf_page_spare_size < sizeof(struct uffs_TagStoreSt) + 1 ||
 					(conf_page_spare_size % 4) != 0 || conf_page_spare_size > UFFS_MAX_SPARE_SIZE) {
-					printf("ERROR: Invalid spare size\n");
+					MSGLN("ERROR: Invalid spare size");
 					usage++;
 				}
             }
@@ -352,16 +367,14 @@ static int parse_options(int argc, char *argv[])
 				if (++iarg > argc)
 					usage++;
 				else {
-					if (!strcmp(argv[iarg], "none"))
-						conf_ecc_option = UFFS_ECC_NONE;
-					else if (!strcmp(argv[iarg], "soft"))
-						conf_ecc_option = UFFS_ECC_SOFT;
-					else if (!strcmp(argv[iarg], "hw"))
-						conf_ecc_option = UFFS_ECC_HW;
-					else if (!strcmp(argv[iarg], "auto"))
-						conf_ecc_option = UFFS_ECC_HW_AUTO;
-					else {
-						printf("ERROR: Invalid ECC option\n");
+					for (i = 0; i < ARRAY_SIZE(g_ecc_option_strings); i++) {
+						if (!strcmp(argv[iarg], g_ecc_option_strings[i])) {
+							conf_ecc_option = i;
+							break;
+						}
+					}
+					if (i == ARRAY_SIZE(g_ecc_option_strings)) {
+						MSGLN("ERROR: Invalid ECC option");
 						usage++;
 					}
 				}
@@ -372,7 +385,7 @@ static int parse_options(int argc, char *argv[])
                 else if (sscanf(argv[iarg], "%i", &conf_ecc_size) < 1)
 					usage++;
 				if (conf_ecc_size < 0 || conf_ecc_size > UFFS_MAX_ECC_SIZE) {
-					printf("ERROR: Invalid ecc size\n");
+					MSGLN("ERROR: Invalid ecc size");
 					usage++;
 				}
 			}
@@ -387,35 +400,35 @@ static int parse_options(int argc, char *argv[])
 			}
 #endif
             else {
-                printf("Unknown option: %s, try %s --help\n", arg, argv[0]);
+                MSGLN("Unknown option: %s, try %s --help", arg, argv[0]);
 				return -1;
             }
         }
         else {
-            printf("Unexpected parameter: %s, try %s --help\n", arg, argv[0]);
+            MSGLN("Unexpected parameter: %s, try %s --help", arg, argv[0]);
 			return -1;
         }
     }
     
     if (usage) {
-        printf("Usage: %s [options]\n", argv[0]);
-        printf("  -h  --help                                show usage\n");
-        printf("  -c  --command-line                        command line mode\n");
-        printf("  -v  --verbose                             verbose mode\n");
-        printf("  -f  --file           <file>               uffs image file\n");
-        printf("  -p  --page-size      <n>                  page data size, default=512\n");
-        printf("  -s  --spare-size     <n>                  page spare size, default=16\n");
-		printf("  -o  --status-offset  <n>                  status byte offset, default=5\n");
-        printf("  -b  --block-pages    <n>                  pages per block\n");
-        printf("  -t  --total-blocks   <n>                  total blocks\n");
-        printf("  -m  --mount          <mount_point,start,end> , for example: -m /,0,-1\n");
-		printf("  -x  --ecc-option     <none|soft|hw|auto>  ECC option, default=soft\n");
-		printf("  -z  --ecc-size       <n>                  ECC size, default=3 per 256 bytes\n");
-        printf("  -e  --exec           <file>               execute a script file\n");
+        MSGLN("Usage: %s [options]", argv[0]);
+        MSGLN("  -h  --help                                show usage");
+        MSGLN("  -c  --command-line                        command line mode");
+        MSGLN("  -v  --verbose                             verbose mode");
+        MSGLN("  -f  --file           <file>               uffs image file");
+        MSGLN("  -p  --page-size      <n>                  page data size, default=%d", PAGE_DATA_SIZE_DEFAULT);
+        MSGLN("  -s  --spare-size     <n>                  page spare size, default=%d", PAGE_SPARE_SIZE_DEFAULT);
+		MSGLN("  -o  --status-offset  <n>                  status byte offset, default=%d", STATUS_BYTE_OFFSET_DEFAULT);
+        MSGLN("  -b  --block-pages    <n>                  pages per block, default=%d", PAGES_PER_BLOCK_DEFAULT);
+        MSGLN("  -t  --total-blocks   <n>                  total blocks");
+        MSGLN("  -m  --mount          <mount_point,start,end> , for example: -m /,0,-1");
+		MSGLN("  -x  --ecc-option     <none|soft|hw|auto>  ECC option, default=%s", g_ecc_option_strings[ECC_OPTION_DEFAULT]);
+		MSGLN("  -z  --ecc-size       <n>                  ECC size, default=0 (auto)");
+        MSGLN("  -e  --exec           <file>               execute a script file");
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-		printf("  -a  --alloc          <size>       allocate size(KB) of memory for uffs, default 100\n");
+		MSGLN("  -a  --alloc          <size>       allocate size(KB) of memory for uffs, default 100");
 #endif		
-        printf("\n");
+        MSGLN("");
 
         return -1;
     }
@@ -434,20 +447,23 @@ static void print_mount_points(void)
 
 	m = &(conf_mounts[0]);
 	while (m->dev) {
-		printf ("Mount point: %s, start: %d, end: %d\n", m->mount, m->start_block, m->end_block);
+		MSGLN ("Mount point: %s, start: %d, end: %d", m->mount, m->start_block, m->end_block);
 		m++;
 	}
 }
 
 static void print_params(void)
 {
-	printf("uffs image file: %s\n", conf_emu_filename);
-	printf("page size: %d\n", conf_page_data_size);
-	printf("page spare size: %d\n", conf_page_spare_size);
-	printf("pages per block: %d\n", conf_pages_per_block);
-	printf("total blocks: %d\n", conf_total_blocks);
-	printf("ecc option: %d\n", conf_ecc_option);
-	printf("bad block status offset: %d\n", conf_status_byte_offset);
+	MSGLN("Parameters summary:");
+	MSGLN("  uffs image file: %s", conf_emu_filename);
+	MSGLN("  page size: %d", conf_page_data_size);
+	MSGLN("  page spare size: %d", conf_page_spare_size);
+	MSGLN("  pages per block: %d", conf_pages_per_block);
+	MSGLN("  total blocks: %d", conf_total_blocks);
+	MSGLN("  ecc option: %d (%s)", conf_ecc_option, g_ecc_option_strings[conf_ecc_option]);
+	MSGLN("  ecc size: %d%s", conf_ecc_size, conf_ecc_size == 0 ? " (auto)" : "");
+	MSGLN("  bad block status offset: %d", conf_status_byte_offset);
+	MSGLN("");
 }
 
 static void exec_script()
@@ -467,7 +483,7 @@ static void exec_script()
 				*p-- = 0;
 			}
 			if (conf_verbose_mode) 
-				printf("%s\r\n", line_buf);
+				MSGLN("%s", line_buf);
 			cliInterpret(line_buf);
 			memset(line_buf, 0, sizeof(line_buf));
 		}
@@ -484,15 +500,20 @@ int main(int argc, char *argv[])
 	}
 	
 	if (conf_verbose_mode) {
-		print_mount_points();
-		print_params();
-		#if 0
-		printf("TreeNode size: %d\n", sizeof(TreeNode));
-		printf("struct BlockListSt: %d\n", sizeof(struct BlockListSt));
-		printf("struct DirhSt: %d\n", sizeof(struct DirhSt));
-		printf("struct FilehSt: %d\n", sizeof(struct FilehSt));
-		printf("struct FdataSt: %d\n", sizeof(struct FdataSt));
+		#if 1
+		MSGLN("Internal data structure size:");
+		MSGLN("  TreeNode: %d", sizeof(TreeNode));
+		MSGLN("  struct BlockListSt: %d", sizeof(struct BlockListSt));
+		MSGLN("  struct DirhSt: %d", sizeof(struct DirhSt));
+		MSGLN("  struct FilehSt: %d", sizeof(struct FilehSt));
+		MSGLN("  struct FdataSt: %d", sizeof(struct FdataSt));
+		MSGLN("  struct uffs_TagStoreSt: %d", sizeof(struct uffs_TagStoreSt));
+		MSGLN("  uffs_Buf: %d", sizeof(uffs_Buf));
+		MSGLN("  struct uffs_BlockInfoSt: %d", sizeof(struct uffs_BlockInfoSt));
+		MSGLN("");
 		#endif
+		print_params();
+		print_mount_points();
 	}
 
 	// setup file emulator storage with parameters from command line
@@ -503,7 +524,7 @@ int main(int argc, char *argv[])
 
 	ret = init_uffs_fs();
 	if (ret != 0) {
-		printf ("Init file system fail: %d\n", ret);
+		MSGLN ("Init file system fail: %d", ret);
 		return -1;
 	}
 

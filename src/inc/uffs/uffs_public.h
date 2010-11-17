@@ -144,7 +144,6 @@ void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const 
 	uffs_DebugMessage(level, NULL, NULL, fmt, ## __VA_ARGS__)
 
 
-
 void uffs_AssertCall(const char *file, int line, const char *msg, ...);
 
 #define uffs_Assert(expr, msg, ...)												\
