@@ -48,7 +48,7 @@ typedef int OSSEM;
 int uffs_SemCreate(int n);
 int uffs_SemWait(int sem);
 int uffs_SemSignal(int sem);
-int uffs_SemDelete(int sem);
+int uffs_SemDelete(int *sem);
 
 void uffs_CriticalEnter(void);
 void uffs_CriticalExit(void);

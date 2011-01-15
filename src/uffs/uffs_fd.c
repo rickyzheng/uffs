@@ -273,7 +273,7 @@ int uffs_read(int fd, void *data, int len)
 	return ret;
 }
 
-int uffs_write(int fd, void *data, int len)
+int uffs_write(int fd, const void *data, int len)
 {
 	int ret;
 	uffs_Object *obj;

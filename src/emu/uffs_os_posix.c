@@ -65,7 +65,7 @@ int uffs_SemSignal(int sem)
 	return 0;
 }
 
-int uffs_SemDelete(int sem)
+int uffs_SemDelete(int *sem)
 {
 	if (sem) {
 		//TODO: ... delete semaphore ...

@@ -91,7 +91,8 @@ URET uffs_PoolInit(uffs_Pool *pool,
 	pool->mem = (u8 *)mem;
 	pool->buf_size = buf_size;
 	pool->num_bufs = num_bufs;
-	pool->sem = uffs_SemCreate(1);
+	if (pool->sem == 0)
+		pool->sem = uffs_SemCreate(1);
 	
 	uffs_SemWait(pool->sem);
 
@@ -130,8 +131,7 @@ URET uffs_PoolRelease(uffs_Pool *pool)
 {
 	uffs_Assert(pool, "pool missing");
 	
-	uffs_SemDelete(pool->sem);
-	pool->sem = 0;
+	uffs_SemDelete(&pool->sem);
 
 	return U_SUCC;
 }

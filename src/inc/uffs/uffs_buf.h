@@ -87,7 +87,7 @@ URET uffs_BufReleaseAll(struct uffs_DeviceSt *dev);
 
 /** find the page buffer, move to link list head if found */
 uffs_Buf * uffs_BufGet(struct uffs_DeviceSt *dev, u16 parent, u16 serial, u16 page_id);
-uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 page_id);
+uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev, u8 type, TreeNode *node, u16 page_id, int oflag);
 
 /** alloc a new page buffer */
 uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 parent, u16 serial, u16 page_id);

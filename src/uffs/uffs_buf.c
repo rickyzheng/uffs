@@ -344,7 +344,7 @@ static uffs_Buf * _FindFreeBufEx(uffs_Device *dev, int clone)
 	if (!clone && CountFreeBuf(dev) <= CLONE_BUFFERS_THRESHOLD)
 		return NULL;
 
-#if 1
+#if 0
 	buf = dev->buf.head;
 	while (buf) {
 
@@ -388,7 +388,7 @@ URET uffs_BufLoadPhyData(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page)
 {
 	int ret;
 
-	ret = uffs_FlashReadPage(dev, block, page, buf);
+	ret = uffs_FlashReadPage(dev, block, page, buf, U_FALSE);
 
 	if (UFFS_FLASH_HAVE_ERR(ret)) {
 		buf->mark = UFFS_BUF_EMPTY;
@@ -416,7 +416,7 @@ URET uffs_LoadPhyDataToBufEccUnCare(uffs_Device *dev,
 {
 	int ret;
 
-	ret = uffs_FlashReadPage(dev, block, page, buf);
+	ret = uffs_FlashReadPage(dev, block, page, buf, U_TRUE);
 
 	if (ret == UFFS_FLASH_IO_ERR) {
 		buf->mark = UFFS_BUF_EMPTY;
@@ -599,7 +599,7 @@ static URET uffs_BufFlush_Exist_With_BlockCover(
 	UBOOL succRecover;			//U_TRUE: recover successful, erase old block,
 								//U_FALSE: fail to recover, erase new block
 	UBOOL flash_op_err;
-	u16 data_sum;
+	u16 data_sum = 0xFFFF;
 
 	type = dev->buf.dirtyGroup[slot].dirty->type;
 	parent = dev->buf.dirtyGroup[slot].dirty->parent;
@@ -1327,12 +1327,13 @@ uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev,
  * \param[in] type dir, file or data ?
  * \param[in] node node on the tree
  * \param[in] page_id page_id
+ * \param[in] oflag the open flag of current file/dir object
  * \return return the buffer if found in buffer list, if not found in 
  *		buffer list, it will get a free buffer, and load data from flash.
  *		return NULL if not free buffer.
  */
 uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev,
-						u8 type, TreeNode *node, u16 page_id)
+						u8 type, TreeNode *node, u16 page_id, int oflag)
 {
 	uffs_Buf *buf;
 	u16 parent, serial, block, page;
@@ -1396,7 +1397,7 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev,
 	buf->serial = serial;
 	buf->page_id = page_id;
 
-	if (UFFS_FLASH_HAVE_ERR(uffs_FlashReadPage(dev, block, page, buf))) {
+	if (UFFS_FLASH_HAVE_ERR(uffs_FlashReadPage(dev, block, page, buf, oflag & UO_NOECC ? U_TRUE : U_FALSE))) {
 		uffs_Perror(UFFS_ERR_SERIOUS, "can't load page from flash !");
 		return NULL;
 	}

@@ -58,7 +58,7 @@ static URET _LoadObjectInfo(uffs_Device *dev,
 {
 	uffs_Buf *buf;
 
-	buf = uffs_BufGetEx(dev, (u8)type, node, 0);
+	buf = uffs_BufGetEx(dev, (u8)type, node, 0, 0);
 
 	if (buf == NULL) {
 		if (err)

@@ -43,7 +43,7 @@
 #include "uffs/uffs_badblock.h"
 #include <string.h>
 
-#define PFX "Flash: "
+#define PFX "flsh: "
 
 #define SPOOL(dev) &((dev)->mem.spare_pool)
 #define HEADER(buf) ((struct uffs_MiniHeaderSt *)(buf)->header)
@@ -416,6 +416,7 @@ ext:
  * \param[in] block flash block num
  * \param[in] page flash page num of the block
  * \param[out] buf holding the read out data
+ * \param[in] skip_ecc skip ecc when reading data from flash
  *
  * \return	#UFFS_FLASH_NO_ERR: success and/or has no flip bits.
  *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
@@ -423,7 +424,7 @@ ext:
  *			#UFFS_FLASH_ECC_OK: spare data has flip bits and corrected by ecc.
  *			#UFFS_FLASH_UNKNOWN_ERR:
  */
-int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf)
+int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBOOL skip_ecc)
 {
 	uffs_FlashOps *ops = dev->ops;
 	struct uffs_StorageAttrSt *attr = dev->attr;
@@ -441,10 +442,16 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf)
 		goto ext;
 
 	if (ops->ReadPageWithLayout) {
-		ret = ops->ReadPageWithLayout(dev, block, page, buf->header, size, ecc_buf, &ts, ecc_store);
+		if (skip_ecc)
+			ret = ops->ReadPageWithLayout(dev, block, page, buf->header, size, NULL, &ts, NULL);
+		else
+			ret = ops->ReadPageWithLayout(dev, block, page, buf->header, size, ecc_buf, &ts, ecc_store);
 	}
 	else {
-		ret = ops->ReadPage(dev, block, page, buf->header, size, ecc_buf, spare, dev->mem.spare_data_size);
+		if (skip_ecc)
+			ret = ops->ReadPage(dev, block, page, buf->header, size, NULL, spare, dev->mem.spare_data_size);
+		else
+			ret = ops->ReadPage(dev, block, page, buf->header, size, ecc_buf, spare, dev->mem.spare_data_size);
 	}
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 		is_bad = U_TRUE;
@@ -453,12 +460,12 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf)
 		goto ext;
 	
 	// make ECC for UFFS_ECC_SOFT
-	if (attr->ecc_opt == UFFS_ECC_SOFT)
+	if (attr->ecc_opt == UFFS_ECC_SOFT && !skip_ecc)
 		uffs_EccMake(buf->header, size, ecc_buf);
 
 	// unload tag and ecc_store if driver doesn't do the layout
 	if (ops->ReadPageWithLayout == NULL) {
-		if (attr->ecc_opt == UFFS_ECC_SOFT || attr->ecc_opt == UFFS_ECC_HW)
+		if (!skip_ecc && (attr->ecc_opt == UFFS_ECC_SOFT || attr->ecc_opt == UFFS_ECC_HW))
 			uffs_FlashUnloadSpare(dev, spare, &ts, ecc_store);
 		else
 			uffs_FlashUnloadSpare(dev, spare, &ts, NULL); // skip ecc_store for UFFS_ECC_NONE or UFFS_ECC_HW_AUTO
@@ -478,7 +485,7 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf)
 	}
 
 	// check page data ecc
-	if (dev->attr->ecc_opt == UFFS_ECC_SOFT || dev->attr->ecc_opt == UFFS_ECC_HW) {
+	if (!skip_ecc && (dev->attr->ecc_opt == UFFS_ECC_SOFT || dev->attr->ecc_opt == UFFS_ECC_HW)) {
 
 		ret = uffs_EccCorrect(buf->header, size, ecc_store, ecc_buf);
 		ret = (ret < 0 ? UFFS_FLASH_ECC_FAIL :
@@ -645,7 +652,7 @@ int uffs_FlashWritePageCombine(uffs_Device *dev,
 #ifdef CONFIG_PAGE_WRITE_VERIFY
 	verify_buf = uffs_BufClone(dev, NULL);
 	if (verify_buf) {
-		ret = uffs_FlashReadPage(dev, block, page, verify_buf);
+		ret = uffs_FlashReadPage(dev, block, page, verify_buf, U_FALSE);
 		if (!UFFS_FLASH_HAVE_ERR(ret)) {
 			if (memcmp(buf->header, verify_buf->header, size) != 0) {
 				uffs_Perror(UFFS_ERR_NORMAL,
@@ -754,7 +761,6 @@ UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block)
 {
 	u8 status = 0xFF;
 	struct uffs_FlashOpsSt *ops = dev->ops;
-	u8 *spare;
 	UBOOL ret = U_FALSE;
 
 	if (ops->IsBadBlock) {

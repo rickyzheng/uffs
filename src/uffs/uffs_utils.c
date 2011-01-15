@@ -57,12 +57,13 @@ static int _global_lock = 0;
 /* global file system lock */
 void uffs_InitGlobalFsLock(void)
 {
-	_global_lock = uffs_SemCreate(1);
+	if (_global_lock == 0)
+		_global_lock = uffs_SemCreate(1);
 }
 
 void uffs_ReleaseGlobalFsLock(void)
 {
-	uffs_SemDelete(_global_lock);
+	uffs_SemDelete(&_global_lock);
 }
 
 void uffs_GlobalFsLockLock(void)

@@ -260,7 +260,7 @@ void uffs_FlashUnloadSpare(uffs_Device *dev, const u8 *spare, struct uffs_TagSto
 int uffs_FlashReadPageTag(uffs_Device *dev, int block, int page, uffs_Tags *tag);
 
 /** read page data to page buf and do ECC correct */
-int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf);
+int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBOOL skip_ecc);
 
 /** write page data and spare */
 int uffs_FlashWritePageCombine(uffs_Device *dev, int block, int page, uffs_Buf *buf, uffs_Tags *tag);

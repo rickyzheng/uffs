@@ -57,6 +57,7 @@
 #include <stdlib.h>
 
 #include "uffs/uffs_device.h"
+#include "uffs/uffs_ecc.h"
 #include "uffs_fileem.h"
 
 #define PFX "femu: "
@@ -93,7 +94,7 @@ static void feed_sdata_constant(u8 val, int num)
 
 static void drain_sdata(u8 *data, int len)
 {
-	uffs_Assert(sizeof(g_sdata_buf) - g_sdata_buf_pointer >= len, "BUG: Serial Data Buffer overdrain !!");
+	uffs_Assert( (int)sizeof(g_sdata_buf) - g_sdata_buf_pointer >= len, "BUG: Serial Data Buffer overdrain !!");
 	if (data)
 		memcpy(data, g_sdata_buf + g_sdata_buf_pointer, len);
 	g_sdata_buf_pointer += len;
@@ -281,9 +282,7 @@ static URET femu_hw_auto_ReadPageWithLayout(uffs_Device *dev, u32 block, u32 pag
 	int abs_page;
 	struct uffs_StorageAttrSt *attr = dev->attr;
 	unsigned char status;
-	int spare_len;
 	u8 spare[PAGE_SPARE_SIZE];
-	u8 ecc_buf[RS_ECC_SIZE];
 	int ret = UFFS_FLASH_IO_ERR;
 
 	emu = (uffs_FileEmu *)(dev->attr->_private);

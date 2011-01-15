@@ -48,8 +48,9 @@
 extern "C"{
 #endif
 
-#define ARRAY_SIZE(ar) (sizeof(ar) / sizeof(ar[0]))
-
+#ifndef ARRAY_SIZE
+# define ARRAY_SIZE(ar) (sizeof(ar) / sizeof(ar[0]))
+#endif
 
 /**
  * \struct uffs_TagStoreSt

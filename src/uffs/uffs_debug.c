@@ -111,17 +111,21 @@ void uffs_DebugMessage(int level, const char *prefix,
 #include <sys/debug.h>
 
 
-void uffs_Perror( int level, const char *errFmt, ...)
+void uffs_DebugMessage(int level, const char *prefix,
+					   const char *suffix, const char *errFmt, ...)
+
 {
 #ifdef ENABLE_DEBUG
 	va_list args;
 	if (level >= UFFS_DBG_LEVEL) {
+		if (prefix)
+			dbg_simple_print_raw(prefix);
 		va_start(args, errFmt);
-		//uffs_vTrace(errFmt, args);
 		dbg_simple_vprintf(errFmt, args);
 		va_end(args);
+		if (suffix)
+			dbg_simple_print_raw(suffix);
 	}
-	dbg_simple_raw(TENDSTR);
 #else
 	level = level;
 	errFmt = errFmt;

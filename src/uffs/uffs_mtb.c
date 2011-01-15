@@ -45,7 +45,7 @@
 #include "uffs/uffs_utils.h"
 #include <string.h>
 
-#define PFX "mtb:  "
+#define PFX "mtb : "
 
 static struct uffs_MountTableEntrySt *g_mtb_head = NULL;
 

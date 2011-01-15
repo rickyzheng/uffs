@@ -128,7 +128,7 @@ int uffs_DirEntryBufPutAll(uffs_Device *dev);
 int uffs_open(const char *name, int oflag, ...);
 int uffs_close(int fd);
 int uffs_read(int fd, void *data, int len);
-int uffs_write(int fd, void *data, int len);
+int uffs_write(int fd, const void *data, int len);
 long uffs_seek(int fd, long offset, int origin);
 long uffs_tell(int fd);
 int uffs_eof(int fd);

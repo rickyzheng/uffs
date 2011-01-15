@@ -447,7 +447,7 @@ static BOOL cmdTestPageReadWrite(const char *tail)
 		goto ext;
 	}
 
-	ret = uffs_FlashReadPage(dev, block, page, buf);
+	ret = uffs_FlashReadPage(dev, block, page, buf, U_FALSE);
 	if (UFFS_FLASH_HAVE_ERR(ret)) {
 		MSGLN("Read page error: %d", ret);
 		goto ext;
@@ -574,7 +574,6 @@ static BOOL cmdTestPopulateFiles(const char *tail)
 	char buf[128];
 	uffs_DIR *dirp;
 	struct uffs_dirent *ent;
-	struct uffs_stat stat_buf;
 	unsigned long bitmap[50] = {0};	// one bit per file, maximu 32*50 = 1600 files
 	UBOOL succ = U_TRUE;
 

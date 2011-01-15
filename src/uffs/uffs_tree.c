@@ -349,7 +349,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 			goto process_invalid_block;
 		}
 		page = uffs_FindBestPageInBlock(dev, bc, page);
-		uffs_FlashReadPage(dev, block, page, buf);
+		uffs_FlashReadPage(dev, block, page, buf, U_FALSE);
 		info = (uffs_FileInfo *) (buf->data);
 		data_sum = uffs_MakeSum16(info->name, info->name_len);
 		uffs_BufFreeClone(dev, buf);
@@ -445,7 +445,7 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 	uffs_Pool *pool;
 	struct uffs_MiniHeaderSt header;
 	URET ret = U_SUCC;
-	struct BlockTypeStatSt st = {0};
+	struct BlockTypeStatSt st = {0, 0, 0};
 	
 	tree = &(dev->tree);
 	pool = TPOOL(dev);
@@ -874,7 +874,7 @@ UBOOL uffs_TreeCompareFileName(uffs_Device *dev,
 	uffs_Buf *buf;
 	u16 data_sum;
 
-	buf = uffs_BufGetEx(dev, type, node, 0);
+	buf = uffs_BufGetEx(dev, type, node, 0, 0);
 	if (buf == NULL) {
 		uffs_Perror(UFFS_ERR_SERIOUS, "can't get buf !\n ");
 		goto ext;
@@ -1044,8 +1044,6 @@ TreeNode * uffs_TreeGetErasedNode(uffs_Device *dev)
 static void _InsertToEntry(uffs_Device *dev, u16 *entry,
 						   int hash, TreeNode *node)
 {
-	struct uffs_TreeSt *tree = &(dev->tree);
-
 	node->hash_next = entry[hash];
 #ifdef CONFIG_TREE_NODE_USE_DOUBLE_LINK
 	node->hash_prev = EMPTY_NODE;

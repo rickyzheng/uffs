@@ -718,9 +718,9 @@ URET uffs_CloseObject(uffs_Object *obj)
 		if (obj->node) {
 			//need to change the last modify time stamp
 			if (obj->type == UFFS_TYPE_DIR)
-				buf = uffs_BufGetEx(dev, UFFS_TYPE_DIR, obj->node, 0);
+				buf = uffs_BufGetEx(dev, UFFS_TYPE_DIR, obj->node, 0, obj->oflag);
 			else
-				buf = uffs_BufGetEx(dev, UFFS_TYPE_FILE, obj->node, 0);
+				buf = uffs_BufGetEx(dev, UFFS_TYPE_FILE, obj->node, 0, obj->oflag);
 
 			if(buf == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, "can't get file header");
@@ -869,7 +869,7 @@ static int do_WriteInternalBlock(uffs_Object *obj,
 			}
 		}
 		else {
-			buf = uffs_BufGetEx(dev, type, node, page_id);
+			buf = uffs_BufGetEx(dev, type, node, page_id, obj->oflag);
 			if (buf == NULL) {
 				uffs_Perror(UFFS_ERR_SERIOUS, "can't get buffer ?");
 				break;
@@ -1088,7 +1088,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 			page_id++;
 		}
 
-		buf = uffs_BufGetEx(dev, type, dnode, (u16)page_id);
+		buf = uffs_BufGetEx(dev, type, dnode, (u16)page_id, obj->oflag);
 		if (buf == NULL) {
 			uffs_Perror(UFFS_ERR_SERIOUS, "can't get buffer when read obj.");
 			obj->err = UEIOERR;
@@ -1284,7 +1284,7 @@ static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj,
 	uffs_BufFlushGroup(dev, parent, serial);
 
 	// load the last page
-	buf = uffs_BufGetEx(dev, type, node, page_id);
+	buf = uffs_BufGetEx(dev, type, node, page_id, obj->oflag);
 	if (buf == NULL) {
 		obj->err = UENOMEM;
 		uffs_Perror(UFFS_ERR_SERIOUS, "Can't get buf");
@@ -1583,7 +1583,7 @@ URET uffs_MoveObjectEx(uffs_Object *obj,
 
 	if (name_len > 0) {
 
-		buf = uffs_BufGetEx(dev, obj->type, node, 0);
+		buf = uffs_BufGetEx(dev, obj->type, node, 0, obj->oflag);
 		if (buf == NULL) {
 			uffs_Perror(UFFS_ERR_SERIOUS, "can't get buf when rename!");
 			obj->err = UEIOERR;
