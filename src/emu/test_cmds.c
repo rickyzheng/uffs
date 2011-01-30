@@ -106,14 +106,14 @@ test_exit:
 }
 
 
-static URET test_verify_file(const char *file_name)
+static URET test_verify_file(const char *file_name, UBOOL noecc)
 {
 	int fd;
 	int ret = U_FAIL;
 	unsigned char buf[100];
 	int i, pos, len;
 
-	if ((fd = uffs_open(file_name, UO_RDONLY)) < 0) {
+	if ((fd = uffs_open(file_name, (noecc ? UO_RDONLY|UO_NOECC : UO_RDONLY))) < 0) {
 		MSGLN("Can't open file %s for read.", file_name);
 		goto test_exit;
 	}
@@ -276,18 +276,45 @@ static BOOL cmdTest2(const char *tail)
 	return TRUE;
 }
 
+
+static BOOL cmdVerifyFile(const char *tail)
+{
+	const char *name;
+	UBOOL noecc = U_FALSE;
+
+	if (!tail) {
+		return FALSE;
+	}
+
+	name = cli_getparam(tail, &tail);
+	if (tail && strcmp(tail, "noecc") == 0) {
+		noecc = U_TRUE;
+	}
+
+	MSGLN("Check file %s ... ", name);
+	if (test_verify_file(name, noecc) != U_SUCC) {
+		MSGLN("Verify file %s failed.", name);
+	}
+	
+	return TRUE;
+}
+
 /* Test file append and 'random' write */
 static BOOL cmdTest3(const char *tail)
 {
 	const char *name;
 	int i;
+	UBOOL noecc = U_FALSE;
 	int write_test_seq[] = { 20, 10, 500, 40, 1140, 900, 329, 4560, 352, 1100 };
 
 	if (!tail) {
 		return FALSE;
 	}
 
-	name = cli_getparam(tail, NULL);
+	name = cli_getparam(tail, &tail);
+	if (tail && strcmp(tail, "noecc") == 0) {
+		noecc = U_TRUE;
+	}
 	MSGLN("Test append file %s ...", name);
 	for (i = 1; i < 500; i += 29) {
 		if (test_append_file(name, i) != U_SUCC) {
@@ -297,7 +324,7 @@ static BOOL cmdTest3(const char *tail)
 	}
 
 	MSGLN("Check file %s ... ", name);
-	if (test_verify_file(name) != U_SUCC) {
+	if (test_verify_file(name, noecc) != U_SUCC) {
 		MSGLN("Verify file %s failed.", name);
 		return TRUE;
 	}
@@ -311,7 +338,7 @@ static BOOL cmdTest3(const char *tail)
 	}
 
 	MSGLN("Check file %s ... ", name);
-	if (test_verify_file(name) != U_SUCC) {
+	if (test_verify_file(name, noecc) != U_SUCC) {
 		MSGLN("Verify file %s failed.", name);
 		return TRUE;
 	}
@@ -696,14 +723,15 @@ ext:
 
 static struct cli_commandset cmdset[] = 
 {
-    { cmdTest1,		"t1",			"<name>",			"test 1" },
-    { cmdTest2,		"t2",			NULL,				"test 2" },
-    { cmdTest3,		"t3",			"<name>",			"test 3" },
-    { cmdTest4,		"t4",			NULL,				"test 4" },
-    { cmdTest5,		"t5",			"<name>",			"test 5" },
-    { cmdTestPageReadWrite,		"t_pgrw",		NULL,		"test page read/write" },
-    { cmdTestFormat,			"t_format",		NULL,		"test format file system" },
+    { cmdTest1,					"t1",			"<name>",			"test 1" },
+    { cmdTest2,					"t2",			NULL,				"test 2" },
+    { cmdTest3,					"t3",			"<name> [<noecc>]",	"test 3" },
+    { cmdTest4,					"t4",			NULL,				"test 4" },
+    { cmdTest5,					"t5",			"<name>",			"test 5" },
+    { cmdTestPageReadWrite,		"t_pgrw",		NULL,				"test page read/write" },
+    { cmdTestFormat,			"t_format",		NULL,				"test format file system" },
 	{ cmdTestPopulateFiles,		"t_pfs",		"[<start> [<n>]]",	"test populate <n> files under <start>" },
+	{ cmdVerifyFile,			"t_vf",			"<file> [<noecc>]", "verify file" },
     { NULL, NULL, NULL, NULL }
 };
 

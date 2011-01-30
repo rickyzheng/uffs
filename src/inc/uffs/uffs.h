@@ -55,7 +55,7 @@ extern "C"{
 #define UO_TRUNC		0x0200
 #define UO_EXCL			0x0400
 
-#define UO_NOECC		0x1000		/** skip ECC when reading file data from media */
+#define UO_NOECC		0x0800		/** skip ECC when reading file data from media */
 
 
 #define UO_DIR			0x1000		/** open a directory */
