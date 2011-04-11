@@ -162,6 +162,15 @@
  */
 #define CONFIG_TREE_NODE_USE_DOUBLE_LINK
 
+
+/**
+ * \def CONFIG_UFFS_AUTO_LAYOUT_MTD_COMP
+ * \note Use Linux MTD compatiable spare placement for UFFS_LAYOUT_AUTO,
+ *       only valid for page data size 512 or 2048.
+ */
+//#define CONFIG_UFFS_AUTO_LAYOUT_USE_MTD_SCHEME
+
+
 /** 
  * \def MAX_OBJECT_HANDLE
  * maximum number of object handle 

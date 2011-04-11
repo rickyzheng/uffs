@@ -53,6 +53,13 @@
 
 #define TAG_STORE_SIZE	(sizeof(struct uffs_TagStoreSt))
 
+#if defined(CONFIG_UFFS_AUTO_LAYOUT_USE_MTD_SCHEME)
+/** Linux MTD spare layout for 512 and 2K page size */
+static const u8 MTD512_LAYOUT_ECC[] =	{0, 4, 6, 2, 0xFF, 0};
+static const u8 MTD512_LAYOUT_DATA[] = {8, 8, 0xFF, 0};
+static const u8 MTD2K_LAYOUT_ECC[] = {40, 24, 0xFF, 0};
+static const u8 MTD2K_LAYOUT_DATA[] = {2, 38, 0xFF, 0};
+#endif
 
 static void TagMakeEcc(struct uffs_TagStoreSt *ts)
 {
@@ -241,8 +248,25 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 			goto ext;
 		}
 
-		if (!attr->data_layout && !attr->ecc_layout)
+		if (!attr->data_layout && !attr->ecc_layout) {
+#if defined(CONFIG_UFFS_AUTO_LAYOUT_USE_MTD_SCHEME)
+			switch(attr->page_data_size) {
+			case 512:
+				attr->ecc_layout = MTD512_LAYOUT_ECC;
+				attr->data_layout = MTD512_LAYOUT_DATA;
+				break;
+			case 2048:
+				attr->ecc_layout = MTD2K_LAYOUT_ECC;
+				attr->data_layout = MTD2K_LAYOUT_DATA;
+				break;
+			default:
+				InitSpareLayout(dev);
+				break;
+			}
+#else
 			InitSpareLayout(dev);
+#endif
+		}
 	}
 	else if (dev->attr->layout_opt == UFFS_LAYOUT_FLASH) {
 		if (dev->ops->WritePageWithLayout == NULL || dev->ops->ReadPageWithLayout == NULL) {
