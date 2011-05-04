@@ -176,18 +176,18 @@ test_exit:
 
 
 /* test create file, write file and read back */
-static BOOL cmdTest1(const char *tail)
+static int cmd_t1(int argc, char *argv[])
 {
 	int fd;
 	URET ret;
 	char buf[100];
 	const char *name;
 
-	if (!tail) {
-		return FALSE;
+	if (argc < 2) {
+		return CLI_INVALID_ARG;
 	}
 
-	name = cli_getparam(tail, NULL);
+	name = argv[1];
 
 	fd = uffs_open(name, UO_RDWR|UO_CREATE|UO_TRUNC);
 	if (fd < 0) {
@@ -208,9 +208,10 @@ static BOOL cmdTest1(const char *tail)
 
 	uffs_close(fd);
 
+	return 0;
 fail:
 
-	return TRUE;
+	return -1;
 }
 
 
@@ -269,87 +270,89 @@ exit_test:
 }
 
 
-static BOOL cmdTest2(const char *tail)
+static int cmd_t2(int argc, char *argv[])
 {
-	MSGLN("Test return: %s !", DoTest2() == U_SUCC ? "succ" : "failed");
+	URET ret;
+	MSGLN("Test return: %s !", (ret = DoTest2()) == U_SUCC ? "succ" : "failed");
 
-	return TRUE;
+	return (ret == U_SUCC) ? 0 : -1;
 }
 
 
-static BOOL cmdVerifyFile(const char *tail)
+static int cmd_VerifyFile(int argc, char *argv[])
 {
 	const char *name;
 	UBOOL noecc = U_FALSE;
 
-	if (!tail) {
-		return FALSE;
+	if (argc < 2) {
+		return CLI_INVALID_ARG;
 	}
 
-	name = cli_getparam(tail, &tail);
-	if (tail && strcmp(tail, "noecc") == 0) {
+	name = argv[1];
+	if (argc > 2 && strcmp(argv[2], "noecc") == 0) {
 		noecc = U_TRUE;
 	}
 
 	MSGLN("Check file %s ... ", name);
 	if (test_verify_file(name, noecc) != U_SUCC) {
 		MSGLN("Verify file %s failed.", name);
+		return -1;
 	}
-	
-	return TRUE;
+
+	return 0;
 }
 
 /* Test file append and 'random' write */
-static BOOL cmdTest3(const char *tail)
+static int cmd_t3(int argc, char *argv[])
 {
 	const char *name;
 	int i;
 	UBOOL noecc = U_FALSE;
 	int write_test_seq[] = { 20, 10, 500, 40, 1140, 900, 329, 4560, 352, 1100 };
 
-	if (!tail) {
-		return FALSE;
+	if (argc < 2) {
+		return CLI_INVALID_ARG;
 	}
 
-	name = cli_getparam(tail, &tail);
-	if (tail && strcmp(tail, "noecc") == 0) {
+	name = argv[1];
+	if (argv[2] && strcmp(argv[2], "noecc") == 0) {
 		noecc = U_TRUE;
 	}
 	MSGLN("Test append file %s ...", name);
 	for (i = 1; i < 500; i += 29) {
 		if (test_append_file(name, i) != U_SUCC) {
 			MSGLN("Append file %s test failed at %d !", name, i);
-			return TRUE;
+			return -1;
 		}
 	}
 
 	MSGLN("Check file %s ... ", name);
 	if (test_verify_file(name, noecc) != U_SUCC) {
 		MSGLN("Verify file %s failed.", name);
-		return TRUE;
+		return -1;
 	}
 
 	MSGLN("Test write file ...");
 	for (i = 0; i < sizeof(write_test_seq) / sizeof(int) - 1; i++) {
 		if (test_write_file(name, write_test_seq[i], write_test_seq[i+1]) != U_SUCC) {
 			MSGLN("Test write file failed !");
-			return TRUE;
+			return -1;
 		}
 	}
 
 	MSGLN("Check file %s ... ", name);
 	if (test_verify_file(name, noecc) != U_SUCC) {
 		MSGLN("Verify file %s failed.", name);
-		return TRUE;
+		return -1;
 	}
 
 	MSGLN("Test succ !");
 
-	return TRUE;
+	return 0;
 }
 
 /* open two files and test write */
-static BOOL cmdTest4(const char *tail)
+static int cmd_t4(int argc, char *argv[])
 {
 	int fd1 = -1, fd2 = -1;
 
@@ -379,25 +382,25 @@ static BOOL cmdTest4(const char *tail)
 	MSGLN("close /b ...");
 	uffs_close(fd2);
 
-	return TRUE;
+	return 0;
 
 fail_exit:
-	return TRUE;
+	return -1;
 }
 
 /* test appending file */
-static BOOL cmdTest5(const char *tail)
+static int cmd_t5(int argc, char *argv[])
 {
 	int fd = -1;
 	URET ret;
 	char buf[100];
 	const char *name;
 
-	if (!tail) {
-		return FALSE;
+	if (argc < 2) {
+		return CLI_INVALID_ARG;
 	}
 
-	name = cli_getparam(tail, NULL);
+	name = argv[1];
 
 	fd = uffs_open(name, UO_RDWR|UO_APPEND);
 	if (fd < 0) {
@@ -409,16 +412,18 @@ static BOOL cmdTest5(const char *tail)
 	ret = uffs_write(fd, buf, strlen(buf));
 	if (ret != strlen(buf)) {
 		MSGLN("write file failed, %d/%d", ret, strlen(buf));
+		ret = -1;
 	}
 	else {
 		MSGLN("write %d bytes to file, content: %s", ret, buf);
+		ret = 0;
 	}
 
 	uffs_close(fd);
 
+	return ret;
 fail:
-
-	return TRUE;
+	return -1;
 }
 
 
@@ -427,7 +432,7 @@ fail:
  *
  * This test case test page read/write
  */
-static BOOL cmdTestPageReadWrite(const char *tail)
+static int cmd_TestPageReadWrite(int argc, char *argv[])
 {
 	TreeNode *node;
 	uffs_Device *dev;
@@ -439,6 +444,7 @@ static BOOL cmdTestPageReadWrite(const char *tail)
 	uffs_Buf *buf;
 
 	u32 i;
+	int rc = -1;
 
 	dev = uffs_GetDeviceFromMountPoint("/");
 	if (!dev)
@@ -516,6 +522,7 @@ static BOOL cmdTestPageReadWrite(const char *tail)
 	}
 
 	MSGLN("Page read/write test succ.");
+	rc = 0;
 
 ext:
 	if (node) {
@@ -532,29 +539,30 @@ ext:
 	if (buf)
 		uffs_BufFreeClone(dev, buf);
 
-	return TRUE;
+	return rc;
 }
 
-static BOOL cmdTestFormat(const char *tail)
+/* t_format : test format partition */
+static int cmd_TestFormat(int argc, char *argv[])
 {
 	URET ret;
 	const char *mount = "/";
 	uffs_Device *dev;
-	const char *next;
 	UBOOL force = U_FALSE;
 	const char *test_file = "/a.txt";
 	int fd;
+	int rc = -1;
 
-	if (tail) {
-		mount = cli_getparam(tail, &next);
-		if (next && strcmp(next, "-f") == 0)
+	if (argc > 1) {
+		mount = argv[1];
+		if (argc > 2 && strcmp(argv[2], "-f") == 0)
 			force = U_TRUE;
 	}
 
 	fd = uffs_open(test_file, UO_RDWR | UO_CREATE);
 	if (fd < 0) {
 		MSGLN("can't create test file %s", test_file);
-		return U_TRUE;
+		goto ext;
 	}
 
 	MSGLN("Formating %s ... ", mount);
@@ -562,6 +570,7 @@ static BOOL cmdTestFormat(const char *tail)
 	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
 		MSGLN("Can't get device from mount point.");
+		goto ext;
 	}
 	else {
 		ret = uffs_FormatDevice(dev, force);
@@ -570,13 +579,14 @@ static BOOL cmdTestFormat(const char *tail)
 		}
 		else {
 			MSGLN("Format succ.");
+			rc = 0;
 		}
 		uffs_PutDevice(dev);
 	}
 
 	uffs_close(fd);  // this should fail on signature check !
-
-	return TRUE;
+ext:
+	return rc;
 }
 
 
@@ -592,7 +602,7 @@ static BOOL cmdTestFormat(const char *tail)
  *   3) check file content aganist file name
  *   4) delete files on success
  */
-static BOOL cmdTestPopulateFiles(const char *tail)
+static int cmd_TestPopulateFiles(int argc, char *argv[])
 {
 	const char *start = "/";
 	int count = 80;
@@ -607,11 +617,11 @@ static BOOL cmdTestPopulateFiles(const char *tail)
 #define SBIT(n) bitmap[(n)/(sizeof(bitmap[0]) * 8)] |= (1 << ((n) % (sizeof(bitmap[0]) * 8)))
 #define GBIT(n) (bitmap[(n)/(sizeof(bitmap[0]) * 8)] & (1 << ((n) % (sizeof(bitmap[0]) * 8))))
 
-	if (tail) {
-		start = cli_getparam(tail, &tail);
-		if (tail) {
-			count = strtol(tail, NULL, 10);
-		}	
+	if (argc > 1) {
+		start = argv[1];
+		if (argc > 2) {
+			count = strtol(argv[2], NULL, 10);
+		}
 	}
 
 	if (count > sizeof(bitmap) * 8)
@@ -716,22 +726,22 @@ static BOOL cmdTestPopulateFiles(const char *tail)
 
 ext:
 	MSGLN("Populate files test %s !", succ ? "SUCC" : "FAILED");
-	return U_TRUE;
+	return succ ? 0 : -1;
 
 }
 
 
 static struct cli_commandset cmdset[] = 
 {
-    { cmdTest1,					"t1",			"<name>",			"test 1" },
-    { cmdTest2,					"t2",			NULL,				"test 2" },
-    { cmdTest3,					"t3",			"<name> [<noecc>]",	"test 3" },
-    { cmdTest4,					"t4",			NULL,				"test 4" },
-    { cmdTest5,					"t5",			"<name>",			"test 5" },
-    { cmdTestPageReadWrite,		"t_pgrw",		NULL,				"test page read/write" },
-    { cmdTestFormat,			"t_format",		NULL,				"test format file system" },
-	{ cmdTestPopulateFiles,		"t_pfs",		"[<start> [<n>]]",	"test populate <n> files under <start>" },
-	{ cmdVerifyFile,			"t_vf",			"<file> [<noecc>]", "verify file" },
+    { cmd_t1,					"t1",			"<name>",			"test 1" },
+    { cmd_t2,					"t2",			NULL,				"test 2" },
+    { cmd_t3,					"t3",			"<name> [<noecc>]",	"test 3" },
+    { cmd_t4,					"t4",			NULL,				"test 4" },
+    { cmd_t5,					"t5",			"<name>",			"test 5" },
+    { cmd_TestPageReadWrite,	"t_pgrw",		NULL,				"test page read/write" },
+    { cmd_TestFormat,			"t_format",		NULL,				"test format file system" },
+	{ cmd_TestPopulateFiles,	"t_pfs",		"[<start> [<n>]]",	"test populate <n> files under <start>" },
+	{ cmd_VerifyFile,			"t_vf",			"<file> [<noecc>]", "verify file" },
     { NULL, NULL, NULL, NULL }
 };
 

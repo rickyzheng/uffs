@@ -58,17 +58,16 @@
 #define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 #define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 
-static BOOL cmdFormat(const char *tail)
+static int cmd_format(int argc, char *argv[])
 {
 	URET ret;
 	const char *mount = "/";
 	uffs_Device *dev;
-	const char *next;
 	UBOOL force = U_FALSE;
 
-	if (tail) {
-		mount = cli_getparam(tail, &next);
-		if (next && strcmp(next, "-f") == 0)
+	if (argc > 1) {
+		mount = argv[1];
+		if (argc > 2 && strcmp(argv[2], "-f") == 0)
 			force = U_TRUE;
 	}
 	MSGLN("Formating %s ... ", mount);
@@ -76,60 +75,66 @@ static BOOL cmdFormat(const char *tail)
 	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
 		MSGLN("Can't get device from mount point.");
+		return -1;
 	}
 	else {
 		ret = uffs_FormatDevice(dev, force);
 		if (ret != U_SUCC) {
 			MSGLN("Format fail.");
+			return -1;
 		}
 		else {
 			MSGLN("Format succ.");
 		}
 		uffs_PutDevice(dev);
 	}
-	return TRUE;	
+
+	return 0;
 }
 
-static BOOL cmdMkf(const char *tail)
+static int cmd_mkf(int argc, char *argv[])
 {
 	int fd;
 	const char *name;
 	int oflags = UO_RDWR | UO_CREATE;
 
-	if (tail == NULL) {
-		return FALSE;
+	if (argc == 1) {
+		return CLI_INVALID_ARG;
 	}
 
-	name = cli_getparam(tail, NULL);
+	name = argv[1];
 	fd = uffs_open(name, oflags);
 	if (fd < 0) {
 		MSGLN("Create %s fail, err: %d", name, uffs_get_error());
+		return -1;
 	}
 	else {
 		MSGLN("Create %s succ.", name);
 		uffs_close(fd);
 	}
 	
-	return TRUE;
+	return 0;
 }
 
-static BOOL cmdMkdir(const char *tail)
+static int cmd_mkdir(int argc, char *argv[])
 {
 	const char *name;
 
-	if (tail == NULL) {
-		return FALSE;
+	if (argc == 1) {
+		return CLI_INVALID_ARG;
 	}
 
-	name = cli_getparam(tail, NULL);
+	name = argv[1];
 	
 	if (uffs_mkdir(name) < 0) {
 		MSGLN("Create %s fail, err: %d", name, uffs_get_error());
+		return -1;
 	}
 	else {
 		MSGLN("Create %s succ.", name);
-	}	
-	return TRUE;
+	}
+
+	return 0;
 }
 
 
@@ -147,31 +152,31 @@ static int CountObjectUnder(const char *dir)
 	return count;
 }
 
-static BOOL cmdPwd(const char *tail)
+static int cmd_pwd(int argc, char *argv[])
 {
 	MSGLN("not supported.");
-	return TRUE;
+	return 0;
 }
 
-static BOOL cmdCd(const char *tail)
+static int cmd_cd(int argc, char *argv[])
 {
 	MSGLN("Not supported");
-	return TRUE;
+	return 0;
 }
 
-static BOOL cmdLs(const char *tail)
+static int cmd_ls(int argc, char *argv[])
 {
 	uffs_DIR *dirp;
 	struct uffs_dirent *ent;
 	struct uffs_stat stat_buf;
 	int count = 0;
 	char buf[MAX_PATH_LENGTH+2];
-	char *name = (char *)tail;
+	char *name = argv[1];
 	char *sub;
 
 	if (name == NULL) {
 		MSGLN("Must provide file/dir name.");
-		return FALSE;
+		return CLI_INVALID_ARG;
 	}
 
 	dirp = uffs_opendir(name);
@@ -206,22 +211,22 @@ static BOOL cmdLs(const char *tail)
 		MSG("Total: %d objects." TENDSTR, count);
 	}
 
-	return TRUE;
+	return 0;
 }
 
-static BOOL cmdRm(const char *tail)
+static int cmd_rm(int argc, char *argv[])
 {
 	const char *name = NULL;
 	int ret = 0;
 	struct uffs_stat st;
 
-	if (tail == NULL) return FALSE;
+	if (argc < 2) return CLI_INVALID_ARG;
 
-	name = cli_getparam(tail, NULL);
+	name = argv[1];
 
-	if (uffs_stat(name, &st) < 0) {
+	if ((ret = uffs_stat(name, &st)) < 0) {
 		MSGLN("Can't stat '%s'", name);
-		return TRUE;
+		return ret;
 	}
 
 	if (st.st_mode & US_IFDIR) {
@@ -236,27 +241,30 @@ static BOOL cmdRm(const char *tail)
 	else
 		MSGLN("Delete '%s' fail!", name);
 
-	return TRUE;
+	return ret;
 }
 
-static BOOL cmdRen(const char *tail)
+static int cmd_ren(int argc, char *argv[])
 {
 	const char *oldname;
 	const char *newname;
+	int ret;
 
-	if (tail == NULL) 
-		return FALSE;
-	oldname = cli_getparam(tail, &newname);
-	if (newname == NULL)
-		return FALSE;
+	if (argc < 3) {
+		return CLI_INVALID_ARG;
+	}
 
-	if (uffs_rename(oldname, newname) == 0) {
+	oldname = argv[1];
+	newname = argv[2];
+
+	if ((ret = uffs_rename(oldname, newname)) == 0) {
 		MSGLN("Rename from '%s' to '%s' succ.", oldname, newname);
 	}
 	else {
 		MSGLN("Rename from '%s' to '%s' fail!", oldname, newname);
 	}
-	return TRUE;
+
+	return ret;
 }
 
 static void dump_msg_to_stdout(struct uffs_DeviceSt *dev, const char *fmt, ...)
@@ -271,48 +279,53 @@ static void dump_msg_to_stdout(struct uffs_DeviceSt *dev, const char *fmt, ...)
 	va_end(args);
 }
 
-static BOOL cmdDump(const char *tail)
+static int cmd_dump(int argc, char *argv[])
 {
 	uffs_Device *dev;
 	uffs_FileEmu *emu;
 	const char *mount = "/";
+	const char *dump_file = "dump.txt";
 
-	if (tail) {
-		mount = cli_getparam(tail, NULL);
+	if (argc > 1) {
+		mount = argv[1];
+		if (argc > 2)
+			dump_file = argv[2];
 	}
 
 	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
 		MSGLN("Can't get device from mount point %s", mount);
-		return TRUE;
+		return -1;
 	}
 
 	emu = (uffs_FileEmu *)(dev->attr->_private);
-	emu->dump_fp = fopen("dump.txt", "w");
+	emu->dump_fp = fopen(dump_file, "w");
 
 	uffs_DumpDevice(dev, dump_msg_to_stdout);
 
 	if (emu->dump_fp)
 		fclose(emu->dump_fp);
 
-	return TRUE;
+	uffs_PutDevice(dev);
+
+	return 0;
 }
 
-static BOOL cmdSt(const char *tail)
+static int cmd_st(int argc, char *argv[])
 {
 	uffs_Device *dev;
 	const char *mount = "/";
 	uffs_FlashStat *s;
 	TreeNode *node;
 
-	if (tail) {
-		mount = cli_getparam(tail, NULL);
+	if (argc > 1) {
+		mount = argv[1];
 	}
 
 	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
 		MSGLN("Can't get device from mount point %s", mount);
-		return TRUE;
+		return -1;
 	}
 
 	s = &(dev->st);
@@ -361,12 +374,12 @@ static BOOL cmdSt(const char *tail)
 
 	uffs_PutDevice(dev);
 
-	return TRUE;
+	return 0;
 
 }
 
 
-static BOOL cmdCp(const char *tail)
+static int cmd_cp(int argc, char *argv[])
 {
 	const char *src;
 	const char *des;
@@ -375,14 +388,14 @@ static BOOL cmdCp(const char *tail)
 	int len;
 	BOOL src_local = FALSE, des_local = FALSE;
 	FILE *fp1 = NULL, *fp2 = NULL;
+	int ret = -1;
 
-	if (!tail) 
-		return FALSE;
+	if (argc < 3) {
+		return CLI_INVALID_ARG;
+	}
 
-	src = cli_getparam(tail, &des);
-
-	if (!des)
-		return FALSE;
+	src = argv[1];
+	des = argv[2];
 
 	if (memcmp(src, "::", 2) == 0) {
 		src += 2;
@@ -419,15 +432,19 @@ static BOOL cmdCp(const char *tail)
 		}
 	}
 
+	ret = 0;
 	while (	(src_local ? (feof(fp1) == 0) : (uffs_eof(fd1) == 0)) ) {
+		ret = -1;
 		if (src_local) {
 			len = fread(buf, 1, sizeof(buf), fp1);
 		}
 		else {
 			len = uffs_read(fd1, buf, sizeof(buf));
 		}
-		if (len == 0) 
+		if (len == 0) {
+			ret = -1;
 			break;
+		}
 		if (len < 0) {
 			MSGLN("read file %s fail ?", src);
 			break;
@@ -444,6 +461,7 @@ static BOOL cmdCp(const char *tail)
 				break;
 			}
 		}
+		ret = 0;
 	}
 
 fail_ext:
@@ -456,30 +474,31 @@ fail_ext:
 	if (fp2)
 		fclose(fp2);
 
-	return TRUE;
+	return ret;
 }
 
-static BOOL cmdCat(const char *tail)
+static int cmd_cat(int argc, char *argv[])
 {
 	int fd;
-	const char *name;
-	const char *next;
+	const char *name = NULL;
 	char buf[100];
 	int start = 0, size = 0, printed = 0, n, len;
+	int ret = -1;
 
-	if (!tail) 
-		return FALSE;
+	if (argc < 2) {
+		return CLI_INVALID_ARG;
+	}
 
-	name = cli_getparam(tail, &next);
+	name = argv[1];
 
 	if ((fd = uffs_open(name, UO_RDONLY)) < 0) {
 		MSGLN("Can't open %s", name);
 		goto fail;
 	}
 
-	if (next) {
-		start = strtol(next, (char **) &next, 10);
-		if (next) size = strtol(next, NULL, 10);
+	if (argc > 2) {
+		start = strtol(argv[2], NULL, 10);
+		if (argc > 3) size = strtol(argv[3], NULL, 10);
 	}
 
 	if (start >= 0)
@@ -506,49 +525,49 @@ static BOOL cmdCat(const char *tail)
 	MSG(TENDSTR);
 	uffs_close(fd);
 
+	ret = 0;
 fail:
 
-	return TRUE;
+	return ret;
 }
 
 
-static BOOL cmdMount(const char *tail)
+static int cmd_mount(int argc, char *argv[])
 {
 	uffs_MountTable *tab = uffs_GetMountTable();
-	tail = tail;
 
 	while (tab) {
 		MSGLN(" %s : (%d) ~ (%d)", tab->mount, tab->start_block, tab->end_block);
 		tab = tab->next;
 	}
 
-	return TRUE;
+	return 0;
 }
 
-static BOOL cmdInspBuf(const char *tail)
+/* inspect buffers */
+static int cmd_inspb(int argc, char *argv[])
 {
 	uffs_Device *dev;
 	const char *mount = "/";
 
-	if (tail) {
-		mount = cli_getparam(tail, NULL);
+	if (argc > 1) {
+		mount = argv[1];
 	}
 
 	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
 		MSGLN("Can't get device from mount point %s", mount);
-		return TRUE;
+		return -1;
 	}
-
 	uffs_BufInspect(dev);
-
 	uffs_PutDevice(dev);
 
-	return TRUE;
+	return 0;
 
 }
 
-static BOOL cmdWareLevelInfo(const char *tail)
+/* print block wear-leveling information */
+static int cmd_wl(int argc, char *argv[])
 {
 	const char *mount = "/";
 	uffs_Device *dev;
@@ -559,14 +578,14 @@ static BOOL cmdWareLevelInfo(const char *tail)
 
 #define NUM_PER_LINE	10
 
-	if (tail) {
-		mount = cli_getparam(tail, NULL);
+	if (argc > 1) {
+		mount = argv[1];
 	}
 
 	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
 		MSGLN("Can't get device from mount point %s", mount);
-		return TRUE;
+		return -1;
 	}
 
 	par = &dev->par;
@@ -592,26 +611,26 @@ static BOOL cmdWareLevelInfo(const char *tail)
 
 	uffs_PutDevice(dev);
 
-	return TRUE;
+	return 0;
 }
 
 static struct cli_commandset cmdset[] = 
 {
-    { cmdFormat,	"format",		"[<mount>]",		"Format device" },
-    { cmdMkf,		"mkfile",		"<name>",			"create a new file" },
-    { cmdMkdir,		"mkdir",		"<name>",			"create a new directory" },
-    { cmdRm,		"rm",			"<name>",			"delete file/directory" },
-    { cmdRen,		"mv|ren",		"<old> <new>",		"rename file/directory" },
-    { cmdLs,		"ls",			"<dir>",			"list dirs and files" },
-    { cmdSt,		"info|st",		"<mount>",			"show statistic infomation" },
-    { cmdCp,		"cp",			"<src> <des>",		"copy files. the local file name start with '::'" },
-    { cmdCat,		"cat",			"<name>",			"show file content" },
-    { cmdPwd,		"pwd",			NULL,				"show current dir" },
-    { cmdCd,		"cd",			"<path>",			"change current dir" },
-    { cmdMount,		"mount",		NULL,				"list mounted file systems" },
-	{ cmdDump,		"dump",			"[<mount>]",		"dump file system", },
-	{ cmdWareLevelInfo,	"wl",		"[<mount>]",		"show block wear-leveling info", },
-	{ cmdInspBuf,	"inspb",		"[<mount>]",		"inspect buffer", },
+    { cmd_format,	"format",		"[<mount>]",		"Format device" },
+    { cmd_mkf,		"mkfile",		"<name>",			"create a new file" },
+    { cmd_mkdir,	"mkdir",		"<name>",			"create a new directory" },
+    { cmd_rm,		"rm",			"<name>",			"delete file/directory" },
+    { cmd_ren,		"mv|ren",		"<old> <new>",		"rename file/directory" },
+    { cmd_ls,		"ls",			"<dir>",			"list dirs and files" },
+    { cmd_st,		"info|st",		"<mount>",			"show statistic infomation" },
+    { cmd_cp,		"cp",			"<src> <des>",		"copy files. the local file name start with '::'" },
+    { cmd_cat,		"cat",			"<name>",			"show file content" },
+    { cmd_pwd,		"pwd",			NULL,				"show current dir" },
+    { cmd_cd,		"cd",			"<path>",			"change current dir" },
+    { cmd_mount,	"mount",		NULL,				"list mounted file systems" },
+	{ cmd_dump,		"dump",			"[<mount>]",		"dump file system", },
+	{ cmd_wl,		"wl",			"[<mount>]",		"show block wear-leveling info", },
+	{ cmd_inspb,	"inspb",		"[<mount>]",		"inspect buffer", },
     { NULL, NULL, NULL, NULL }
 };
 

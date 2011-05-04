@@ -45,7 +45,9 @@
 #define FALSE 0
 #endif
 
-typedef BOOL command_t(const char *tail);
+#define CLI_INVALID_ARG			-100
+
+typedef int command_t(int argc, char *argv[]);
 
 struct cli_commandset {
     command_t *handler;
@@ -54,10 +56,10 @@ struct cli_commandset {
     const char *descr;
 };
 
-const char * cli_getparam(const char *tail, const char **next);
 void cli_add_commandset(struct cli_commandset *cmds);
-void cliInterpret(const char *line);
-void cliMain();
+int cli_interpret(const char *line);
+void cli_main_entry();
+
 
 #endif
 

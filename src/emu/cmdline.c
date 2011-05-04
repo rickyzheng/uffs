@@ -45,51 +45,36 @@ on this file might be covered by the GNU General Public License.
 #define PROMPT "UFFS>"
 #define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 
+
+#define MAX_CLI_ARGS_BUF_LEN	120
+#define MAX_CLI_ARGS_NUM		10
+
+#define MAX_CLI_CMDS	200
+
+
+struct cli_arg {
+	int argc;
+	char *argv[MAX_CLI_ARGS_NUM];
+	char _buf[MAX_CLI_ARGS_BUF_LEN];
+};
+
 static BOOL m_exit = FALSE;
-static struct cli_commandset cmdset[200] = {0};
+static struct cli_commandset m_cmdset[MAX_CLI_CMDS] = {0};
 static int m_cmdCount = 0;
-static char str_buf[128];
 
-const char * cli_getparam(const char *tail, const char **next)
-{
-	char *p;
-
-	if (tail == NULL) 
-		return NULL;
-
-	strcpy(str_buf, tail);
-	p = str_buf;
-
-	while (*tail != ' ' && *tail != 0) {
-		tail++; p++; 
-	}
-
-	if (*tail == ' ') {
-		*p = 0;
-		while(*tail == ' ') 
-			tail++;
-	}
-
-	if(next) 
-		*next = (char *)(*tail ? tail : NULL);
-
-	return str_buf;
-}
-
-
-static BOOL cmdExit(const char *tail)
+static int cmd_exit(int argc, char *argv[])
 {
 	m_exit = TRUE;
-	return TRUE;
+	return 0;
 }
 
-static BOOL cmdHelp(const char *tail);
+static int cmd_help(int argc, char *argv[]);
 
 
 static struct cli_commandset default_cmdset[] = 
 {
-	{ cmdHelp,  "help|?",	"[<command>]",	"Show commands or help on one command" },
-	{ cmdExit,	"exit",		NULL,			"exit command line" },
+	{ cmd_help, "help|?",	"[<command>]",	"show commands or help on one command" },
+	{ cmd_exit,	"exit",		NULL,			"exit command line" },
 	{ NULL, NULL, NULL, NULL }
 };
 
@@ -134,78 +119,99 @@ static int cmdFind(const char *cmd)
 {
 	int icmd;
 
-	for (icmd = 0; cmdset[icmd].cmd != NULL; icmd++) {
-		//MSG("cmdFind: Check cmd: %s with %s\n", cmd, cmdset[icmd].cmd);
-		if (check_cmd(cmdset[icmd].cmd, cmd) == TRUE)
+	for (icmd = 0; m_cmdset[icmd].cmd != NULL; icmd++) {
+		//MSG("cmdFind: Check cmd: %s with %s\n", cmd, m_cmdset[icmd].cmd);
+		if (check_cmd(m_cmdset[icmd].cmd, cmd) == TRUE)
 			return icmd;
 	}
 	return -1;
 }
 
+static void show_cmd_usage(int icmd)
+{
+	MSG("%s: %s\n", m_cmdset[icmd].cmd, m_cmdset[icmd].descr);
+	MSG("Usage: %s %s\n", m_cmdset[icmd].cmd, m_cmdset[icmd].args ? m_cmdset[icmd].args : "");
+}
 
-static BOOL cmdHelp(const char *tail)
+static int cmd_help(int argc, char *argv[])
 {
 	int icmd;
 	int i;
 
-	if (tail == NULL)  {
+	if (argc < 2)  {
 		MSG("Available commands:\n");
-		for (icmd = 0; cmdset[icmd].cmd != NULL; icmd++) {
-			MSG("%s", cmdset[icmd].cmd);
-			for (i = strlen(cmdset[icmd].cmd); i%10; i++, MSG(" "));
+		for (icmd = 0; m_cmdset[icmd].cmd != NULL; icmd++) {
+			MSG("%s", m_cmdset[icmd].cmd);
+			for (i = strlen(m_cmdset[icmd].cmd); i%10; i++, MSG(" "));
 
-			//if ((icmd & 7) == 7 || cmdset[icmd+1].cmd == NULL) MSG("\n");
+			//if ((icmd & 7) == 7 || m_cmdset[icmd+1].cmd == NULL) MSG("\n");
 		}
 		MSG("\n");
 	}
 	else {
-		icmd = cmdFind(tail);
+		icmd = cmdFind(argv[1]);
 		if (icmd < 0) {
 			MSG("No such command\n");
+			return -1;
 		}
 		else {
-			MSG("%s: %s\n", cmdset[icmd].cmd, cmdset[icmd].descr);
-			MSG("Usage: %s %s\n", cmdset[icmd].cmd, cmdset[icmd].args ? cmdset[icmd].args : "");
+			show_cmd_usage(icmd);
 		}
 	}
 
-	return TRUE;
+	return 0;
 }
 
-
-void cliInterpret(const char *line)
+static void cli_parse_args(const char *cmd, struct cli_arg *arg)
 {
-	char cmd[64];
-	const char *tail;
-	const char *psep;
-	int icmd;
+	char *p;
 
-	psep = strchr(line, ' ');
-	cmd[0] = 0;
+	if (arg) {
 
-	if (psep == NULL) {
-		strncat(cmd, line, sizeof(cmd) - 1);
-		tail = NULL;
-	}
-	else {
-		strncat(cmd, line, psep - line);
-		for (tail = psep; *tail == ' '; ++tail);
-		if (*tail == 0) 
-			tail = NULL;
-	}
+		memset(arg, 0, sizeof(struct cli_arg));
+		arg->argc = 0;
 
-	icmd = cmdFind(cmd);
+		if (cmd) {
+			p = arg->_buf;
+			while (*cmd && arg->argc < MAX_CLI_ARGS_NUM && (p - arg->_buf < MAX_CLI_ARGS_BUF_LEN)) {
+				while(*cmd && (*cmd == ' ' || *cmd == '\t'))
+					cmd++;
 
-	if (icmd < 0) {
-		MSG("Unknown command - try help\n");
-		return;
-	}
-	else {
-		//MSG("Command idx: %d\n", icmd);
-		if (!cmdset[icmd].handler(tail)) {
-			cmdHelp(cmd);
+				arg->argv[arg->argc] = p;
+				while (*cmd && (*cmd != ' ' && *cmd != '\t') && (p - arg->_buf < MAX_CLI_ARGS_BUF_LEN)) {
+					*p++ = *cmd++;
+				}
+				*p++ = '\0';
+				if (*(arg->argv[arg->argc]) == '\0')
+					break;
+				arg->argc++;
+			}
 		}
 	}
+}
+
+int cli_interpret(const char *line)
+{
+	struct cli_arg arg;
+	int idx;
+	int ret = -1;
+
+	cli_parse_args(line, &arg);
+
+	if (arg.argc > 0) {
+		idx = cmdFind(arg.argv[0]);
+		if (idx < 0) {
+			MSG("Unknown command '%s'\n", arg.argv[0]);
+		}
+		else {
+			ret = m_cmdset[idx].handler(arg.argc, arg.argv);
+			if (ret == CLI_INVALID_ARG) {
+				show_cmd_usage(idx);
+			}
+		}
+	}
+
+	return ret;
 }
 
 void cli_add_commandset(struct cli_commandset *cmds)
@@ -213,11 +219,11 @@ void cli_add_commandset(struct cli_commandset *cmds)
 	int icmd;
 
 	for (icmd = 0; cmds[icmd].cmd != NULL; icmd++) {
-		memcpy(&(cmdset[m_cmdCount++]), &(cmds[icmd]), sizeof(struct cli_commandset));
+		memcpy(&(m_cmdset[m_cmdCount++]), &(cmds[icmd]), sizeof(struct cli_commandset));
 	}
 }
 
-void cliMain()
+void cli_main_entry()
 {
 	char line[80];
 	int linelen = 0;
@@ -242,7 +248,7 @@ void cliMain()
 			//MSG("\r\n");
 			if (linelen > 0) {
 				line[linelen] = 0;
-				cliInterpret(line);
+				cli_interpret(line);
 			}
 			linelen = 0;
 			MSG("$ ");

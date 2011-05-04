@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
 
 	cli_add_commandset(get_helper_cmds());
 	cli_add_commandset(get_test_cmds());
-	cliMain();
+	cli_main_entry();
 
 	release_uffs_fs();
 

@@ -484,7 +484,7 @@ static void exec_script()
 			}
 			if (conf_verbose_mode) 
 				MSGLN("%s", line_buf);
-			cliInterpret(line_buf);
+			cli_interpret(line_buf);
 			memset(line_buf, 0, sizeof(line_buf));
 		}
 		fclose(fp);
@@ -535,14 +535,14 @@ int main(int argc, char *argv[])
 		if (conf_exec_script) {
 			exec_script();
 		}
-		cliMain();
+		cli_main_entry();
 	}
 	else {
 		if (conf_exec_script) {
 			exec_script();
 		}
 		else {
-			cliMain();
+			cli_main_entry();
 		}
 	}
 
