@@ -86,17 +86,21 @@ int femu_InitFlash(uffs_Device *dev)
 
 	uffs_Perror(UFFS_ERR_NORMAL,  "femu device init.");
 
-	emu->em_monitor_page = (u8 *) malloc(total_pages);
+	emu->em_monitor_page = (u8 *) malloc(sizeof(emu->em_monitor_page[0]) * total_pages);
 	if (!emu->em_monitor_page)
 		return -1;
-	emu->em_monitor_spare = (u8 *) malloc(total_pages);
+	emu->em_monitor_spare = (u8 *) malloc(sizeof(emu->em_monitor_spare[0]) * total_pages);
 	if (!emu->em_monitor_spare)
 		return -1;
 
+	emu->em_monitor_block = (u32 *) malloc(sizeof(emu->em_monitor_block[0]) * attr->total_blocks);
+	if (!emu->em_monitor_block)
+		return -1;
 
 	//clear monitor
-	memset(emu->em_monitor_page, 0, total_pages);
-	memset(emu->em_monitor_spare, 0, total_pages);
+	memset(emu->em_monitor_page, 0, sizeof(emu->em_monitor_page[0]) * total_pages);
+	memset(emu->em_monitor_spare, 0, sizeof(emu->em_monitor_spare[0]) * total_pages);
+	memset(emu->em_monitor_block, 0, sizeof(emu->em_monitor_block[0]) * attr->total_blocks);
 
 	emu->fp = fopen(emu->emu_filename, "rb");
 	if (emu->fp == NULL) {
@@ -163,8 +167,11 @@ int femu_ReleaseFlash(uffs_Device *dev)
 			free(emu->em_monitor_page);
 		if (emu->em_monitor_spare) 
 			free(emu->em_monitor_spare);
+		if (emu->em_monitor_block)
+			free(emu->em_monitor_block);
 		emu->em_monitor_page = NULL;
 		emu->em_monitor_spare = NULL;
+		emu->em_monitor_block = NULL;
 	}
 
 	return 0;
@@ -203,6 +210,8 @@ int femu_EraseBlock(uffs_Device *dev, u32 blockNumber)
 		memset(emu->em_monitor_spare + (blockNumber * blk_pgs),
 			0,
 			blk_pgs * sizeof(u8));
+
+		emu->em_monitor_block[blockNumber]++;
 		
 		memset(pg, 0xff, (pgd_size + sp_size));
 		

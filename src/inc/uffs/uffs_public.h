@@ -52,6 +52,13 @@ extern "C"{
 # define ARRAY_SIZE(ar) (sizeof(ar) / sizeof(ar[0]))
 #endif
 
+#ifndef offsetof
+# define offsetof(T, x) ((size_t) &((T *)0)->x)
+#endif
+#ifndef container_of
+#define container_of(p, T, x) ((T *)((char *)(p) - offsetof(T,x)))
+#endif
+
 /**
  * \struct uffs_TagStoreSt
  * \brief uffs tag, 8 bytes, will be store in page spare area.

@@ -50,7 +50,7 @@
 #define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 #define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 
-#define UFFS_FEMU_SHOW_FLASH_IO
+// #define UFFS_FEMU_SHOW_FLASH_IO
 
 #ifdef UFFS_FEMU_ENABLE_INJECTION
 

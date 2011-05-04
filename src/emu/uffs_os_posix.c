@@ -79,7 +79,7 @@ int uffs_OSGetTaskId(void)
 	return 0;
 }
 
-
+#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 void uffs_CriticalEnter(void)
 {
 	//TODO: enter critical section (for example, disable IRQ?)
@@ -91,6 +91,7 @@ void uffs_CriticalExit(void)
 	//TODO: exit from critical section (for example, enable IRQ?)
 	return;
 }
+#endif
 
 unsigned int uffs_GetCurDateTime(void)
 {

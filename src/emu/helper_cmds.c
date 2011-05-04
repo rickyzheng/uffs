@@ -48,6 +48,7 @@
 #include "uffs/uffs_find.h"
 #include "cmdline.h"
 #include "uffs/uffs_fd.h"
+#include "uffs/uffs_mtb.h"
 #include "uffs_fileem.h"
 
 #define PFX "cmd: "
@@ -358,8 +359,6 @@ static BOOL cmdSt(const char *tail)
 		MSG(TENDSTR);
 	}
 
-	uffs_BufInspect(dev);
-
 	uffs_PutDevice(dev);
 
 	return TRUE;
@@ -526,6 +525,76 @@ static BOOL cmdMount(const char *tail)
 	return TRUE;
 }
 
+static BOOL cmdInspBuf(const char *tail)
+{
+	uffs_Device *dev;
+	const char *mount = "/";
+
+	if (tail) {
+		mount = cli_getparam(tail, NULL);
+	}
+
+	dev = uffs_GetDeviceFromMountPoint(mount);
+	if (dev == NULL) {
+		MSGLN("Can't get device from mount point %s", mount);
+		return TRUE;
+	}
+
+	uffs_BufInspect(dev);
+
+	uffs_PutDevice(dev);
+
+	return TRUE;
+
+}
+
+static BOOL cmdWareLevelInfo(const char *tail)
+{
+	const char *mount = "/";
+	uffs_Device *dev;
+	struct uffs_PartitionSt *par;
+	uffs_FileEmu *emu;
+	int i, max;
+	u32 n;
+
+#define NUM_PER_LINE	10
+
+	if (tail) {
+		mount = cli_getparam(tail, NULL);
+	}
+
+	dev = uffs_GetDeviceFromMountPoint(mount);
+	if (dev == NULL) {
+		MSGLN("Can't get device from mount point %s", mount);
+		return TRUE;
+	}
+
+	par = &dev->par;
+	emu = (uffs_FileEmu *)(dev->attr->_private);
+	max = -1;
+
+	for (i = 0; i < par->end - par->start; i++) {
+		if ((i % NUM_PER_LINE) == 0) {
+			MSG("%04d:", i + par->start);
+		}
+		n = i + par->start;
+		max = (max == -1 ? n :
+				(emu->em_monitor_block[n] > emu->em_monitor_block[max] ? n : max)
+			   );
+		MSG(" %4d", emu->em_monitor_block[n]);
+		MSG("%c", uffs_TreeFindErasedNodeByBlock(dev, n) == NULL ? '*' : ' ');
+		if (((i + 1) % NUM_PER_LINE) == 0)
+			MSG("\n");
+	}
+	MSG("\n");
+	MSG("Total blocks %d, peak erase count %d at block %d\n",
+		par->end - par->start, max == -1 ? 0 : emu->em_monitor_block[max], max);
+
+	uffs_PutDevice(dev);
+
+	return TRUE;
+}
+
 static struct cli_commandset cmdset[] = 
 {
     { cmdFormat,	"format",		"[<mount>]",		"Format device" },
@@ -541,7 +610,8 @@ static struct cli_commandset cmdset[] =
     { cmdCd,		"cd",			"<path>",			"change current dir" },
     { cmdMount,		"mount",		NULL,				"list mounted file systems" },
 	{ cmdDump,		"dump",			"[<mount>]",		"dump file system", },
-
+	{ cmdWareLevelInfo,	"wl",		"[<mount>]",		"show block wear-leveling info", },
+	{ cmdInspBuf,	"inspb",		"[<mount>]",		"inspect buffer", },
     { NULL, NULL, NULL, NULL }
 };
 

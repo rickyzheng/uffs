@@ -218,10 +218,6 @@ void uffs_BreakFromEntry(uffs_Device *dev, u8 type, TreeNode *node);
 void uffs_TreeSetNodeBlock(u8 type, TreeNode *node, u16 block);
 
 
-
-
-
-
 #ifdef __cplusplus
 }
 #endif

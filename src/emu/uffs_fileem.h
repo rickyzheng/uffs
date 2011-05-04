@@ -43,6 +43,8 @@
 
 #define UFFS_FEMU_FILE_NAME		"uffsemfile.bin"
 
+#define UFFS_FEMU_MAX_BLOCKS	(1024 * 16)		// maximum 16K blocks
+
 #define UFFS_FEMU_ENABLE_INJECTION		// enable bad block & ecc error injection
 
 extern struct uffs_FlashOpsSt g_femu_ops_ecc_soft;		// for software ECC or no ECC.
@@ -56,8 +58,9 @@ typedef struct uffs_FileEmuSt {
 	int initCount;
 	FILE *fp;
 	FILE *dump_fp;
-	u8 *em_monitor_page;
-	u8 * em_monitor_spare;
+	u8 *em_monitor_page;		// page write monitor
+	u8 * em_monitor_spare;		// spare write monitor
+	u32 *em_monitor_block;		// block erease monitor
 	const char *emu_filename;
 #ifdef UFFS_FEMU_ENABLE_INJECTION
 	struct uffs_FlashOpsSt ops_orig;
