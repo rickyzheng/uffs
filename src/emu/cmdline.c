@@ -47,7 +47,7 @@ on this file might be covered by the GNU General Public License.
 
 
 #define MAX_CLI_ARGS_BUF_LEN	120
-#define MAX_CLI_ARGS_NUM		10
+#define MAX_CLI_ARGS_NUM		20
 
 #define MAX_CLI_CMDS	200
 
@@ -62,19 +62,124 @@ static BOOL m_exit = FALSE;
 static struct cli_commandset m_cmdset[MAX_CLI_CMDS] = {0};
 static int m_cmdCount = 0;
 
+static int m_last_return_code = 0;
+
+
+static int cmdFind(const char *cmd);
+static int cmd_help(int argc, char *argv[]);
+
+/** exec command <n> times:
+ *		exec <n> <cmd> [...]
+ */
+static int cmd_exec(int argc, char *argv[])
+{
+	int n = 0;
+	int idx;
+
+	if (argc < 3)
+		return CLI_INVALID_ARG;
+	if (sscanf(argv[1], "%d", &n) != 1)
+		return CLI_INVALID_ARG;
+	if (n <= 0)
+		return CLI_INVALID_ARG;
+
+	idx = cmdFind(argv[2]);
+	if (idx < 0) {
+		MSG("Unknown command '%s'\n", argv[2]);
+		return -1;
+	}
+	else {
+		argv += 2;
+		while (n-- >= 0) {
+			if (m_cmdset[idx].handler(argc - 2, argv) != 0)
+				return -1;
+		}
+	}
+
+	return 0;
+}
+
+/** 
+ * if <cmd> is given, run <cmd>, and check <cmd> return against <x>.
+ * if <cmd> is not given, check last return code against <x>.
+ *		expect <x> [<cmd>] [...]
+ */
+static int cmd_expect(int argc, char *argv[])
+{
+	int x = 0;
+	int idx;
+	int ret;
+
+	if (argc < 2)
+		return CLI_INVALID_ARG;
+	if (sscanf(argv[1], "%d", &x) != 1)
+		return CLI_INVALID_ARG;
+
+	if (argc > 2) {
+		idx = cmdFind(argv[2]);
+		if (idx < 0) {
+			MSG("Unknown command '%s'\n", argv[2]);
+			return -1;
+		}
+		argv += 2;
+		ret = m_cmdset[idx].handler(argc - 2, argv);
+	}
+	else {
+		ret = m_last_return_code;
+	}
+
+	return (ret == x ? 0 : -1);
+}
+
+/** if last command failed (return != 0), run <cmd>
+ *    ! <cmd>
+ */
+static int cmd_failed(int argc, char *argv[])
+{
+	int idx;
+
+	if (argc < 2)
+		return CLI_INVALID_ARG;
+
+	idx = cmdFind(argv[1]);
+	if (idx < 0) {
+		MSG("Unknown command '%s'\n", argv[1]);
+		return -1;
+	}
+	argv++;
+	return (m_last_return_code == 0 ? 0 : m_cmdset[idx].handler(argc - 1, argv));
+}
+
+/** print last command return code.
+ *		@
+ */
+static int cmd_at(int argc, char *argv[])
+{
+	MSG("%d\n", m_last_return_code);
+	return 0;
+}
+
+static int cmd_nop(int argc, char *argv[])
+{
+	return 0;
+}
+
 static int cmd_exit(int argc, char *argv[])
 {
 	m_exit = TRUE;
 	return 0;
 }
 
-static int cmd_help(int argc, char *argv[]);
-
-
 static struct cli_commandset default_cmdset[] = 
 {
-	{ cmd_help, "help|?",	"[<command>]",	"show commands or help on one command" },
-	{ cmd_exit,	"exit",		NULL,			"exit command line" },
+	{ cmd_help,		"help|?",	"[<command>]",		"show commands or help on one command" },
+	{ cmd_exit,		"exit",		NULL,				"exit command line" },
+	{ cmd_exec,		"*",		"<n> <cmd> [...]>",	"run <cmd> <n> times" },
+	{ cmd_failed,	"!",		"<cmd> [...]",		"run <cmd> if last command failed" },
+	{ cmd_at,		"@",		NULL,				"print return code of last command" },
+	{ cmd_nop,		"#",		"[...]",			"do nothing" },
+	{ cmd_expect,	"expect",	"<x> [<cmd>] [...]","expect <x> return from <cmd>(or last cmd if <cmd> not given)" },
+
 	{ NULL, NULL, NULL, NULL }
 };
 
@@ -210,6 +315,8 @@ int cli_interpret(const char *line)
 			}
 		}
 	}
+
+	m_last_return_code = ret;
 
 	return ret;
 }
