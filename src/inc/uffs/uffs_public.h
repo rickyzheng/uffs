@@ -154,10 +154,13 @@ void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const 
 
 void uffs_AssertCall(const char *file, int line, const char *msg, ...);
 
-#define uffs_Assert(expr, msg, ...)												\
-	do {																	\
-		if (!(expr))														\
-			uffs_AssertCall(__FILE__, __LINE__, msg, ## __VA_ARGS__);						\
+#define uffs_Assert(expr, msg, ...) \
+	((expr) ? U_TRUE : (uffs_AssertCall(__FILE__, __LINE__, msg, ## __VA_ARGS__), U_FALSE))
+
+#define uffs_Panic() \
+	do { \
+		uffs_AssertCall(__FILE__, __LINE__, "Bam !!\n"); \
+		while(1); \
 	} while(0)
 
 /********************************** NAND **********************************************/

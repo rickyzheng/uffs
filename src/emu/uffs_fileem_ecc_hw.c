@@ -107,7 +107,9 @@ static int femu_hw_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 			goto err;
 		}
 
-		uffs_Assert(data != NULL, "BUG: Write spare without data ?");
+		if (!uffs_Assert(data != NULL, "BUG: Write spare without data ?"))
+			goto err;
+
 		uffs_EccMake(data, data_len, ecc_buf);
 		uffs_FlashMakeSpare(dev, ts, ecc_buf, spare);
 		spare_len = dev->mem.spare_data_size;

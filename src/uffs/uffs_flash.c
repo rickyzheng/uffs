@@ -657,9 +657,12 @@ int uffs_FlashWritePageCombine(uffs_Device *dev,
 	}
 	else {
 
-		uffs_Assert(!(dev->attr->layout_opt == UFFS_LAYOUT_FLASH ||
+		if (!uffs_Assert(!(dev->attr->layout_opt == UFFS_LAYOUT_FLASH ||
 					dev->attr->ecc_opt == UFFS_ECC_HW ||
-					dev->attr->ecc_opt == UFFS_ECC_HW_AUTO), "WritePageWithLayout() not implemented ?");
+					dev->attr->ecc_opt == UFFS_ECC_HW_AUTO), "WritePageWithLayout() not implemented ?")) {
+			ret = UFFS_FLASH_IO_ERR;
+			goto ext;
+		}
 
 		uffs_FlashMakeSpare(dev, &tag->s, ecc, spare);
 

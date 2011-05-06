@@ -80,13 +80,16 @@ URET uffs_PoolInit(uffs_Pool *pool,
 	unsigned int i;
 	uffs_PoolEntry *e1, *e2;
 
-	uffs_Assert(pool, "pool missing");
-	uffs_Assert(mem, "pool memory missing");
-	uffs_Assert(num_bufs > 0, "not enough buffers");
-	uffs_Assert(buf_size % sizeof(void *) == 0,
-					"buffer size not aligned to pointer size");
-	uffs_Assert(mem_size == num_bufs * buf_size,
-					"pool memory size is wrong");
+	if (!uffs_Assert(pool, "pool missing") ||
+		!uffs_Assert(mem, "pool memory missing") ||
+		!uffs_Assert(num_bufs > 0, "not enough buffers") ||
+		!uffs_Assert(buf_size % sizeof(void *) == 0,
+					"buffer size not aligned to pointer size") ||
+		!uffs_Assert(mem_size == num_bufs * buf_size,
+					"pool memory size is wrong"))
+	{
+		return U_FAIL;
+	}
 
 	pool->mem = (u8 *)mem;
 	pool->buf_size = buf_size;
@@ -129,7 +132,8 @@ UBOOL uffs_PoolVerify(uffs_Pool *pool, void *p)
  */
 URET uffs_PoolRelease(uffs_Pool *pool)
 {
-	uffs_Assert(pool, "pool missing");
+	if (!uffs_Assert(pool, "pool missing"))
+		return U_FAIL;
 	
 	uffs_SemDelete(&pool->sem);
 
@@ -145,7 +149,8 @@ void *uffs_PoolGet(uffs_Pool *pool)
 {
 	uffs_PoolEntry *e;
 
-	uffs_Assert(pool, "pool missing");
+	if (!uffs_Assert(pool, "pool missing"))
+		return NULL;
 
 	e = pool->free_list;
 	if (e)
@@ -165,7 +170,8 @@ void *uffs_PoolGetLocked(uffs_Pool *pool)
 {
 	uffs_PoolEntry *e;
 
-	uffs_Assert(pool, "pool missing");
+	if (!uffs_Assert(pool, "pool missing"))
+		return NULL;
 
 	uffs_SemWait(pool->sem);
 	e = pool->free_list;
@@ -186,7 +192,8 @@ int uffs_PoolPut(uffs_Pool *pool, void *p)
 {
 	uffs_PoolEntry *e = (uffs_PoolEntry *)p;
 
-	uffs_Assert(pool, "pool missing");
+	if (!uffs_Assert(pool, "pool missing"))
+		return -1;
 
 	if (e) {
 		e->next = pool->free_list;
@@ -209,7 +216,8 @@ int uffs_PoolPutLocked(uffs_Pool *pool, void *p)
 {
 	uffs_PoolEntry *e = (uffs_PoolEntry *)p;
 
-	uffs_Assert(pool, "pool missing");
+	if (!uffs_Assert(pool, "pool missing"))
+		return -1;
 
 	if (e) {
 		uffs_SemWait(pool->sem);
@@ -231,9 +239,12 @@ int uffs_PoolPutLocked(uffs_Pool *pool, void *p)
  */
 void *uffs_PoolGetBufByIndex(uffs_Pool *pool, u32 index)
 {
-	uffs_Assert(pool, "pool missing");
-	uffs_Assert(index >= 0 && index < pool->num_bufs,
-				"index(%d) out of range(max %d)", index, pool->num_bufs);
+	if (!uffs_Assert(pool, "pool missing") ||
+		!uffs_Assert(index >= 0 && index < pool->num_bufs,
+				"index(%d) out of range(max %d)", index, pool->num_bufs))
+	{
+		return NULL;
+	}
 
 	return (u8 *) pool->mem + index * pool->buf_size;
 }
@@ -247,10 +258,13 @@ void *uffs_PoolGetBufByIndex(uffs_Pool *pool, u32 index)
  */
 u32 uffs_PoolGetIndex(uffs_Pool *pool, void *p)
 {
-	uffs_Assert(pool, "pool missing");
-	uffs_Assert(p >= (void *) pool->mem &&
+	if (!uffs_Assert(pool, "pool missing") ||
+		!uffs_Assert(p >= (void *) pool->mem &&
 			p < (void *) (pool->mem + pool->num_bufs * pool->buf_size),
-			"pointer out of range");
+			"pointer out of range"))
+	{
+		uffs_Panic();
+	}
 
 	return ((u8 *) p - pool->mem) / pool->buf_size;
 }

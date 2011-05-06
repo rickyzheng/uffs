@@ -150,5 +150,4 @@ void uffs_AssertCall(const char *file, int line, const char *msg, ...)
 	vprintf(msg, args);
 	va_end(args);
 	printf(TENDSTR);
-	while (1);
 }
