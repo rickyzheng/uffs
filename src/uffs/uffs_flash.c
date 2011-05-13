@@ -371,7 +371,6 @@ int uffs_FlashReadPageTag(uffs_Device *dev,
 							int block, int page, uffs_Tags *tag)
 {
 	uffs_FlashOps *ops = dev->ops;
-	struct uffs_StorageAttrSt *attr = dev->attr;
 	u8 * spare_buf;
 	int ret = UFFS_FLASH_UNKNOWN_ERR;
 	UBOOL is_bad = U_FALSE;
@@ -786,7 +785,6 @@ URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block)
 /** Is this block a bad block ? */
 UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block)
 {
-	u8 status = 0xFF;
 	struct uffs_FlashOpsSt *ops = dev->ops;
 	UBOOL ret = U_FALSE;
 

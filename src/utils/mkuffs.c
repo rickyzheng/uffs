@@ -103,9 +103,9 @@ static int conf_ecc_size = 0; // 0 - Let UFFS choose the size
 
 static const char *g_ecc_option_strings[] = UFFS_ECC_OPTION_STRING;
 
-static struct uffs_MountTableEntrySt conf_mounts[MAX_MOUNT_TABLES] = {0};
-static uffs_Device conf_devices[MAX_MOUNT_TABLES] = {0};
-static char mount_point_name[MAX_MOUNT_TABLES][MAX_MOUNT_POINT_NAME] = {0};
+static struct uffs_MountTableEntrySt conf_mounts[MAX_MOUNT_TABLES] = {{0}};
+static uffs_Device conf_devices[MAX_MOUNT_TABLES] = {{0}};
+static char mount_point_name[MAX_MOUNT_TABLES][MAX_MOUNT_POINT_NAME] = {{0}};
 
 
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0

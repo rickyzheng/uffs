@@ -59,7 +59,7 @@ struct cli_arg {
 };
 
 static BOOL m_exit = FALSE;
-static struct cli_commandset m_cmdset[MAX_CLI_CMDS] = {0};
+static struct cli_commandset m_cmdset[MAX_CLI_CMDS] = {{0}};
 static int m_cmdCount = 0;
 
 static int m_last_return_code = 0;

@@ -71,7 +71,6 @@ int femu_InitFlash(uffs_Device *dev)
 	struct uffs_StorageAttrSt *attr = dev->attr;
 
 	int full_page_size = attr->page_data_size + attr->spare_size;
-	int blk_size = full_page_size * attr->pages_per_block;
 	int total_pages = attr->total_blocks * attr->pages_per_block;
 
 	emu = (uffs_FileEmu *)(dev->attr->_private);

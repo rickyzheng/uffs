@@ -207,8 +207,9 @@ static void uffs_ObjectDevUnLock(uffs_Object *obj)
 	}
 } 
 #else
-#define uffs_ObjectDevLock
-#define uffs_ObjectDevUnLock
+#define uffs_ObjectDevLock(obj) do { obj = obj; } while (0)
+#define uffs_ObjectDevUnLock(obj) do {obj = obj; } while (0)
+
 #endif
 
 

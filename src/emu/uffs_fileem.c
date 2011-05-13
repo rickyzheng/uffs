@@ -54,8 +54,6 @@ static struct uffs_StorageAttrSt g_femu_storage = {0};
 
 static struct uffs_FileEmuSt g_femu_private = {0};
 
-static URET emu_initDevice(uffs_Device *dev);
-
 
 struct uffs_StorageAttrSt * femu_GetStorage()
 {
