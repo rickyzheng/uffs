@@ -41,7 +41,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define PFX "linuxemu:"
+#define PFX "os  : "
 
 int uffs_SemCreate(int n)
 {

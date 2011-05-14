@@ -42,7 +42,7 @@
 #include "uffs/uffs_mtb.h"
 #include <string.h>
 
-#define PFX "dev: "
+#define PFX "dev : "
 
 
 #ifdef CONFIG_USE_PER_DEVICE_LOCK

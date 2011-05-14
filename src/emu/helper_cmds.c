@@ -51,7 +51,7 @@
 #include "uffs/uffs_mtb.h"
 #include "uffs_fileem.h"
 
-#define PFX "cmd: "
+#define PFX "cmd : "
 
 #define MAX_PATH_LENGTH 128
 
@@ -224,7 +224,8 @@ static int cmd_rm(int argc, char *argv[])
 
 	name = argv[1];
 
-	if ((ret = uffs_stat(name, &st)) < 0) {
+	ret = uffs_stat(name, &st);
+	if (ret < 0) {
 		MSGLN("Can't stat '%s'", name);
 		return ret;
 	}
@@ -601,7 +602,12 @@ static int cmd_wl(int argc, char *argv[])
 				(emu->em_monitor_block[n] > emu->em_monitor_block[max] ? n : max)
 			   );
 		MSG(" %4d", emu->em_monitor_block[n]);
-		MSG("%c", uffs_TreeFindErasedNodeByBlock(dev, n) == NULL ? '*' : ' ');
+		if (uffs_TreeFindBadNodeByBlock(dev, n))
+			MSG("%c", 'x');
+		else if (uffs_TreeFindErasedNodeByBlock(dev, n))
+			MSG("%c", ' ');
+		else
+			MSG("%c", '.');
 		if (((i + 1) % NUM_PER_LINE) == 0)
 			MSG("\n");
 	}
@@ -614,7 +620,7 @@ static int cmd_wl(int argc, char *argv[])
 	return 0;
 }
 
-static struct cli_commandset cmdset[] = 
+static const struct cli_command helper_cmds[] = 
 {
     { cmd_format,	"format",		"[<mount>]",		"Format device" },
     { cmd_mkf,		"mkfile",		"<name>",			"create a new file" },
@@ -634,8 +640,11 @@ static struct cli_commandset cmdset[] =
     { NULL, NULL, NULL, NULL }
 };
 
+static struct cli_commandset helper_cmdset = {
+	helper_cmds,
+};
 
 struct cli_commandset * get_helper_cmds()
 {
-	return cmdset;
+	return &helper_cmdset;
 };

@@ -46,7 +46,7 @@
 #include <string.h> 
 #include <stdio.h>
 
-#define PFX "fs:"
+#define PFX "fs  : "
 
 #define GET_OBJ_NODE_SERIAL(obj) \
 	( \

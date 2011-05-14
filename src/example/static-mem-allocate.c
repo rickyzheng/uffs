@@ -49,7 +49,7 @@
 #include "cmdline.h"
 #include "uffs_fileem.h"
 
-#define PFX "static-example: "
+#define PFX "sexp: "
 
 #if CONFIG_USE_STATIC_MEMORY_ALLOCATOR == 0
 int main()

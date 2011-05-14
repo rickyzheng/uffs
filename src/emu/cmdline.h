@@ -49,14 +49,19 @@
 
 typedef int command_t(int argc, char *argv[]);
 
-struct cli_commandset {
+struct cli_command {
     command_t *handler;
     const char *cmd;
     const char *args;
     const char *descr;
 };
 
-void cli_add_commandset(struct cli_commandset *cmds);
+struct cli_commandset {
+	const struct cli_command *cmds;
+	struct cli_commandset *next;
+};
+
+void cli_add_commandset(struct cli_commandset *set);
 int cli_interpret(const char *line);
 void cli_main_entry();
 

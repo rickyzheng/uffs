@@ -42,7 +42,7 @@
 #include "uffs/uffs_mtb.h"
 #include "uffs/uffs_fs.h"
 
-#define PFX "nand-drv:"
+#define PFX "ndrv: "
 
 struct my_nand_chip {
 	void *IOR_ADDR;

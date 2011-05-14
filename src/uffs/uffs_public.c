@@ -44,7 +44,7 @@
 
 #include <string.h>
 
-#define PFX "pub: "
+#define PFX "pub : "
 
 
 int uffs_GetFirstBlockTimeStamp(void)

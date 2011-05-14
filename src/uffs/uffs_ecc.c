@@ -40,7 +40,7 @@
 #include "uffs/uffs_config.h"
 #include <string.h>
 
-#define PFX "ecc: "
+#define PFX "ecc : "
 
 static const u8 bits_tbl[256] = {
 	0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,

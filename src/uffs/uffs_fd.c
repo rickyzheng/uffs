@@ -41,7 +41,7 @@
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs_fd.h"
 #include "uffs/uffs_utils.h"
-#define PFX "fd: "
+#define PFX "fd  : "
 
 
 #define FD_OFFSET		3	//!< just make file handler more like POSIX (0, 1, 2 for stdin/stdout/stderr)

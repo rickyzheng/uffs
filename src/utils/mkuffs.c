@@ -74,7 +74,7 @@ static int conf_command_line_mode = 0;
 static int conf_verbose_mode = 0;
 
 static int conf_exec_script = 0;
-static char script_file_name[256];
+static char script_command[256];
 
 #define DEFAULT_EMU_FILENAME "uffsemfile.bin"
 const char * conf_emu_filename = DEFAULT_EMU_FILENAME;
@@ -148,12 +148,16 @@ BOOL cmdMeminfo(const char *tail)
 #endif
 
 
-static struct cli_commandset basic_cmdset[] = 
+static const struct cli_command basic_cmds[] = 
 {
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
     { cmdMeminfo,	"mem",			"<mount>",			"show native memory allocator infomation" },
 #endif
     { NULL, NULL, NULL, NULL }
+};
+
+static struct cli_commandset basic_cmdset = {
+	basic_cmds,
 };
 
 static void setup_storage(struct uffs_StorageAttrSt *attr)
@@ -359,7 +363,7 @@ static int parse_options(int argc, char *argv[])
 				if (++iarg > argc)
 					usage++;
 				else {
-					strcpy(script_file_name, argv[iarg]);
+					sprintf(script_command, "script %s", argv[iarg]);
 					conf_exec_script = 1;
 				}
 			}
@@ -466,31 +470,6 @@ static void print_params(void)
 	MSGLN("");
 }
 
-static void exec_script()
-{
-	char line_buf[256];
-	char *p;
-	FILE *fp;
-
-	fp = fopen(script_file_name, "r");
-	if (fp) {
-		memset(line_buf, 0, sizeof(line_buf));
-		while (fgets(line_buf, sizeof(line_buf) - 1, fp)) {
-			p = line_buf + sizeof(line_buf) - 1;
-			while (*p == 0 && p > line_buf)
-				p--;
-			while ((*p == '\r' || *p == '\n') && p > line_buf) {
-				*p-- = 0;
-			}
-			if (conf_verbose_mode) 
-				MSGLN("%s", line_buf);
-			cli_interpret(line_buf);
-			memset(line_buf, 0, sizeof(line_buf));
-		}
-		fclose(fp);
-	}
-}
-
 int main(int argc, char *argv[])
 {
 	int ret;
@@ -530,16 +509,16 @@ int main(int argc, char *argv[])
 
 	cli_add_commandset(get_helper_cmds());
 	cli_add_commandset(get_test_cmds());
-	cli_add_commandset(basic_cmdset);
+	cli_add_commandset(&basic_cmdset);
 	if (conf_command_line_mode) {
 		if (conf_exec_script) {
-			exec_script();
+			cli_interpret(script_command);
 		}
 		cli_main_entry();
 	}
 	else {
 		if (conf_exec_script) {
-			exec_script();
+			cli_interpret(script_command);
 		}
 		else {
 			cli_main_entry();

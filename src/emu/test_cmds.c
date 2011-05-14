@@ -48,7 +48,7 @@
 #include "uffs/uffs_badblock.h"
 #include "cmdline.h"
 
-#define PFX "test:"
+#define PFX "test: "
 
 #define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 
@@ -731,7 +731,7 @@ ext:
 }
 
 
-static struct cli_commandset cmdset[] = 
+static const struct cli_command test_cmds[] = 
 {
     { cmd_t1,					"t1",			"<name>",			"test 1" },
     { cmd_t2,					"t2",			NULL,				"test 2" },
@@ -745,10 +745,13 @@ static struct cli_commandset cmdset[] =
     { NULL, NULL, NULL, NULL }
 };
 
+static struct cli_commandset test_cmdset = {
+	test_cmds,
+};
 
 struct cli_commandset * get_test_cmds()
 {
-	return cmdset;
+	return &test_cmdset;
 };
 
 

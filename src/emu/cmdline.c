@@ -43,30 +43,37 @@ on this file might be covered by the GNU General Public License.
 #include "uffs/uffs_fs.h"
 
 #define PROMPT "UFFS>"
-#define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 
+#define PFX "cli : "
+#define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
+#define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 
 #define MAX_CLI_ARGS_BUF_LEN	120
 #define MAX_CLI_ARGS_NUM		20
-
-#define MAX_CLI_CMDS	200
 
 
 struct cli_arg {
 	int argc;
 	char *argv[MAX_CLI_ARGS_NUM];
-	char _buf[MAX_CLI_ARGS_BUF_LEN];
+	char *_buf;
 };
 
 static BOOL m_exit = FALSE;
-static struct cli_commandset m_cmdset[MAX_CLI_CMDS] = {{0}};
+static struct cli_commandset *m_cmdset_head = NULL;
 static int m_cmdCount = 0;
 
 static int m_last_return_code = 0;
 
+static char m_cmd_arg_buf[MAX_CLI_ARGS_BUF_LEN];
 
-static int cmdFind(const char *cmd);
+static const struct cli_command * cli_find(const char *cmd);
 static int cmd_help(int argc, char *argv[]);
+
+
+#define FOR_EACH_CLI_CMD(set, cmd) \
+	for (set = m_cmdset_head; set && set->cmds; set = set->next) \
+		for (cmd = set->cmds; cmd && cmd->handler; cmd++)
+
 
 /** exec command <n> times:
  *		exec <n> <cmd> [...]
@@ -74,7 +81,7 @@ static int cmd_help(int argc, char *argv[]);
 static int cmd_exec(int argc, char *argv[])
 {
 	int n = 0;
-	int idx;
+	const struct cli_command *cmd;
 
 	if (argc < 3)
 		return CLI_INVALID_ARG;
@@ -83,15 +90,15 @@ static int cmd_exec(int argc, char *argv[])
 	if (n <= 0)
 		return CLI_INVALID_ARG;
 
-	idx = cmdFind(argv[2]);
-	if (idx < 0) {
-		MSG("Unknown command '%s'\n", argv[2]);
+	cmd = cli_find(argv[2]);
+	if (cmd == NULL) {
+		MSG("Unknown command '%s'", argv[2]);
 		return -1;
 	}
 	else {
 		argv += 2;
 		while (n-- >= 0) {
-			if (m_cmdset[idx].handler(argc - 2, argv) != 0)
+			if (cmd->handler(argc - 2, argv) != 0)
 				return -1;
 		}
 	}
@@ -107,7 +114,7 @@ static int cmd_exec(int argc, char *argv[])
 static int cmd_expect(int argc, char *argv[])
 {
 	int x = 0;
-	int idx;
+	const struct cli_command *cmd;
 	int ret;
 
 	if (argc < 2)
@@ -116,13 +123,13 @@ static int cmd_expect(int argc, char *argv[])
 		return CLI_INVALID_ARG;
 
 	if (argc > 2) {
-		idx = cmdFind(argv[2]);
-		if (idx < 0) {
-			MSG("Unknown command '%s'\n", argv[2]);
+		cmd = cli_find(argv[2]);
+		if (cmd == NULL) {
+			MSG("Unknown command '%s'", argv[2]);
 			return -1;
 		}
 		argv += 2;
-		ret = m_cmdset[idx].handler(argc - 2, argv);
+		ret = cmd->handler(argc - 2, argv);
 	}
 	else {
 		ret = m_last_return_code;
@@ -136,18 +143,20 @@ static int cmd_expect(int argc, char *argv[])
  */
 static int cmd_failed(int argc, char *argv[])
 {
-	int idx;
+	const struct cli_command *cmd;
 
 	if (argc < 2)
 		return CLI_INVALID_ARG;
 
-	idx = cmdFind(argv[1]);
-	if (idx < 0) {
-		MSG("Unknown command '%s'\n", argv[1]);
+	cmd = cli_find(argv[1]);
+	if (cmd == NULL) {
+		MSG("Unknown command '%s'", argv[1]);
 		return -1;
 	}
-	argv++;
-	return (m_last_return_code == 0 ? 0 : m_cmdset[idx].handler(argc - 1, argv));
+	else {
+		argv++;
+		return (m_last_return_code == 0 ? 0 : cmd->handler(argc - 1, argv));
+	}
 }
 
 /** print last command return code.
@@ -155,7 +164,7 @@ static int cmd_failed(int argc, char *argv[])
  */
 static int cmd_at(int argc, char *argv[])
 {
-	MSG("%d\n", m_last_return_code);
+	MSG("%d", m_last_return_code);
 	return 0;
 }
 
@@ -170,7 +179,48 @@ static int cmd_exit(int argc, char *argv[])
 	return 0;
 }
 
-static struct cli_commandset default_cmdset[] = 
+/** run local file system's script
+ *		script <filename>
+ */
+static int cmd_script(int argc, char *argv[])
+{
+	char line_buf[256];
+	char *p;
+	FILE *fp;
+	const char *name;
+	int ret = 0;
+
+	if (argc < 2)
+		return CLI_INVALID_ARG;
+
+	name = argv[1];
+
+	fp = fopen(name, "r");
+	if (fp) {
+		memset(line_buf, 0, sizeof(line_buf));
+		while (fgets(line_buf, sizeof(line_buf) - 1, fp)) {
+			p = line_buf + sizeof(line_buf) - 1;
+			while (*p == 0 && p > line_buf)
+				p--;
+			while ((*p == '\r' || *p == '\n') && p > line_buf) {
+				*p-- = 0;
+			}
+			ret = cli_interpret(line_buf);
+			memset(line_buf, 0, sizeof(line_buf));
+		}
+		fclose(fp);
+	}
+	else {
+		MSG("Can't open host script file '%s' for read\n", name);
+		ret = -1;
+	}
+
+	return ret;
+}
+
+
+
+static const struct cli_command default_cmds[] = 
 {
 	{ cmd_help,		"help|?",	"[<command>]",		"show commands or help on one command" },
 	{ cmd_exit,		"exit",		NULL,				"exit command line" },
@@ -179,8 +229,12 @@ static struct cli_commandset default_cmdset[] =
 	{ cmd_at,		"@",		NULL,				"print return code of last command" },
 	{ cmd_nop,		"#",		"[...]",			"do nothing" },
 	{ cmd_expect,	"expect",	"<x> [<cmd>] [...]","expect <x> return from <cmd>(or last cmd if <cmd> not given)" },
-
+	{ cmd_script,   "script",   "<file>",           "run host script <file>" },
 	{ NULL, NULL, NULL, NULL }
+};
+
+static struct cli_commandset default_cmdset = {
+	default_cmds,
 };
 
 static BOOL match_cmd(const char *src, int start, int end, const char *des)
@@ -220,47 +274,49 @@ static BOOL check_cmd(const char *cmds, const char *cmd)
 	return FALSE;
 }
 
-static int cmdFind(const char *cmd)
+static const struct cli_command * cli_find(const char *cmd)
 {
-	int icmd;
+	struct cli_commandset *work;
+	const struct cli_command *s;
 
-	for (icmd = 0; m_cmdset[icmd].cmd != NULL; icmd++) {
-		//MSG("cmdFind: Check cmd: %s with %s\n", cmd, m_cmdset[icmd].cmd);
-		if (check_cmd(m_cmdset[icmd].cmd, cmd) == TRUE)
-			return icmd;
+	FOR_EACH_CLI_CMD(work, s) {
+		if (check_cmd(s->cmd, cmd) == TRUE)
+			return s;
 	}
-	return -1;
+
+	return NULL;
 }
 
-static void show_cmd_usage(int icmd)
+static void show_cmd_usage(const struct cli_command *cmd)
 {
-	MSG("%s: %s\n", m_cmdset[icmd].cmd, m_cmdset[icmd].descr);
-	MSG("Usage: %s %s\n", m_cmdset[icmd].cmd, m_cmdset[icmd].args ? m_cmdset[icmd].args : "");
+	MSG("%s: %s\n", cmd->cmd, cmd->descr);
+	MSG("Usage: %s %s\n", cmd->cmd, cmd->args ? cmd->args : "");
 }
 
 static int cmd_help(int argc, char *argv[])
 {
-	int icmd;
-	int i;
+	const struct cli_command *cmd;
+	struct cli_commandset *cmdset;
+	int i, n;
 
 	if (argc < 2)  {
 		MSG("Available commands:\n");
-		for (icmd = 0; m_cmdset[icmd].cmd != NULL; icmd++) {
-			MSG("%s", m_cmdset[icmd].cmd);
-			for (i = strlen(m_cmdset[icmd].cmd); i%10; i++, MSG(" "));
-
-			//if ((icmd & 7) == 7 || m_cmdset[icmd+1].cmd == NULL) MSG("\n");
+		n = 0;
+		FOR_EACH_CLI_CMD(cmdset, cmd) {
+			MSG("%s", cmd->cmd);
+			for (i = strlen(cmd->cmd); i%10; i++, MSG(" "));
+			if ((++n % 5) == 0) MSG("\n");
 		}
 		MSG("\n");
 	}
 	else {
-		icmd = cmdFind(argv[1]);
-		if (icmd < 0) {
+		cmd = cli_find(argv[1]);
+		if (cmd == NULL) {
 			MSG("No such command\n");
 			return -1;
 		}
 		else {
-			show_cmd_usage(icmd);
+			show_cmd_usage(cmd);
 		}
 	}
 
@@ -272,10 +328,7 @@ static void cli_parse_args(const char *cmd, struct cli_arg *arg)
 	char *p;
 
 	if (arg) {
-
-		memset(arg, 0, sizeof(struct cli_arg));
 		arg->argc = 0;
-
 		if (cmd) {
 			p = arg->_buf;
 			while (*cmd && arg->argc < MAX_CLI_ARGS_NUM && (p - arg->_buf < MAX_CLI_ARGS_BUF_LEN)) {
@@ -297,21 +350,25 @@ static void cli_parse_args(const char *cmd, struct cli_arg *arg)
 
 int cli_interpret(const char *line)
 {
-	struct cli_arg arg;
-	int idx;
+	struct cli_arg arg = {0};
+	const struct cli_command *cmd;
 	int ret = -1;
+
+	memset(m_cmd_arg_buf, 0, sizeof(m_cmd_arg_buf));
+	arg._buf = m_cmd_arg_buf;
 
 	cli_parse_args(line, &arg);
 
 	if (arg.argc > 0) {
-		idx = cmdFind(arg.argv[0]);
-		if (idx < 0) {
+		cmd = cli_find(arg.argv[0]);
+		if (cmd == NULL) {
 			MSG("Unknown command '%s'\n", arg.argv[0]);
 		}
 		else {
-			ret = m_cmdset[idx].handler(arg.argc, arg.argv);
+			ret = cmd->handler(arg.argc, arg.argv);
 			if (ret == CLI_INVALID_ARG) {
-				show_cmd_usage(idx);
+				MSG("\n");
+				show_cmd_usage(cmd);
 			}
 		}
 	}
@@ -321,12 +378,11 @@ int cli_interpret(const char *line)
 	return ret;
 }
 
-void cli_add_commandset(struct cli_commandset *cmds)
+void cli_add_commandset(struct cli_commandset *set)
 {
-	int icmd;
-
-	for (icmd = 0; cmds[icmd].cmd != NULL; icmd++) {
-		memcpy(&(m_cmdset[m_cmdCount++]), &(cmds[icmd]), sizeof(struct cli_commandset));
+	if (set) {
+		set->next = m_cmdset_head;
+		m_cmdset_head = set;
 	}
 }
 
@@ -336,10 +392,12 @@ void cli_main_entry()
 	int linelen = 0;
 
 	MSG("$ ");
-	cli_add_commandset(default_cmdset);
+	cli_add_commandset(&default_cmdset);
 
 	while (!m_exit) {
 		char ch;
+		if (linelen >= sizeof(line))
+			continue;
 		ch = getc(stdin);
 		switch (ch) {
 		case 8:
@@ -356,8 +414,8 @@ void cli_main_entry()
 			if (linelen > 0) {
 				line[linelen] = 0;
 				cli_interpret(line);
+				linelen = 0;
 			}
-			linelen = 0;
 			MSG("$ ");
 			break;
 

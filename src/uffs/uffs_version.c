@@ -40,7 +40,7 @@
 #include "uffs/uffs_config.h"
 
 #include <stdio.h>
-#define PFX "ver: "
+#define PFX "ver : "
 
 
 static char version_buf[16];

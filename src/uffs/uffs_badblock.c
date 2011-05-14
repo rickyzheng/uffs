@@ -42,7 +42,7 @@
 #include "uffs/uffs_badblock.h"
 #include <string.h>
 
-#define PFX "bbl:  "
+#define PFX "bbl : "
 
 void uffs_BadBlockInit(uffs_Device *dev)
 {
