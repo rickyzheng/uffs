@@ -63,6 +63,8 @@ struct cli_commandset {
 
 void cli_add_commandset(struct cli_commandset *set);
 int cli_interpret(const char *line);
+int cli_env_get(int env);
+int cli_env_set(int env, int val);
 void cli_main_entry();
 
 #define u_assert(x) \
@@ -70,6 +72,11 @@ void cli_main_entry();
 			(uffs_PerrorRaw(UFFS_ERR_NORMAL, \
 				"Assert failed at %s:%s:%d: '%s' is not true.\n", \
 				__FILE__, __FUNCTION__, __LINE__, #x), FALSE))
+
+
+#define CHK_ARGC(min, max) \
+	if (argc < min || (max > 0 && argc > max)) \
+		return CLI_INVALID_ARG
 
 #endif
 

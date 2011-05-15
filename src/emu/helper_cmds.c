@@ -58,6 +58,7 @@
 #define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 #define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 
+/** format [<mount>] */
 static int cmd_format(int argc, char *argv[])
 {
 	URET ret;
@@ -92,15 +93,14 @@ static int cmd_format(int argc, char *argv[])
 	return 0;
 }
 
+/** mkf <file> */
 static int cmd_mkf(int argc, char *argv[])
 {
 	int fd;
 	const char *name;
 	int oflags = UO_RDWR | UO_CREATE;
 
-	if (argc == 1) {
-		return CLI_INVALID_ARG;
-	}
+	CHK_ARGC(2, 2);
 
 	name = argv[1];
 	fd = uffs_open(name, oflags);
@@ -116,13 +116,12 @@ static int cmd_mkf(int argc, char *argv[])
 	return 0;
 }
 
+/** mkdir <dir> */
 static int cmd_mkdir(int argc, char *argv[])
 {
 	const char *name;
 
-	if (argc == 1) {
-		return CLI_INVALID_ARG;
-	}
+	CHK_ARGC(2, 0);
 
 	name = argv[1];
 	
@@ -164,6 +163,7 @@ static int cmd_cd(int argc, char *argv[])
 	return 0;
 }
 
+/** ls [<dir>] */
 static int cmd_ls(int argc, char *argv[])
 {
 	uffs_DIR *dirp;
@@ -171,17 +171,19 @@ static int cmd_ls(int argc, char *argv[])
 	struct uffs_stat stat_buf;
 	int count = 0;
 	char buf[MAX_PATH_LENGTH+2];
-	char *name = argv[1];
+	const char *name = "/";
 	char *sub;
+	int ret = 0;
 
-	if (name == NULL) {
-		MSGLN("Must provide file/dir name.");
-		return CLI_INVALID_ARG;
-	}
+	CHK_ARGC(1, 2);
+
+	if (argc > 1)
+		name = argv[1];
 
 	dirp = uffs_opendir(name);
 	if (dirp == NULL) {
 		MSGLN("Can't open '%s' for list", name);
+		ret = -1;
 	}
 	else {
 		MSG("------name-----------size---------serial-----" TENDSTR);
@@ -211,16 +213,17 @@ static int cmd_ls(int argc, char *argv[])
 		MSG("Total: %d objects." TENDSTR, count);
 	}
 
-	return 0;
+	return ret;
 }
 
+/** rm <obj> */
 static int cmd_rm(int argc, char *argv[])
 {
 	const char *name = NULL;
 	int ret = 0;
 	struct uffs_stat st;
 
-	if (argc < 2) return CLI_INVALID_ARG;
+	CHK_ARGC(2, 2);
 
 	name = argv[1];
 
@@ -245,15 +248,14 @@ static int cmd_rm(int argc, char *argv[])
 	return ret;
 }
 
+/** ren|mv <old> <new> */
 static int cmd_ren(int argc, char *argv[])
 {
 	const char *oldname;
 	const char *newname;
 	int ret;
 
-	if (argc < 3) {
-		return CLI_INVALID_ARG;
-	}
+	CHK_ARGC(3, 3);
 
 	oldname = argv[1];
 	newname = argv[2];
@@ -280,6 +282,7 @@ static void dump_msg_to_stdout(struct uffs_DeviceSt *dev, const char *fmt, ...)
 	va_end(args);
 }
 
+/** dump [<mount>] */
 static int cmd_dump(int argc, char *argv[])
 {
 	uffs_Device *dev;
@@ -312,6 +315,7 @@ static int cmd_dump(int argc, char *argv[])
 	return 0;
 }
 
+/** st [<mount>] */
 static int cmd_st(int argc, char *argv[])
 {
 	uffs_Device *dev;
@@ -379,7 +383,7 @@ static int cmd_st(int argc, char *argv[])
 
 }
 
-
+/** cp <src> <des> */
 static int cmd_cp(int argc, char *argv[])
 {
 	const char *src;
@@ -391,9 +395,7 @@ static int cmd_cp(int argc, char *argv[])
 	FILE *fp1 = NULL, *fp2 = NULL;
 	int ret = -1;
 
-	if (argc < 3) {
-		return CLI_INVALID_ARG;
-	}
+	CHK_ARGC(3, 3);
 
 	src = argv[1];
 	des = argv[2];
@@ -478,6 +480,7 @@ fail_ext:
 	return ret;
 }
 
+/** cat <file> [<offset>] [<size>] */
 static int cmd_cat(int argc, char *argv[])
 {
 	int fd;
@@ -486,9 +489,7 @@ static int cmd_cat(int argc, char *argv[])
 	int start = 0, size = 0, printed = 0, n, len;
 	int ret = -1;
 
-	if (argc < 2) {
-		return CLI_INVALID_ARG;
-	}
+	CHK_ARGC(2, 4);
 
 	name = argv[1];
 
@@ -532,7 +533,9 @@ fail:
 	return ret;
 }
 
-
+/** show mount table
+ *		mount
+ */
 static int cmd_mount(int argc, char *argv[])
 {
 	uffs_MountTable *tab = uffs_GetMountTable();
@@ -545,15 +548,15 @@ static int cmd_mount(int argc, char *argv[])
 	return 0;
 }
 
-/* inspect buffers */
+/** inspect buffers
+ *		inspb [<mount>]
+ */
 static int cmd_inspb(int argc, char *argv[])
 {
 	uffs_Device *dev;
 	const char *mount = "/";
 
-	if (argc > 1) {
-		mount = argv[1];
-	}
+	CHK_ARGC(1, 2);
 
 	dev = uffs_GetDeviceFromMountPoint(mount);
 	if (dev == NULL) {
@@ -567,7 +570,9 @@ static int cmd_inspb(int argc, char *argv[])
 
 }
 
-/* print block wear-leveling information */
+/** print block wear-leveling information
+ *		wl [<mount>]
+ */
 static int cmd_wl(int argc, char *argv[])
 {
 	const char *mount = "/";
@@ -578,6 +583,8 @@ static int cmd_wl(int argc, char *argv[])
 	u32 n;
 
 #define NUM_PER_LINE	10
+
+	CHK_ARGC(1, 2);
 
 	if (argc > 1) {
 		mount = argv[1];
