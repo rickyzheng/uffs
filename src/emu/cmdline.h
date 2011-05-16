@@ -63,8 +63,8 @@ struct cli_commandset {
 
 void cli_add_commandset(struct cli_commandset *set);
 int cli_interpret(const char *line);
-int cli_env_get(int env);
-int cli_env_set(int env, int val);
+int cli_env_get(char env);
+int cli_env_set(char env, int val);
 void cli_main_entry();
 
 #define u_assert(x) \

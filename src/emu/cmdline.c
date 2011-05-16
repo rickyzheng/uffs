@@ -50,20 +50,18 @@ on this file might be covered by the GNU General Public License.
 
 #define MAX_CLI_ARGS_BUF_LEN	120
 #define MAX_CLI_ARGS_NUM		20
-#define MAX_CLI_ENV_NUM			10
+#define MAX_CLI_ENV_NUM			11		// '?', '0' - '9'
 
 
 struct cli_arg {
 	int argc;
 	char *argv[MAX_CLI_ARGS_NUM];
-	char *_buf;
+	char _buf[MAX_CLI_ARGS_BUF_LEN];
 };
 
 static BOOL m_exit = FALSE;
 static BOOL m_abort = FALSE;
 static struct cli_commandset *m_cmdset_head = NULL;
-
-static char m_cmd_arg_buf[MAX_CLI_ARGS_BUF_LEN];	// cli arg buffer
 
 // Note: last command return code stored in env 0.
 static int m_cli_envs[MAX_CLI_ENV_NUM] = {0};	// cli environment variables
@@ -78,32 +76,37 @@ static int cmd_help(int argc, char *argv[]);
 
 
 
-static int cli_env_to_idx(const char c)
+static int cli_env_to_idx(char env)
 {
-	if (c >= '0' && c <= '9') {
-		return c - '0';
+	int idx = -1;
+
+	if (env >= '0' && env <= '9') {
+		idx = env - '0' + 1;
 	}
-	else
-		return -1;
+	else if (env == '?') {
+		idx = 0;
+	}
+
+	return idx;
 }
 
-int cli_env_set(int env, int val)
+int cli_env_set(char env, int val)
 {
-	if (env >= 0 && env < MAX_CLI_ENV_NUM) {
-		m_cli_envs[env] = val;
+	int idx = cli_env_to_idx(env);
+
+	if (idx >= 0) {
+		m_cli_envs[idx] = val;
 		return 0;
 	}
 	else
 		return -1;
 }
 
-int cli_env_get(int env)
+int cli_env_get(char env)
 {
-	if (env >= 0 && env < MAX_CLI_ENV_NUM) {
-		return m_cli_envs[env];
-	}
-	else
-		return -1;
+	int idx = cli_env_to_idx(env);
+
+	return idx >= 0 ? m_cli_envs[idx] : 0;
 }
 
 /** exec command <n> times:
@@ -138,35 +141,47 @@ static int cmd_exec(int argc, char *argv[])
 }
 
 /** 
- * if <cmd> is given, run <cmd>, and check <cmd> return against <x>.
- * if <cmd> is not given, check last return code against <x>.
- *		expect <x> [<cmd>] [...]
+ * test expression
+ *	test <a> <op> <b>
+ * for example:
+ *	test 1 > 0    ==> return 0
+ *	test 1 <= 0   ==> return -1
  */
-static int cmd_expect(int argc, char *argv[])
+static int cmd_test(int argc, char *argv[])
 {
-	int x = 0;
-	const struct cli_command *cmd;
-	int ret;
+	int a, b;
+	char *op;
+	BOOL tst = FALSE;
 
-	CHK_ARGC(2, 0);
+	CHK_ARGC(4, 4);
 
-	if (sscanf(argv[1], "%d", &x) != 1)
+	if (sscanf(argv[1], "%d", &a) != 1 ||
+		sscanf(argv[3], "%d", &b) != 1)
+	{
 		return CLI_INVALID_ARG;
+	}
 
-	if (argc > 2) {
-		cmd = cli_find(argv[2]);
-		if (cmd == NULL) {
-			MSG("Unknown command '%s'\n", argv[2]);
-			return -1;
-		}
-		argv += 2;
-		ret = cmd->handler(argc - 2, argv);
+	op = argv[2];
+	if (!strcmp(op, ">")) {
+		tst = (a > b);
+	}
+	else if (!strcmp(op, "<")) {
+		tst = (a < b);
+	}
+	else if (!strcmp(op, "==")) {
+		tst = (a == b);
+	}
+	else if (!strcmp(op, ">=")) {
+		tst = (a >= b);
+	}
+	else if (!strcmp(op, "<=")) {
+		tst = (a <= b);
 	}
 	else {
-		ret = cli_env_get(0);
+		return CLI_INVALID_ARG;
 	}
-
-	return (ret == x ? 0 : -1);
+	
+	return tst ? 0 : -1;
 }
 
 /** if last command failed (return != 0), run <cmd>
@@ -185,7 +200,7 @@ static int cmd_failed(int argc, char *argv[])
 	}
 	else {
 		argv++;
-		return (cli_env_get(0) == 0 ? 0 : cmd->handler(argc - 1, argv));
+		return (cli_env_get('?') == 0 ? 0 : cmd->handler(argc - 1, argv));
 	}
 }
 
@@ -194,10 +209,10 @@ static int cmd_failed(int argc, char *argv[])
  */
 static int cmd_echo(int argc, char *argv[])
 {
-	int i, idx;
+	int i;
+
 	for (i = 1; i < argc; i++) {
-		idx = cli_env_to_idx(argv[i][0]);
-		MSG("%s%d", i > 1 ? " " : "", cli_env_get(idx));
+		MSG("%s%s", i > 1 ? " " : "", argv[i]);
 	}
 	MSG("\n");
 
@@ -205,21 +220,17 @@ static int cmd_echo(int argc, char *argv[])
 }
 
 /** set cli environment variable
- *		set <env_idx> <value>
+ *		set <env> <value>
  */
 static int cmd_set(int argc, char *argv[])
 {
-	int idx, val;
+	int val;
 	int ret = -1;
 
 	CHK_ARGC(3, 0);
 
-	idx = cli_env_to_idx(argv[1][0]);
-	if (idx >= 0 && idx < MAX_CLI_ENV_NUM) {
-		if (sscanf(argv[2], "%d", &val) == 1) {
-			cli_env_set(idx, val);
-			ret = 0;
-		}
+	if (sscanf(argv[2], "%d", &val) == 1) {
+		ret = cli_env_set(argv[1][0], val);
 	}
 
 	return ret;
@@ -237,10 +248,14 @@ static int cmd_exit(int argc, char *argv[])
 }
 
 /** Abort current script
- *		abort
+ *		abort [...]
  */
 static int cmd_abort(int argc, char *argv[])
 {
+	if (argc > 1) {
+		cmd_echo(argc, argv);
+	}
+
 	m_abort = TRUE;
 
 	return 0;
@@ -298,12 +313,12 @@ static const struct cli_command default_cmds[] =
 	{ cmd_exit,		"exit",		NULL,				"exit command line" },
 	{ cmd_exec,		"*",		"<n> <cmd> [...]>",	"run <cmd> <n> times" },
 	{ cmd_failed,	"!",		"<cmd> [...]",		"run <cmd> if last command failed" },
-	{ cmd_nop,		"#",		"[...]",			"print passed args, do nothing" },
-	{ cmd_echo,		"echo",		"[<env> ...]",		"print env variable(s)" },
+	{ cmd_nop,		"#",		"[...]",			"do nothing" },
+	{ cmd_echo,		"echo",		"[...]",			"print messages" },
 	{ cmd_set,		"set",		"<env> <val>",		"set env variable" },
-	{ cmd_expect,	"expect",	"<x> [<cmd>] [...]","expect <x> return from <cmd>(or last cmd if <cmd> not given)" },
+	{ cmd_test,		"test",		"<a> <op> <b>",		"test expression: <a> <op> <b>" },
 	{ cmd_script,   "script",   "<file>",           "run host script <file>" },
-	{ cmd_abort,	"abort",	NULL,				"abort script" },
+	{ cmd_abort,	"abort",	NULL,				"abort from the running script" },
 	{ NULL, NULL, NULL, NULL }
 };
 
@@ -415,7 +430,7 @@ static void cli_parse_args(const char *cmd, struct cli_arg *arg)
 					if (*cmd == '$') {
 						// command env replacement
 						cmd++;
-						val = cli_env_get(cli_env_to_idx(*cmd++));
+						val = cli_env_get(*cmd++);
 						if (p - arg->_buf < MAX_CLI_ARGS_BUF_LEN - 12) {  // 12 is long enough for 32bit 'int'
 							p += sprintf(p, "%d", val & 0xFFFFFFFF);
 						}
@@ -439,9 +454,6 @@ int cli_interpret(const char *line)
 	const struct cli_command *cmd;
 	int ret = -1;
 
-	memset(m_cmd_arg_buf, 0, sizeof(m_cmd_arg_buf));
-	arg._buf = m_cmd_arg_buf;
-
 	cli_parse_args(line, &arg);
 
 	if (arg.argc > 0) {
@@ -458,7 +470,7 @@ int cli_interpret(const char *line)
 		}
 	}
 
-	cli_env_set(0, ret);
+	cli_env_set('?', ret);	// $? = last command return code
 
 	return ret;
 }

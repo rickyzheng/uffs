@@ -50,6 +50,7 @@
 
 #define PFX "test: "
 
+#define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 #define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 
 static URET do_write_test_file(int fd, int size)
@@ -730,6 +731,180 @@ ext:
 
 }
 
+/**
+ * Open <file> with <oflag>, save fd to $1
+ *
+ *		t_open <oflag> <file>
+ */
+static int cmd_topen(int argc, char *argv[])
+{
+	int fd;
+	const char *name;
+	char *p;
+	int oflag = 0;
+
+	CHK_ARGC(3, 3);
+
+	name = argv[2];
+	p = argv[1];
+	while(*p) {
+		switch(*p++) {
+		case 'a':
+			oflag |= UO_APPEND;
+			break;
+		case 'c':
+			oflag |= UO_CREATE;
+			break;
+		case 't':
+			oflag |= UO_TRUNC;
+			break;
+		case 'w':
+			oflag |= UO_RDWR;
+			break;
+		case 'r':
+			oflag |= UO_RDONLY;
+			break;
+		}
+	}
+
+	fd = uffs_open(name, oflag);
+
+	if (fd >= 0) {
+		cli_env_set('1', fd);
+		return 0;
+	}
+	else {
+		return -1;
+	}
+}
+
+/**
+ * seek file pointer
+ *	t_seek <fd> <offset> [<origin>]
+ * if success, $1 = file position after seek
+ */
+static int cmd_tseek(int argc, char *argv[])
+{
+	int origin = USEEK_SET;
+	int offset;
+	int fd;
+	int ret;
+
+	CHK_ARGC(3, 4);
+
+	if (sscanf(argv[1], "%d", &fd) != 1 ||
+		sscanf(argv[2], "%d", &offset) != 1)
+	{
+		return CLI_INVALID_ARG;
+	}
+
+	if (argc > 3) {
+		switch(argv[3][0]) {
+		case 's':
+			origin = USEEK_SET;
+			break;
+		case 'c':
+			origin = USEEK_CUR;
+			break;
+		case 'e':
+			origin = USEEK_END;
+			break;
+		default:
+			return CLI_INVALID_ARG;
+		}
+	}
+
+	ret = uffs_seek(fd, offset, origin);
+	if (ret >= 0) {
+		cli_env_set('1', ret);
+		return 0;
+	}
+	else {
+		return -1;
+	}
+}
+
+/**
+ * close file
+ *	t_close <fd>
+ */
+static int cmd_tclose(int argc, char *argv[])
+{
+	int fd;
+
+	CHK_ARGC(2, 2);
+
+	if (sscanf(argv[1], "%d", &fd) == 1) {
+		return uffs_close(fd);
+	}
+	else
+		return -1;
+}
+
+/**
+ * write file
+ *	t_write <fd> <txt> [..]
+ */
+static int cmd_twrite(int argc, char *argv[])
+{
+	int fd;
+	int i, len;
+	int ret = 0;
+
+	CHK_ARGC(3, 0);
+	if (sscanf(argv[1], "%d", &fd) != 1) {
+		return -1;
+	}
+	else {
+		for (i = 2; i < argc; i++) {
+			len = strlen(argv[i]);
+			if (uffs_write(fd, argv[i], len) != len) {
+				ret = -1;
+				break;
+			}
+		}
+	}
+
+	return ret;
+}
+
+/**
+ * read and check file
+ *	t_read <fd> <txt>
+ */
+static int cmd_tread(int argc, char *argv[])
+{
+	int fd;
+	int len, n;
+	int ret = 0;
+	char buf[64];
+	char *p;
+
+	CHK_ARGC(3, 3);
+
+	if (sscanf(argv[1], "%d", &fd) != 1) {
+		return -1;
+	}
+	else {
+		len = strlen(argv[2]);
+		n = 0;
+		p = argv[2];
+		while (n < len) {
+			n = (len > sizeof(buf) ? sizeof(buf) : len);
+			if (uffs_read(fd, buf, n) != n ||
+				memcmp(buf, p, n) != 0) {
+				ret = -1;
+				break;
+			}
+			len -= n;
+			p += n;
+		}
+	}
+
+	return ret;
+}
+
+
 
 static const struct cli_command test_cmds[] = 
 {
@@ -742,6 +917,13 @@ static const struct cli_command test_cmds[] =
     { cmd_TestFormat,			"t_format",		NULL,				"test format file system" },
 	{ cmd_TestPopulateFiles,	"t_pfs",		"[<start> [<n>]]",	"test populate <n> files under <start>" },
 	{ cmd_VerifyFile,			"t_vf",			"<file> [<noecc>]", "verify file" },
+
+	{ cmd_topen,				"t_open",		"<oflg> <file>",	"open file, fd save to $1", },
+	{ cmd_tread,				"t_read",		"<fd> <txt>",		"read <fd> and check against <txt>", },
+	{ cmd_twrite,				"t_write",		"<fd> <txt> [...]",	"write <fd>", },
+	{ cmd_tseek,				"t_seek",		"<fd> <offset> [<origin>]",	"seek <fd> file pointer to <offset> from <origin>", },
+	{ cmd_tclose,				"t_close",		"<fd>",				"close <fd>", },
+
     { NULL, NULL, NULL, NULL }
 };
 
