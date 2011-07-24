@@ -75,6 +75,65 @@ static int cmd_help(int argc, char *argv[]);
 		for (cmd = set->cmds; cmd && cmd->handler; cmd++)
 
 
+/*** filter out leading and tailing spaces, discard comments
+ * return pointer to start of new command line
+ */
+static char * cli_process_line(char *p)
+{
+	char *s;
+	char *x;
+
+	if (!p)
+		return NULL;
+
+	// skip leading spaces
+	while (p && (*p == ' ' || *p == '\t'))
+		p++;
+
+	for (s = x = p; *p; x++, p++) {
+		switch(*p) {
+		case '\\':
+			p++;
+			if (*p) {
+				switch(*p) {
+				case 'n':
+					*x = '\n';
+					break;
+				case 'r':
+					*x = '\r';
+					break;
+				case 't':
+					*x = '\t';
+					break;
+				case 'b':
+					*x = '\b';
+					break;
+				default:
+					if (*p >= '0' && *p <= '9')
+						*x = *p - '0';
+					else
+						*x = *p;
+					break;
+				}
+			}
+			break;
+		default:
+			if (*p == '\r' || *p == '\n' || *p == '#') *p = '\0';
+			*x = *p;
+			break;
+		}
+
+		if (*p == 0)
+			break;
+	}
+
+	// trim tailing spaces
+	p--;
+	while (p > s && (*p == ' ' || *p == '\t'))
+		*p-- = '\0';
+
+	return s;
+}
 
 static int cli_env_to_idx(char env)
 {
@@ -236,11 +295,6 @@ static int cmd_set(int argc, char *argv[])
 	return ret;
 }
 
-static int cmd_nop(int argc, char *argv[])
-{
-	return 0;
-}
-
 static int cmd_exit(int argc, char *argv[])
 {
 	m_exit = TRUE;
@@ -290,7 +344,9 @@ static int cmd_script(int argc, char *argv[])
 			while ((*p == '\r' || *p == '\n') && p > line_buf) {
 				*p-- = 0;
 			}
-			ret = cli_interpret(line_buf);
+			p = cli_process_line(line_buf);
+			if (*p)
+				ret = cli_interpret(p);
 			memset(line_buf, 0, sizeof(line_buf));
 		}
 		fclose(fp);
@@ -313,7 +369,6 @@ static const struct cli_command default_cmds[] =
 	{ cmd_exit,		"exit",		NULL,				"exit command line" },
 	{ cmd_exec,		"*",		"<n> <cmd> [...]>",	"run <cmd> <n> times" },
 	{ cmd_failed,	"!",		"<cmd> [...]",		"run <cmd> if last command failed" },
-	{ cmd_nop,		"#",		"[...]",			"do nothing" },
 	{ cmd_echo,		"echo",		"[...]",			"print messages" },
 	{ cmd_set,		"set",		"<env> <val>",		"set env variable" },
 	{ cmd_test,		"test",		"<a> <op> <b>",		"test expression: <a> <op> <b>" },
@@ -487,6 +542,7 @@ void cli_main_entry()
 {
 	char line[80];
 	int linelen = 0;
+	char *p;
 
 	MSG("$ ");
 	cli_add_commandset(&default_cmdset);
@@ -510,7 +566,9 @@ void cli_main_entry()
 			//MSG("\r\n");
 			if (linelen > 0) {
 				line[linelen] = 0;
-				cli_interpret(line);
+				p = cli_process_line(line);
+				if (*p)
+					cli_interpret(p);
 				linelen = 0;
 			}
 			MSG("$ ");
