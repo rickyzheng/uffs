@@ -68,7 +68,7 @@
  *       but few writing performance will be improved when this 
  *       value is become larger than 'max pages per block'
  */
-#define MAX_PAGE_BUFFERS		50
+#define MAX_PAGE_BUFFERS		20
 
 
 /** 
@@ -92,7 +92,7 @@
  *
  *       the smaller the value the frequently the buffer will be flushed.
  */
-#define MAX_DIRTY_PAGES_IN_A_BLOCK	32
+#define MAX_DIRTY_PAGES_IN_A_BLOCK	17
 
 /**
  * \def MAX_DIRTY_BUF_GROUPS

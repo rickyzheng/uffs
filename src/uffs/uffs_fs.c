@@ -1508,9 +1508,6 @@ URET uffs_DeleteObject(const char * name, int *err)
 		}
 	}
 
-	block = GET_BLOCK_FROM_NODE(obj);
-	node = obj->node;
-
 	// before erase the block, we need to take care of the buffer ...
 	uffs_BufFlushAll(dev);
 
@@ -1535,9 +1532,13 @@ URET uffs_DeleteObject(const char * name, int *err)
 
 	//TODO: need to take care of other obj->node ?
 
+	block = GET_BLOCK_FROM_NODE(obj);
+	node = obj->node;
+
 	uffs_BreakFromEntry(dev, obj->type, node);
 	uffs_FlashEraseBlock(dev, block);
 	node->u.list.block = block;
+
 	if (HAVE_BADBLOCK(dev))
 		uffs_BadBlockProcess(dev, node);
 	else

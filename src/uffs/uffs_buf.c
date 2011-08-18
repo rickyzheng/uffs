@@ -1374,6 +1374,25 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev,
 			uffs_Perror(UFFS_ERR_SERIOUS, "no free page buf!");
 			return NULL;
 		}
+
+		/* Note: if uffs_BufFlushMostDirtyGroup() flush the same block as we'll write to,
+		 *	the block will be changed to a new one! (and the content of 'node' is changed).
+		 *	So here we need to update block number from the new 'node'.
+		 */
+		switch (type) {
+		case UFFS_TYPE_DIR:
+			block = node->u.dir.block;
+			break;
+		case UFFS_TYPE_FILE:
+			block = node->u.file.block;
+			break;
+		case UFFS_TYPE_DATA:
+			block = node->u.data.block;
+			break;
+		default:
+			uffs_Perror(UFFS_ERR_SERIOUS, "unknown type");
+			return NULL;
+		}
 	}
 
 	bc = uffs_BlockInfoGet(dev, block);
