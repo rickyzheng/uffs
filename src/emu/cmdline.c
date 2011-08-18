@@ -295,6 +295,53 @@ static int cmd_set(int argc, char *argv[])
 	return ret;
 }
 
+/** evaluation the expresstion, result to $1
+ *		evl <value> <op> <value>
+ */
+static int cmd_evl(int argc, char *argv[])
+{
+	int val1, val2, result;
+	int ret = -1;
+
+	CHK_ARGC(4, 4);
+
+	if (sscanf(argv[1], "%d", &val1) == 1 &&
+		sscanf(argv[3], "%d", &val2) == 1) {
+		ret = 0;
+		switch(argv[2][0]) {
+			case '+':
+				result = val1 + val2;
+				break;
+			case '-':
+				result = val1 - val2;
+				break;
+			case '*':
+				result = val1 * val2;
+				break;
+			case '/':
+				if (val2 == 0)
+					ret = -1;
+				else
+					result = val1 / val2;
+				break;
+			case '\%':
+				if (val2 == 0)
+					ret = -1;
+				else
+					result = val1 % val2;
+				break;
+			default:
+				ret = CLI_INVALID_ARG;
+				break;
+		}
+	}
+
+	if (ret == 0)
+		ret = cli_env_set('1', result);
+
+	return ret;
+}
+
 static int cmd_exit(int argc, char *argv[])
 {
 	m_exit = TRUE;
@@ -371,6 +418,7 @@ static const struct cli_command default_cmds[] =
 	{ cmd_failed,	"!",		"<cmd> [...]",		"run <cmd> if last command failed" },
 	{ cmd_echo,		"echo",		"[...]",			"print messages" },
 	{ cmd_set,		"set",		"<env> <val>",		"set env variable" },
+	{ cmd_evl,		"evl",		"<val> <op> <val>",	"evaluation expresstion" },
 	{ cmd_test,		"test",		"<a> <op> <b>",		"test expression: <a> <op> <b>" },
 	{ cmd_script,   "script",   "<file>",           "run host script <file>" },
 	{ cmd_abort,	"abort",	NULL,				"abort from the running script" },
