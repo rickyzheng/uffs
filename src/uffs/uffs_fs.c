@@ -796,7 +796,8 @@ static int do_WriteNewBlock(uffs_Object *obj,
 			uffs_Perror(UFFS_ERR_SERIOUS, "can't create a new page ?");
 			break;
 		}
-		ret = uffs_BufWrite(dev, buf, (u8 *)data + wroteSize, 0, size);
+		// Note: if data == NULL, we will fill '\0'
+		ret = uffs_BufWrite(dev, buf, data == NULL ? NULL : (u8 *)data + wroteSize, 0, size);
 		uffs_BufPut(dev, buf);
 
 		if (ret != U_SUCC) {
@@ -877,7 +878,9 @@ static int do_WriteInternalBlock(uffs_Object *obj,
 			}
 		}
 
-		ret = uffs_BufWrite(dev, buf, (u8 *)data + wroteSize, pageOfs, size);
+		// Note: if data == NULL, then we will fill '\0'
+		ret = uffs_BufWrite(dev, buf, data == NULL ? NULL : (u8 *)data + wroteSize, pageOfs, size);
+
 		uffs_BufPut(dev, buf);
 
 		if (ret == U_FAIL) {
@@ -897,17 +900,10 @@ static int do_WriteInternalBlock(uffs_Object *obj,
 }
 
 
-
 /**
- * write data to obj, from obj->pos
- *
- * \param[in] obj file obj
- * \param[in] data data pointer
- * \param[in] len length of data to be write
- *
- * \return bytes wrote to obj
+ * write data to obj, return remain data (0 if all data been written).
  */
-int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
+static int do_WriteObject(uffs_Object *obj, const void *data, int len)
 {
 	uffs_Device *dev = obj->dev;
 	TreeNode *fnode = obj->node;
@@ -916,34 +912,6 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 	u32 write_start;
 	TreeNode *dnode;
 	u32 size;
-
-	if (obj == NULL) 
-		return 0;
-
-	if (obj->dev == NULL || obj->open_succ != U_TRUE) {
-		obj->err = UEBADF;
-		return 0;
-	}
-
-	if (obj->type == UFFS_TYPE_DIR) {
-		uffs_Perror(UFFS_ERR_NOISY, "Can't write to an dir object!");
-		obj->err = UEACCES;
-		return 0;
-	}
-
-	if (obj->pos > fnode->u.file.len) {
-		return 0; //can't write file out of range
-	}
-
-	if (obj->oflag == UO_RDONLY) {
-		obj->err = UEACCES;
-		return 0;
-	}
-
-	uffs_ObjectDevLock(obj);
-
-	if (obj->oflag & UO_APPEND)
-		obj->pos = fnode->u.file.len;
 
 	while (remain > 0) {
 		write_start = obj->pos + len - remain;
@@ -997,8 +965,66 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 		}
 	}
 
+	return remain;
+}
+
+
+/**
+ * write data to obj, from obj->pos
+ *
+ * \param[in] obj file obj
+ * \param[in] data data pointer
+ * \param[in] len length of data to be write
+ *
+ * \return bytes wrote to obj
+ */
+int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
+{
+	uffs_Device *dev = obj->dev;
+	TreeNode *fnode = obj->node;
+	int remain;
+	u32 pos;
+
+	if (obj == NULL) 
+		return 0;
+
+	if (obj->dev == NULL || obj->open_succ != U_TRUE) {
+		obj->err = UEBADF;
+		return 0;
+	}
+
+	if (obj->type == UFFS_TYPE_DIR) {
+		uffs_Perror(UFFS_ERR_NOISY, "Can't write to an dir object!");
+		obj->err = UEACCES;
+		return 0;
+	}
+
+	if (obj->oflag == UO_RDONLY) {
+		obj->err = UEACCES;  // can't write to 'read only' mode opened file
+		return 0;
+	}
+
+	uffs_ObjectDevLock(obj);
+
+	if (obj->oflag & UO_APPEND)
+		obj->pos = fnode->u.file.len;
+	else {
+		if (obj->pos > fnode->u.file.len) {
+			// current pos pass over the end of file, need to fill the gap with '\0'
+			pos = obj->pos;	// save desired pos
+			obj->pos = fnode->u.file.len; // filling gap from the end of the file
+			remain = do_WriteObject(obj, NULL, pos - fnode->u.file.len);
+			obj->pos = pos - remain;
+
+			if (remain > 0)	// fail to fill the gap ? stop.
+				goto ext;
+		}
+	}
+
+	remain = do_WriteObject(obj, data, len);
 	obj->pos += (len - remain);
 
+ext:
 	if (HAVE_BADBLOCK(dev))
 		uffs_BadBlockRecover(dev);
 
@@ -1126,51 +1152,49 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
  * \param[in] obj uffs object
  * \param[in] offset offset from origin
  * \param[in] origin the origin position, one of:
+ *				#USEEK_CUR, #USEEK_SET or #USEEK_END
  *
- * \return return the new file pointer position
+ * \return the new file pointer position if success,
+ *			or -1 if the new position would be negative.
  */
 long uffs_SeekObject(uffs_Object *obj, long offset, int origin)
 {
 	if (obj->type == UFFS_TYPE_DIR) {
 		uffs_Perror(UFFS_ERR_NOISY, "Can't seek a dir object!");
-		return 0;
+		obj->err = UEACCES;
+	}
+	else {
+		uffs_ObjectDevLock(obj);
+		switch (origin) {
+			case USEEK_CUR:
+				if (obj->pos + offset < 0) {
+					obj->err = UEINVAL;
+				}
+				else {
+					obj->pos += offset;
+				}
+				break;
+			case USEEK_SET:
+				if (offset < 0) {
+					obj->err = UEINVAL;
+				}
+				else {
+					obj->pos = offset;
+				}
+				break;
+			case USEEK_END:
+				if (obj->node->u.file.len + offset < 0) {
+					obj->err = UEINVAL;
+				}
+				else {
+					obj->pos = obj->node->u.file.len + offset;
+				}
+				break;
+		}
+		uffs_ObjectDevUnLock(obj);
 	}
 
-	uffs_ObjectDevLock(obj);
-
-	switch (origin) {
-		case USEEK_CUR:
-			if (obj->pos + offset > obj->node->u.file.len) {
-				obj->pos = obj->node->u.file.len;
-			}
-			else {
-				obj->pos += offset;
-			}
-			break;
-		case USEEK_SET:
-			if (offset > (long) obj->node->u.file.len) {
-				obj->pos = obj->node->u.file.len;
-			}
-			else {
-				obj->pos = offset;
-			}
-			break;
-		case USEEK_END:
-			if ( offset>0 ) {
-				obj->pos = obj->node->u.file.len;
-			}
-			else if((offset >= 0 ? offset : -offset) > (long) obj->node->u.file.len) {
-				obj->pos = 0;
-			}
-			else {
-				obj->pos = obj->node->u.file.len + offset;
-			}
-			break;
-	}
-
-	uffs_ObjectDevUnLock(obj);
-
-	return (long) obj->pos;
+	return (obj->err == UENOERR ? obj->pos : -1);
 }
 
 /**

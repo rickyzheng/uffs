@@ -864,6 +864,9 @@ static int cmd_twrite(int argc, char *argv[])
 		}
 	}
 
+	if (ret == 0)
+		cli_env_set('1', len);
+
 	return ret;
 }
 

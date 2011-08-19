@@ -1637,7 +1637,10 @@ URET uffs_BufWrite(struct uffs_DeviceSt *dev,
 		}
 	}
 
-	memcpy(buf->data + ofs, data, len);
+	if (data)
+		memcpy(buf->data + ofs, data, len);
+	else
+		memset(buf->data + ofs, 0, len);	// if data == NULL, then fill all '\0'.
 
 	if (ofs + len > buf->data_len) 
 		buf->data_len = ofs + len;
