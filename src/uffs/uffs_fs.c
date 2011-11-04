@@ -1167,7 +1167,7 @@ long uffs_SeekObject(uffs_Object *obj, long offset, int origin)
 		uffs_ObjectDevLock(obj);
 		switch (origin) {
 			case USEEK_CUR:
-				if (obj->pos + offset < 0) {
+				if ((long)obj->pos + offset < 0) {
 					obj->err = UEINVAL;
 				}
 				else {
@@ -1183,7 +1183,7 @@ long uffs_SeekObject(uffs_Object *obj, long offset, int origin)
 				}
 				break;
 			case USEEK_END:
-				if (obj->node->u.file.len + offset < 0) {
+				if ((long)obj->node->u.file.len + offset < 0) {
 					obj->err = UEINVAL;
 				}
 				else {

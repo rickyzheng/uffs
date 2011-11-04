@@ -240,7 +240,7 @@ int uffs_PoolPutLocked(uffs_Pool *pool, void *p)
 void *uffs_PoolGetBufByIndex(uffs_Pool *pool, u32 index)
 {
 	if (!uffs_Assert(pool, "pool missing") ||
-		!uffs_Assert(index >= 0 && index < pool->num_bufs,
+		!uffs_Assert(index < pool->num_bufs,
 				"index(%d) out of range(max %d)", index, pool->num_bufs))
 	{
 		return NULL;

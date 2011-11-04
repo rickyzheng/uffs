@@ -9,8 +9,8 @@ SET(CMAKE_CXX_FLAGS_GCOV "-g -O0 -Wall -fprofile-arcs -ftest-coverage")
 SET(CMAKE_EXE_LINKER_FLAGS_GCOV "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs -ftest-coverage -lgcov")
 
 IF (CMAKE_COMPILER_IS_GNUCC)
-	SET(CMAKE_CXX_FLAGS "-Wall -Werror")
-	SET(CMAKE_C_FLAGS "-Wall -Werror")
+	SET(CMAKE_CXX_FLAGS "-Wall -Werror -m32 -Wclobbered -Wempty-body -Wignored-qualifiers -Wmissing-parameter-type -Woverride-init -Wtype-limits -Wuninitialized")
+	SET(CMAKE_C_FLAGS "-Wall -Werror -m32 -Wclobbered -Wempty-body -Wignored-qualifiers -Wmissing-parameter-type -Woverride-init -Wtype-limits -Wuninitialized")
 ENDIF()
 
 ADD_SUBDIRECTORY( src )
