@@ -300,7 +300,7 @@ static int cmd_set(int argc, char *argv[])
  */
 static int cmd_evl(int argc, char *argv[])
 {
-	int val1, val2, result;
+	int val1, val2, result = 0;
 	int ret = -1;
 
 	CHK_ARGC(4, 4);
@@ -324,7 +324,7 @@ static int cmd_evl(int argc, char *argv[])
 				else
 					result = val1 / val2;
 				break;
-			case '\%':
+			case '%':
 				if (val2 == 0)
 					ret = -1;
 				else

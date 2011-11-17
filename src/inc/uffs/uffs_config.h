@@ -316,6 +316,11 @@
 
 #ifdef WIN32
 # pragma warning(disable : 4996)
+# pragma warning(disable : 4244)
+# pragma warning(disable : 4214)
+# pragma warning(disable : 4127)
+# pragma warning(disable : 4389)
+# pragma warning(disable : 4100)
 #endif
 
 #endif

@@ -123,9 +123,19 @@ static int _dir_pool_data[sizeof(uffs_DIR) * MAX_DIR_HANDLE / sizeof(int)];
 static uffs_Pool _dir_pool;
 static int _uffs_errno = 0;
 
+
+//
+// What is fd signature ? fd signature is for detecting file system get formated by other party.
+//   A thread open a file, read()...sleep()...write()...sleep()...
+//   B thread format UFFS partition, increase fd signature.
+//   A thread ...sleep()...read() --> Opps, fd signature changed ! read() return error(expected).
+//
 #define MAX_FD_SIGNATURE_ROUND  (100)
 static int _fd_signature = 0;
 
+//
+// only get called when formating UFFS partition
+//
 void uffs_FdSignatureIncrease(void)
 {
 	if (_fd_signature++ > MAX_FD_SIGNATURE_ROUND)

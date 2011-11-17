@@ -434,14 +434,14 @@ fail:
  */
 static int cmd_TestPageReadWrite(int argc, char *argv[])
 {
-	TreeNode *node;
+	TreeNode *node = NULL;
 	uffs_Device *dev;
 	uffs_Tags local_tag;
 	uffs_Tags *tag = &local_tag;
 	int ret;
 	u16 block;
 	u16 page;
-	uffs_Buf *buf;
+	uffs_Buf *buf = NULL;
 
 	u32 i;
 	int rc = -1;
@@ -847,7 +847,7 @@ static int cmd_tclose(int argc, char *argv[])
 static int cmd_twrite(int argc, char *argv[])
 {
 	int fd;
-	int i, len;
+	int i, len = 0;
 	int ret = 0;
 
 	CHK_ARGC(3, 0);

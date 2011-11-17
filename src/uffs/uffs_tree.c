@@ -439,7 +439,7 @@ static URET _ScanAndFixUnCleanPage(uffs_Device *dev, uffs_BlockInfo *bc)
 static URET _BuildTreeStepOne(uffs_Device *dev)
 {
 	int block_lt;
-	uffs_BlockInfo *bc;
+	uffs_BlockInfo *bc = NULL;
 	TreeNode *node;
 	struct uffs_TreeSt *tree;
 	uffs_Pool *pool;

@@ -380,7 +380,6 @@ static void DumpBlock(struct uffs_DeviceSt *dev, int block, dump_msg_cb *dump)
 			dump(dev, "read page %d tag return unexpected: %d\n", i, ret);
 			continue;
 		}
-		dump(dev, "--------------------------------\n");
 	}
 	dump(dev, "\n");
 }

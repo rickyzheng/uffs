@@ -334,12 +334,15 @@ uffs_BlockInfo * uffs_BlockInfoGet(uffs_Device *dev, int block)
 void uffs_BlockInfoPut(uffs_Device *dev, uffs_BlockInfo *p)
 {
 	dev = dev;
-	if (p->ref_count == 0) {
-		uffs_Perror(UFFS_ERR_SERIOUS,
-			"Put an unused block info cache back ?");
-	}
-	else {
-		p->ref_count--;
+	if (p)
+	{
+		if (p->ref_count == 0) {
+			uffs_Perror(UFFS_ERR_SERIOUS,
+				"Put an unused block info cache back ?");
+		}
+		else {
+			p->ref_count--;
+		}
 	}
 }
 

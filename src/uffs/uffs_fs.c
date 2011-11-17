@@ -73,6 +73,12 @@
 			(obj)->node->u.dir.block : (obj)->node->u.file.block \
 	 )
 
+typedef enum {
+	eDRY_RUN = 0,
+	eREAL_RUN,
+} RunOptionE;
+
+
 static void do_ReleaseObjectResource(uffs_Object *obj);
 static URET do_TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run);
 
@@ -276,23 +282,22 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 	obj->name_len = name_len;
 
 	if (obj->type == UFFS_TYPE_DIR) {
-		if (name[obj->name_len - 1] == '/')
+		if (name[obj->name_len - 1] == '/')		// get rid of ending '/' for dir
 			obj->name_len--;
 	}
 	else {
-		if (name[obj->name_len - 1] == '/') {
+		if (name[obj->name_len - 1] == '/') {	// file name can't end with '/'
 			obj->err = UENOENT;
 			goto ext;
 		}
 	}
 
-	if (obj->name_len == 0) {
+	if (obj->name_len == 0) {	// empty name ?
 		obj->err = UENOENT;
 		goto ext;
 	}
 
-	obj->sum = (obj->name_len > 0 ?
-					uffs_MakeSum16(obj->name, obj->name_len) : 0);
+	obj->sum = uffs_MakeSum16(obj->name, obj->name_len);
 
 	uffs_ObjectDevLock(obj);
 
@@ -331,8 +336,8 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 			obj->serial = GET_OBJ_NODE_SERIAL(obj);
 			obj->open_succ = U_TRUE; // set open_succ to U_TRUE before
 									 // call do_TruncateObject()
-			if (do_TruncateObject(obj, 0, U_TRUE) == U_SUCC)
-				do_TruncateObject(obj, 0, U_FALSE);
+			if (do_TruncateObject(obj, 0, eDRY_RUN) == U_SUCC)
+				do_TruncateObject(obj, 0, eREAL_RUN);
 			goto ext_1;
 		}
 	}
@@ -511,9 +516,9 @@ URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev,
 	obj->open_succ = U_TRUE;
 
 	if (obj->oflag & UO_TRUNC)
-		if (do_TruncateObject(obj, 0, U_TRUE) == U_SUCC) {
+		if (do_TruncateObject(obj, 0, eDRY_RUN) == U_SUCC) {
 			//NOTE: obj->err will be set in do_TruncateObject() if failed.
-			do_TruncateObject(obj, 0, U_FALSE);
+			do_TruncateObject(obj, 0, eREAL_RUN);
 		}
 
 ext_1:
@@ -1239,7 +1244,7 @@ int uffs_EndOfFile(uffs_Object *obj)
 }
 
 static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj,
-												u16 fdn, u32 remain, UBOOL dry_run)
+												u16 fdn, u32 remain, RunOptionE run_opt)
 {
 	uffs_Device *dev = obj->dev;
 	TreeNode *fnode = obj->node;
@@ -1276,7 +1281,7 @@ static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj,
 		serial = node->u.data.serial;
 	}
 
-	if (dry_run == U_TRUE) {
+	if (run_opt == eDRY_RUN) {
 		// checking the buffer. this is the main reason why we need the 'dry run' mode.
 		for (page_id = 0; page_id <= max_page_id; page_id++) {
 			buf = uffs_BufFind(dev, parent, serial, page_id);
@@ -1366,8 +1371,8 @@ ext:
 URET uffs_TruncateObject(uffs_Object *obj, u32 remain)
 {
 	uffs_ObjectDevLock(obj);
-	if (do_TruncateObject(obj, remain, U_TRUE) == U_SUCC)
-		do_TruncateObject(obj, remain, U_FALSE);
+	if (do_TruncateObject(obj, remain, eDRY_RUN) == U_SUCC)
+		do_TruncateObject(obj, remain, eREAL_RUN);
 	uffs_ObjectDevUnLock(obj);
 
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
@@ -1375,7 +1380,7 @@ URET uffs_TruncateObject(uffs_Object *obj, u32 remain)
 
 
 /** truncate obj without lock device */
-static URET do_TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run)
+static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 {
 	uffs_Device *dev = obj->dev;
 	TreeNode *fnode = obj->node;
@@ -1436,12 +1441,12 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run)
 						goto ext;	//!< and someone is still holding the buffer,
 									//   can't truncate it !!!
 					}
-					else if (dry_run == U_FALSE)
+					else if (run_opt == eREAL_RUN)
 						uffs_BufMarkEmpty(dev, buf);	//!< discard the buffer
 				}
 			}
 
-			if (dry_run == U_FALSE) {
+			if (run_opt == eREAL_RUN) {
 				uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 				uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, node);
 				uffs_FlashEraseBlock(dev, bc->block);
@@ -1461,8 +1466,8 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run)
 		}
 		else {
 			if (do_TruncateInternalWithBlockRecover(obj, fdn,
-													remain, dry_run) == U_SUCC) {
-				if (dry_run == U_FALSE)
+													remain, run_opt) == U_SUCC) {
+				if (run_opt == eREAL_RUN)
 					fnode->u.file.len = remain;
 				flen = remain;
 			}
