@@ -17,6 +17,7 @@ SET (libuffs_SRCS
 		uffs_find.c
 		uffs_flash.c
 		uffs_version.c
+		uffs_crc.c
 	 )
 
 SET (HDR ${uffs_SOURCE_DIR}/src/inc/uffs)
@@ -43,6 +44,7 @@ SET (libuffs_HEADS
 		${HDR}/uffs_find.h
 		${HDR}/uffs_flash.h
 		${HDR}/uffs_version.h
+		${HDR}/uffs_crc.h
    )
 
 INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/inc)
