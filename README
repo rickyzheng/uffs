@@ -169,6 +169,14 @@ UFFS v1.3.3:
   - Better support for MLC NAND flash.
   - Added hardware ECC and RS-ECC controller emulator.
   - Bug fixes.
+
+UFFS v1.3.4
+  - New UO_NOECC option for skipping ECC (fast reading).
+  - POSIX compliance uffs_seek().
+  - Improved unclean page detection (add new 'seal' byte in spare area).
+  - Optional page data CRC.
+  - Bug fixes.
+  - Other improvements.
   
 LICENCE
 -------
