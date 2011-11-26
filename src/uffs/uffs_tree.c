@@ -252,6 +252,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 	tag = GET_TAG(bc, 0);  //get first page's tag
 
 	if (!TAG_IS_DIRTY(tag)) {
+		// should never go here ... unless mark dirty page failed ?
 		uffs_Perror(UFFS_ERR_NORMAL,
 					"First page is clean in a non-erased block ?");
 		return U_FAIL;
@@ -409,7 +410,7 @@ static URET _ScanAndFixUnCleanPage(uffs_Device *dev, uffs_BlockInfo *bc)
 
 	/* in most case, the valid block contents fewer free page,
 		so it's better scan from the last page ... to page 1.
-		note: scanning page 0 is not necessary.
+		note: scanning page 0 is not necessary, will check it later.
 
 		The worse case: read (pages_per_block - 1) * (mini header + spares) !
 		most case: read one spare.
@@ -417,16 +418,31 @@ static URET _ScanAndFixUnCleanPage(uffs_Device *dev, uffs_BlockInfo *bc)
 	for (page = dev->attr->pages_per_block - 1; page > 0; page--) {
 		uffs_BlockInfoLoad(dev, bc, page);
 		tag = GET_TAG(bc, page);
-		if (TAG_IS_DIRTY(tag) || TAG_IS_VALID(tag))
-			break;  // stop if we reach a dirty or valid page
 
+		if (TAG_IS_SEALED(tag))
+			break;	// tag sealed, no unclean page in this block.
+
+		if (TAG_IS_DIRTY(tag) || TAG_IS_VALID(tag)) {  // tag not sealed but dirty/valid ?
+			uffs_Perror(UFFS_ERR_NORMAL,
+					"unclean page found, block %d page %d",
+					bc->block, page);
+
+			// ok, an unclean page found.
+			// This unclean page can be identified by tag.
+			// We can leave it as it is, but performing a block recover would be good ?
+			// There won't be another unclean page in this block ... stop here.
+			break;
+		}
+
+		// now we have a clean tag (all 0xFF ?). Need to check mini header to see if it's an unclean page.
 		if (uffs_LoadMiniHeader(dev, bc->block, page, &header) == U_FAIL)
 			return U_FAIL;
 
 		if (header.status != 0xFF) {
-			// ok, page data is not clean ! mark it as dirty.
+			// page data is dirty? this is an unclean page and we should explicitly mark tag as 'dirty and invalid'.
+			// This writing does not violate "no partial program" claim, because we are writing to a clean page spare.
 			uffs_Perror(UFFS_ERR_NORMAL,
-						"unclean page found, block %d page %d",
+						"unclean page found, block %d page %d, mark it.",
 						bc->block, page);
 			uffs_FlashMarkDirtyPage(dev, bc->block, page);
 		}
@@ -480,9 +496,7 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 			uffs_Perror(UFFS_ERR_NORMAL, "found bad block %d", block_lt);
 		}
 		else if (uffs_IsPageErased(dev, bc, 0) == U_TRUE) { //@ read one spare: 0
-			// just need to check page 0 to know whether the block is erased
-			// Check the mini header status
-
+			// page 0 tag shows it's an erased block, we need to check the mini header status to make sure it is clean.
 			if (uffs_LoadMiniHeader(dev, block_lt, 0, &header) == U_FAIL) {
 				uffs_Perror(UFFS_ERR_SERIOUS,
 							"I/O error when reading mini header !"
@@ -493,7 +507,7 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 			}
 
 			if (header.status != 0xFF) {
-				// page 0 spare is clean but page data is dirty ???
+				// page 0 tag is clean but page data is dirty ???
 				// this block should be erased immediately !
 				uffs_FlashEraseBlock(dev, block_lt);
 			}
@@ -508,6 +522,8 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 			}
 		}
 		else {
+			
+			// this block have valid data page(s).
 
 			ret = _ScanAndFixUnCleanPage(dev, bc);
 			if (ret == U_FAIL)

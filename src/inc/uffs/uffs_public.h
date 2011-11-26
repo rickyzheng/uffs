@@ -90,8 +90,7 @@ struct uffs_TagsSt {
 	u16 data_sum;
 
 	/** internal used */
-	u8 _dirty:1;			//!< raw data, before doing ecc correction
-	u8 _valid:1;			//!< raw data, before doing ecc correction
+	u8 seal_byte;			//!< seal byte.
 };
 
 /** 
@@ -113,15 +112,21 @@ struct uffs_MiniHeaderSt {
 #define TAG_DIRTY		0
 #define TAG_CLEAR		1
 
-#define TAG_IS_DIRTY(tag) ((tag)->s.dirty == TAG_DIRTY)
+#define TAG_IS_DIRTY(tag) (*((u32 *) &((tag)->s)) != 0xFFFFFFFF)	// tag is dirty if first 4 bytes not all 0xFF
 #define TAG_IS_VALID(tag) ((tag)->s.valid == TAG_VALID)
+#define TAG_IS_SEALED(tag) ((tag)->seal_byte != 0xFF)
+
+#define TAG_IS_GOOD(tag) (TAG_IS_SEALED(tag) && TAG_IS_VALID(tag))
+
+#define TAG_VALID_BIT(tag) (tag)->s.valid
+#define TAG_DIRTY_BIT(tag) (tag)->s.dirty
 #define TAG_SERIAL(tag) (tag)->s.serial
 #define TAG_PARENT(tag) (tag)->s.parent
 #define TAG_PAGE_ID(tag) (tag)->s.page_id
 #define TAG_DATA_LEN(tag) (tag)->s.data_len
 #define TAG_TYPE(tag) (tag)->s.type
 #define TAG_BLOCK_TS(tag) (tag)->s.block_ts
-
+#define SEAL_TAG(tag) (tag)->seal_byte = 0
 
 int uffs_GetFirstBlockTimeStamp(void);
 int uffs_GetNextBlockTimeStamp(int prev);
@@ -199,7 +204,6 @@ URET uffs_PageRecover(uffs_Device *dev,
 					  uffs_Buf *buf);
 int uffs_FindFreePageInBlock(uffs_Device *dev, uffs_BlockInfo *bc);
 u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page);
-u16 uffs_FindFirstValidPage(uffs_Device *dev, uffs_BlockInfo *bc);
 u16 uffs_FindFirstFreePage(uffs_Device *dev, uffs_BlockInfo *bc, u16 pageFrom);
 u16 uffs_FindPageInBlockWithPageId(uffs_Device *dev, uffs_BlockInfo *bc, u16 page_id);
 

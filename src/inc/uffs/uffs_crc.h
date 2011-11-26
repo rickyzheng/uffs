@@ -38,7 +38,7 @@
 #ifndef _UFFS_CRC_H_
 #define _UFFS_CRC_H_
 
-u16 uffs_crc16update(const u8 *data, int length, u16 crc);
-u16 uffs_crc16sum(const u8 *data, int length);
+u16 uffs_crc16update(const void *data, int length, u16 crc);
+u16 uffs_crc16sum(const void *data, int length);
 
 #endif

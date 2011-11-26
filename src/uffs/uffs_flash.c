@@ -53,6 +53,8 @@
 
 #define TAG_STORE_SIZE	(sizeof(struct uffs_TagStoreSt))
 
+#define SEAL_BYTE(dev, spare)  spare[(dev)->mem.spare_data_size - 1]	// seal byte is the last byte of spare data
+
 #if defined(CONFIG_UFFS_AUTO_LAYOUT_USE_MTD_SCHEME)
 /** Linux MTD spare layout for 512 and 2K page size */
 static const u8 MTD512_LAYOUT_ECC[] =	{0, 4, 6, 2, 0xFF, 0};
@@ -179,7 +181,7 @@ static int CalculateSpareDataSize(uffs_Device *dev)
 	n = (n > dev->attr->block_status_offs + 1 ?
 			n : dev->attr->block_status_offs + 1);
 
-	return n;
+	return n + 1;		// plus one seal byte.
 }
 
 
@@ -287,6 +289,13 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 
 	dev->mem.spare_data_size = CalculateSpareDataSize(dev);
 	uffs_Perror(UFFS_ERR_NORMAL, "UFFS consume spare data size %d", dev->mem.spare_data_size);
+
+	if (dev->mem.spare_data_size > dev->attr->spare_size) {
+		uffs_Perror(UFFS_ERR_SERIOUS, "NAND spare(%dB) can't hold UFFS spare data(%dB) !",
+						dev->attr->spare_size, dev->mem.spare_data_size);
+		goto ext;
+	}
+
 	ret = U_SUCC;
 ext:
 	return ret;
@@ -373,6 +382,7 @@ int uffs_FlashReadPageTag(uffs_Device *dev,
 	uffs_FlashOps *ops = dev->ops;
 	u8 * spare_buf;
 	int ret = UFFS_FLASH_UNKNOWN_ERR;
+	int tmp_ret;
 	UBOOL is_bad = U_FALSE;
 
 	spare_buf = (u8 *) uffs_PoolGet(SPOOL(dev));
@@ -381,30 +391,52 @@ int uffs_FlashReadPageTag(uffs_Device *dev,
 
 	if (ops->ReadPageWithLayout) {
 		ret = ops->ReadPageWithLayout(dev, block, page, NULL, 0, NULL, tag ? &tag->s : NULL, NULL);
+		if (tag)
+			tag->seal_byte = (ret == UFFS_FLASH_NOT_SEALED ? 0xFF : 0);
 	}
 	else {
 		ret = ops->ReadPage(dev, block, page, NULL, 0, NULL,
 									spare_buf, dev->mem.spare_data_size);
 
-		if (!UFFS_FLASH_HAVE_ERR(ret))
+		tag->seal_byte = SEAL_BYTE(dev, spare_buf);
+
+		if (tag && !UFFS_FLASH_HAVE_ERR(ret))
 			uffs_FlashUnloadSpare(dev, spare_buf, &tag->s, NULL);
 	}
 
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 		is_bad = U_TRUE;
 
-	// copy some raw data
-	if (tag) {
-		tag->_dirty = tag->s.dirty;
-		tag->_valid = tag->s.valid;
-	}
-
 	if (UFFS_FLASH_HAVE_ERR(ret))
 		goto ext;
 
 	if (tag) {
-		if (tag->_valid == 1) //it's not a valid page ? don't need go further
+		if (!TAG_IS_SEALED(tag))	// not sealed ? don't try tag ECC correction
 			goto ext;
+
+		if (!TAG_IS_VALID(tag)) {
+			if (dev->attr->ecc_opt != UFFS_ECC_NONE) {
+				/*
+				 * There is a tiny little change if:
+				 *  a) tag is sealed (so we are here), and
+				 *  b) s.valid == 1 and this bit is a 'bad' bit, and
+				 *  c) after tag ECC (corrected by tag ECC) s.valid == 0.
+				 *
+				 * So we need to try tag ECC (don't treat it as bad block if ECC failed)
+				 */
+
+				struct uffs_TagStoreSt s;
+
+				memcpy(&s, &tag->s, sizeof(s));
+				tmp_ret = TagEccCorrect(&s);
+
+				if (ret <= 0 || !TAG_IS_VALID(tag))	// can not corrected by ECC.
+					goto ext;
+			}
+			else {
+				goto ext;
+			}				
+		}
 
 		// do tag ecc correction
 		if (dev->attr->ecc_opt != UFFS_ECC_NONE) {
@@ -455,7 +487,6 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBO
 	u8 ecc_buf[UFFS_MAX_ECC_SIZE];
 	u8 ecc_store[UFFS_MAX_ECC_SIZE];
 	UBOOL is_bad = U_FALSE;
-	struct uffs_TagStoreSt ts;
 
 	u8 * spare;
 	int ret = UFFS_FLASH_UNKNOWN_ERR;
@@ -466,45 +497,31 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBO
 
 	if (ops->ReadPageWithLayout) {
 		if (skip_ecc)
-			ret = ops->ReadPageWithLayout(dev, block, page, buf->header, size, NULL, &ts, NULL);
+			ret = ops->ReadPageWithLayout(dev, block, page, buf->header, size, NULL, NULL, NULL);
 		else
-			ret = ops->ReadPageWithLayout(dev, block, page, buf->header, size, ecc_buf, &ts, ecc_store);
+			ret = ops->ReadPageWithLayout(dev, block, page, buf->header, size, ecc_buf, NULL, ecc_store);
 	}
 	else {
 		if (skip_ecc)
-			ret = ops->ReadPage(dev, block, page, buf->header, size, NULL, spare, dev->mem.spare_data_size);
+			ret = ops->ReadPage(dev, block, page, buf->header, size, NULL, NULL, 0);
 		else
 			ret = ops->ReadPage(dev, block, page, buf->header, size, ecc_buf, spare, dev->mem.spare_data_size);
 	}
+
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 		is_bad = U_TRUE;
 
 	if (UFFS_FLASH_HAVE_ERR(ret))
 		goto ext;
-	
+
 	// make ECC for UFFS_ECC_SOFT
 	if (attr->ecc_opt == UFFS_ECC_SOFT && !skip_ecc)
 		uffs_EccMake(buf->header, size, ecc_buf);
 
-	// unload tag and ecc_store if driver doesn't do the layout
+	// unload ecc_store if driver doesn't do the layout
 	if (ops->ReadPageWithLayout == NULL) {
 		if (!skip_ecc && (attr->ecc_opt == UFFS_ECC_SOFT || attr->ecc_opt == UFFS_ECC_HW))
-			uffs_FlashUnloadSpare(dev, spare, &ts, ecc_store);
-		else
-			uffs_FlashUnloadSpare(dev, spare, &ts, NULL); // skip ecc_store for UFFS_ECC_NONE or UFFS_ECC_HW_AUTO
-	}
-
-	// check tag ecc. if ECC enabled, UFFS always use soft ecc for tag.
-	if (attr->ecc_opt != UFFS_ECC_NONE) {
-		ret = TagEccCorrect(&ts);
-		ret = (ret < 0 ? UFFS_FLASH_ECC_FAIL :
-				(ret > 0 ? UFFS_FLASH_ECC_OK : UFFS_FLASH_NO_ERR));
-
-		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
-			is_bad = U_TRUE;
-
-		if (UFFS_FLASH_HAVE_ERR(ret))
-			goto ext;
+			uffs_FlashUnloadSpare(dev, spare, NULL, ecc_store);
 	}
 
 	// check page data ecc
@@ -573,7 +590,11 @@ void uffs_FlashMakeSpare(uffs_Device *dev,
 	int n;
 	const u8 *p;
 
+	if (!uffs_Assert(spare != NULL, "invalid param"))
+		return;
+
 	memset(spare, 0xFF, dev->mem.spare_data_size);	// initialize as 0xFF.
+	SEAL_BYTE(dev, spare) = 0;						// set seal byte = 0.
 
 	// load ecc
 	p = dev->attr->ecc_layout;
@@ -595,6 +616,8 @@ void uffs_FlashMakeSpare(uffs_Device *dev,
 		p_ts += n;
 		p += 2;
 	}
+
+	uffs_Assert(SEAL_BYTE(dev, spare) == 0, "Make spare fail!");
 }
 
 /**
@@ -635,8 +658,10 @@ int uffs_FlashWritePageCombine(uffs_Device *dev,
 	header->status = 0;
 
 	// setup tag
-	tag->s.dirty = TAG_DIRTY;		//!< set dirty bit
-	tag->s.valid = TAG_VALID;		//!< set valid bit
+	TAG_DIRTY_BIT(tag) = TAG_DIRTY;		//!< set dirty bit
+	TAG_VALID_BIT(tag) = TAG_VALID;		//!< set valid bit
+	SEAL_TAG(tag);						//!< seal tag (the real seal byte will be set in uffs_FlashMakeSpare())
+
 	if (dev->attr->ecc_opt != UFFS_ECC_NONE)
 		TagMakeEcc(&tag->s);
 	else
@@ -705,7 +730,7 @@ ext:
 }
 
 /**
- * mark a clean page as 'dirty' (and 'invalid')
+ * mark a clean page tag as 'dirty' and 'invalid'.
  *
  * \param[in] dev uffs device
  * \param[in] block
@@ -728,7 +753,7 @@ int uffs_FlashMarkDirtyPage(uffs_Device *dev, int block, int page)
 		goto ext;
 
 	memset(&ts, 0xFF, sizeof(ts));
-	ts.dirty = TAG_DIRTY;  // set only 'dirty' bit
+	ts.dirty = TAG_DIRTY;  // set only 'dirty' bit, leave 'valid' bit to 1 (invalid).
 	
 	if (dev->attr->ecc_opt != UFFS_ECC_NONE)
 		TagMakeEcc(&ts);

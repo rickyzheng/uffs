@@ -113,10 +113,15 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 	succRecov = U_TRUE;
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		page = uffs_FindPageInBlockWithPageId(dev, bc, i);
-		if(page == UFFS_INVALID_PAGE) {
+		if (page == UFFS_INVALID_PAGE) {
 			break;  //end of last valid page, normal break
 		}
 		page = uffs_FindBestPageInBlock(dev, bc, page);
+		if (page == UFFS_INVALID_PAGE) {
+			// got an invalid page ? it's bad block anyway ...
+			uffs_Perror(UFFS_ERR_SERIOUS, "bad block recover (block %d) not finished", bc->block);
+			break;
+		}
 		tag = GET_TAG(bc, page);
 		buf = uffs_BufClone(dev, NULL);
 		if (buf == NULL) {	
@@ -144,6 +149,7 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 		buf->type = TAG_TYPE(tag);
 		buf->page_id = TAG_PAGE_ID(tag);
 		
+		// new tag copied from old tag, and increase time-stamp.
 		newTag = *tag;
 		TAG_BLOCK_TS(&newTag) = uffs_GetNextBlockTimeStamp(TAG_BLOCK_TS(tag));
 

@@ -53,6 +53,13 @@
 #define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 #define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
 
+static UBOOL check_entry_exist(const char *name)
+{
+	struct uffs_stat sb;
+
+	return uffs_stat(name, &sb) < 0 ? U_FALSE : U_TRUE;
+}
+
 static URET do_write_test_file(int fd, int size)
 {
 	long pos;
@@ -319,6 +326,15 @@ static int cmd_t3(int argc, char *argv[])
 	if (argv[2] && strcmp(argv[2], "noecc") == 0) {
 		noecc = U_TRUE;
 	}
+
+	if (check_entry_exist(name)) {
+		MSGLN("Check file %s ... ", name);
+		if (test_verify_file(name, noecc) != U_SUCC) {
+			MSGLN("Verify file %s failed.", name);
+			return -1;
+		}
+	}
+
 	MSGLN("Test append file %s ...", name);
 	for (i = 1; i < 500; i += 29) {
 		if (test_append_file(name, i) != U_SUCC) {
@@ -500,6 +516,11 @@ static int cmd_TestPageReadWrite(int argc, char *argv[])
 	}
 	
 	// verify tag:
+	if (!TAG_IS_SEALED(tag)) {
+		MSGLN("not sealed ? Tag verify fail!");
+		goto ext;
+	}
+
 	if (!TAG_IS_DIRTY(tag)) {
 		MSGLN("not dirty ? Tag verify fail!");
 		goto ext;
@@ -906,6 +927,107 @@ static int cmd_tread(int argc, char *argv[])
 	return ret;
 }
 
+static void do_dump_page(uffs_Device *dev, uffs_Buf *buf)
+{
+	int i, j;
+	const int line = 16;
+	struct uffs_MiniHeaderSt *header = (struct uffs_MiniHeaderSt *)buf->header;
+	MSG("  header.status = %d\n", header->status);
+	if (header->status != 0xFF) {
+		for (i = 0; i < 64; i += line) {
+			MSG("    ");
+			for (j = 0; j < line; j++)
+				MSG("%02X ", buf->header[i+j]);
+			MSG("\n");
+		}
+		MSG("\n");
+	}
+}
+
+static void do_dump_tag(uffs_Device *dev, uffs_Tags *tag)
+{
+	MSG("  tag sealed: %s\n", TAG_IS_SEALED(tag) ? "yes" : "no");
+	if (TAG_IS_GOOD(tag)) {
+		if (TAG_IS_DIRTY(tag)) {
+			MSG("    block_ts = %d\n", tag->s.block_ts);
+			MSG("    type = %d\n", tag->s.type);
+			MSG("    dirty = %d\n", tag->s.dirty);
+			MSG("    page_id = %d\n", tag->s.page_id);
+			MSG("    serial = %d\n", tag->s.serial);
+			MSG("    parent = %d\n", tag->s.parent);
+			MSG("    data_len = %d\n", tag->s.data_len);
+		}
+		else {
+			MSG("  tag is GOOD but NOT DIRTY !!!???\n");
+		}
+	}
+	else if (TAG_IS_SEALED(tag)) {
+		MSG(" tag is INVALID\n");
+	}
+}
+
+static void do_dump_device(uffs_Device *dev)
+{
+	URET ret;
+	int block, page;
+	uffs_Tags tag;
+	uffs_Buf *buf;
+
+	buf = uffs_BufClone(dev, NULL);
+	if (buf == NULL) {
+		MSGLN("Can't clone buf");
+		return;
+	}
+
+	for (block = dev->par.start; block <= dev->par.end; block++) {
+		MSG("---- block %d ----\n", block);
+		for (page = 0; page < dev->attr->pages_per_block; page++) {
+			MSG("  == page %d ==\n", page);
+			ret = uffs_FlashReadPage(dev, block, page, buf, U_FALSE);
+			if (UFFS_FLASH_HAVE_ERR(ret)) {
+				MSG(" !!! Read page failed, ret = %d !!!\n", ret);
+			}
+			else {
+				do_dump_page(dev, buf);
+				if (buf->header[0] != 0xFF) {
+					ret = uffs_FlashReadPageTag(dev, block, page, &tag);
+					if (UFFS_FLASH_HAVE_ERR(ret)) {
+						MSG(" !!! Read TAG failed, ret = %d !!!\n", ret);
+					}
+					else {
+						do_dump_tag(dev, &tag);
+					}
+				}
+			}
+		}
+	}
+	uffs_BufFreeClone(dev, buf);
+}
+
+static int cmd_dump(int argc, char *argv[])
+{
+	const char *mount = "/";
+	uffs_Device *dev;
+	int rc = -1;
+
+	if (argc > 1) {
+		mount = argv[1];
+	}
+
+	MSGLN("Dumping %s ... ", mount);
+
+	dev = uffs_GetDeviceFromMountPoint(mount);
+	if (dev == NULL) {
+		MSGLN("Can't get device from mount point.");
+	}
+	else {
+		do_dump_device(dev);
+		uffs_PutDevice(dev);
+	}
+
+	return 0;
+}
+
 
 
 static const struct cli_command test_cmds[] = 
@@ -925,6 +1047,7 @@ static const struct cli_command test_cmds[] =
 	{ cmd_twrite,				"t_write",		"<fd> <txt> [...]",	"write <fd>", },
 	{ cmd_tseek,				"t_seek",		"<fd> <offset> [<origin>]",	"seek <fd> file pointer to <offset> from <origin>", },
 	{ cmd_tclose,				"t_close",		"<fd>",				"close <fd>", },
+	{ cmd_dump,					"dump",			"<mount>",			"dump <mount>", },
 
     { NULL, NULL, NULL, NULL }
 };

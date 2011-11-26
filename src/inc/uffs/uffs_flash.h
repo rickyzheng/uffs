@@ -67,6 +67,7 @@ extern "C"{
 /** flash operation return code */
 #define UFFS_FLASH_NO_ERR		0		//!< no error
 #define UFFS_FLASH_ECC_OK		1		//!< bit-flip found, but corrected by ECC
+#define UFFS_FLASH_NOT_SEALED	2		//!< page spare area is not sealed properly (only for ReadPageWithLayout())
 #define UFFS_FLASH_IO_ERR		-1		//!< I/O error
 #define UFFS_FLASH_ECC_FAIL		-2		//!< ECC failed
 #define UFFS_FLASH_BAD_BLK		-3		//!< bad block
@@ -173,6 +174,7 @@ struct uffs_FlashOpsSt {
 	 *			#UFFS_FLASH_ECC_FAIL: page data has flip bits and ecc correct failed (when ecc_opt == UFFS_ECC_HW_AUTO)
 	 *			#UFFS_FLASH_ECC_OK: page data has flip bits and corrected by ecc (when ecc_opt == UFFS_ECC_HW_AUTO)
 	 *          #UFFS_FLASH_BAD_BLK: if the block is a bad block (e.g., the bad block mark byte is not 0xFF)
+	 *			#UFFS_FLASH_NOT_SEALED: if the page spare is not sealed properly
 	 *
 	 * \note if data is NULL, do not return data; if ts is NULL, do not read tag; if both data and ts are NULL,
 	 *       then read bad block mark and return UFFS_FLASH_BAD_BLK if bad block mark is not 0xFF.

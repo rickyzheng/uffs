@@ -76,17 +76,18 @@ static const u16 CRC16_TBL[256] = {
 
 #define CRC16(v, x) v = ((v) >> 8) ^ CRC16_TBL[((v) ^ (x)) & 0x00ff]
 
-u16 uffs_crc16update(const u8 *data, int length, u16 crc)
+u16 uffs_crc16update(const void *data, int length, u16 crc)
 {
 	int i;
-	for (i = 0; i < length; i++, data++) {
-		CRC16(crc, *data);
+	const u8 *p = (const u8 *)data;
+	for (i = 0; i < length; i++, p++) {
+		CRC16(crc, *p);
 	}
 
 	return crc;
 }
 
-u16 uffs_crc16sum(const u8 *data, int length)
+u16 uffs_crc16sum(const void *data, int length)
 {
-	uffs_crc16update(data, length, 0xFFFF);
+	return uffs_crc16update(data, length, 0xFFFF);
 }

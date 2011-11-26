@@ -633,12 +633,16 @@ retry:
 
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		tag = GET_TAG(newBc, i);
+		TAG_DIRTY_BIT(tag) = TAG_DIRTY;
+		TAG_VALID_BIT(tag) = TAG_VALID;
 		TAG_BLOCK_TS(tag) = timeStamp;
 		TAG_PARENT(tag) = parent;
 		TAG_SERIAL(tag) = serial;
 		TAG_TYPE(tag) = type;
-		TAG_PAGE_ID(tag) = (u8)i;	// now, page_id = page.
+		TAG_PAGE_ID(tag) = (u8)(i & 0xFF);	// now, page_id = page.
 									// FIX ME!! if more than 256 pages in a block
+
+		SEAL_TAG(tag);
 		
 		buf = _FindBufInDirtyList(dev->buf.dirtyGroup[slot].dirty, i);
 		if (buf != NULL) {
@@ -680,7 +684,10 @@ retry:
 				break;  //end of last page, normal break
 			}
 			page = uffs_FindBestPageInBlock(dev, bc, page);
-			
+
+			if (!uffs_Assert(page != UFFS_INVALID_PAGE, "got an invalid page ?\n"))
+				break;
+
 			oldTag = GET_TAG(bc, page);
 			buf = uffs_BufClone(dev, NULL);
 			if (buf == NULL) {
@@ -740,7 +747,7 @@ retry:
 		uffs_BlockInfoExpire(dev, newBc, UFFS_ALL_PAGES);
 		uffs_BlockInfoPut(dev, newBc);
 		if (newNode->u.list.block == dev->bad.block) {
-			// the recovered block is a BAD block, we need to 
+			// the recovered block is a BAD block (buy me a lotto, please), we need to 
 			// deal with it immediately (mark it as 'bad' and put into bad block list).
 			uffs_BadBlockProcess(dev, newNode);
 		}
@@ -887,23 +894,32 @@ URET
 		uffs_Device *dev,
 		int slot,			//!< dirty group slot
 		TreeNode *node,		//!< tree node
-		uffs_BlockInfo *bc, //!< block info (Source, also destination)
-		u16 freePages		//!< how many free pages left on destination block
+		uffs_BlockInfo *bc	//!< block info (Source, also destination)
 		)		
 {
 	u16 page;
 	uffs_Buf *buf;
 	uffs_Tags *tag;
-	URET ret;
+	URET ret = U_FAIL;
 	int x;
 
 //	uffs_Perror(UFFS_ERR_NOISY,
 //					"Flush buffers with Enough Free Page to block %d",
 //					bc->block);
-	ret = U_FAIL;
-	for (page = dev->attr->pages_per_block - freePages;	//page: free page num
+
+	for (page = 1;	// page 0 won't be a free page, so we start from 1.
+			page < dev->attr->pages_per_block &&
 			dev->buf.dirtyGroup[slot].count > 0;		//still has dirty pages?
 			page++) {
+
+		// locate to the free page (make sure the page is a erased page, so an unclean page won't sneak in)
+		for (; page < dev->attr->pages_per_block; page++) {
+			if (uffs_IsPageErased(dev, bc, page))
+				break;
+		}
+
+		if (!uffs_Assert(page < dev->attr->pages_per_block, "no free page? buf flush not finished."))
+			break;
 
 		buf = _FindMinimunPageIdFromDirtyList(dev->buf.dirtyGroup[slot].dirty);
 		if (buf == NULL) {
@@ -912,16 +928,18 @@ URET
 			goto ext;
 		}
 
-		//writre the dirty page (id: buf->page_id) to page i (free page)
-		uffs_BlockInfoLoad(dev, bc, page);
+		//write the dirty page (id: buf->page_id) to page (free page)
 		tag = GET_TAG(bc, page);
+		TAG_DIRTY_BIT(tag) = TAG_DIRTY;
+		TAG_VALID_BIT(tag) = TAG_VALID;
 		TAG_BLOCK_TS(tag) = uffs_GetBlockTimeStamp(dev, bc);
 		TAG_DATA_LEN(tag) = buf->data_len;
 		TAG_TYPE(tag) = buf->type;
-		//tag->data_sum = _GetDirOrFileNameSum(dev, buf);
 		TAG_PARENT(tag) = buf->parent;
 		TAG_SERIAL(tag) = buf->serial;
 		TAG_PAGE_ID(tag) = (u8)(buf->page_id);
+
+		SEAL_TAG(tag);
 
 		x = uffs_FlashWritePageCombine(dev, bc->block, page, buf, tag);
 		if (x == UFFS_FLASH_IO_ERR) {
@@ -1024,7 +1042,7 @@ URET _BufFlush(struct uffs_DeviceSt *dev,
 
 		if (n >= dev->buf.dirtyGroup[slot].count && !force_block_recover) {
 			//The free pages are enough for the dirty pages
-			ret = uffs_BufFlush_Exist_With_Enough_FreePage(dev,	slot, node, bc, n);
+			ret = uffs_BufFlush_Exist_With_Enough_FreePage(dev,	slot, node, bc);
 		}
 		else {
 			ret = uffs_BufFlush_Exist_With_BlockCover(dev, slot, node, bc);
@@ -1408,6 +1426,9 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev,
 		return NULL;
 	}
 	page = uffs_FindBestPageInBlock(dev, bc, page);
+	if (!uffs_Assert(page != UFFS_INVALID_PAGE, "got an invalid page?\n"))
+		return NULL;
+
 	uffs_BlockInfoPut(dev, bc);
 
 	buf->mark = UFFS_BUF_EMPTY;

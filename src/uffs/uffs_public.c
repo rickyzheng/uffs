@@ -41,6 +41,7 @@
 #include "uffs/uffs_core.h"
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_os.h"
+#include "uffs/uffs_crc.h"
 
 #include <string.h>
 
@@ -87,64 +88,39 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj)
  * \param[in] bc block info
  * \param[in] page page number to be compared with
  *
- * \return the better page number, could be the same with the given page
+ * \return the better page number, could be the same with the given page.
+ *         if the given page does not have good tag, return UFFS_INVALID_PAGE.
  */
 u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 {
 	int i;
-	int best;
 	uffs_Tags *tag, *tag_old;
 
-	if (page == dev->attr->pages_per_block - 1)
-		return page;
-	
-	uffs_BlockInfoLoad(dev, bc, page); //load old page
+	if (!uffs_Assert(page != UFFS_INVALID_PAGE, "invalid param !"))
+		return page;	// just in case ...
+
+	uffs_BlockInfoLoad(dev, bc, page); // load old page
 	tag_old = GET_TAG(bc, page);
+
+	if (!uffs_Assert(TAG_IS_GOOD(tag_old), "try to find a invalid page ?"))
+		return UFFS_INVALID_PAGE;
+
+	if (page == dev->attr->pages_per_block - 1)	// already the last page ?
+		return page;
 
 	for (i = dev->attr->pages_per_block - 1; i > page; i--) {
 		uffs_BlockInfoLoad(dev, bc, i);
 		tag = GET_TAG(bc, i);
-		if (TAG_PAGE_ID(tag) == TAG_PAGE_ID(tag_old)) {
-			if (TAG_PARENT(tag) == TAG_PARENT(tag_old) &&
-				TAG_SERIAL(tag) == TAG_SERIAL(tag_old) &&
-				TAG_IS_DIRTY(tag) &&		//0: dirty, 1:clear
-				TAG_IS_VALID(tag_old)) {	//0: valid, 1:invalid
-					break;
-			}
-		}
-	}
-	best = i;
-
-#if 0
-	if (TAG_PAGE_ID(tag_old) == page) {
-		//well, try to speed up by probing the last page ....
-		uffs_BlockInfoLoad(dev, bc, dev->attr->pages_per_block - 1);
-		tag = GET_TAG(bc, dev->attr->pages_per_block - 1);
-		if (TAG_IS_VALID(tag) &&
-			TAG_IS_DIRTY(tag) &&
-			TAG_PAGE_ID(tag) == dev->attr->pages_per_block - 1) {
-			return page;
+		if (TAG_IS_GOOD(tag) &&
+			TAG_PAGE_ID(tag) == TAG_PAGE_ID(tag_old) &&
+			TAG_PARENT(tag) == TAG_PARENT(tag_old) &&
+			TAG_SERIAL(tag) == TAG_SERIAL(tag_old))
+		{
+			break;
 		}
 	}
 
-	uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
-	best = page;
-	//the better page must be ahead of page, so ...i = page + 1; i < ...
-	for (i = page + 1; i < dev->attr->pages_per_block; i++) {
-		tag = GET_TAG(bc, i);
-		if (TAG_PAGE_ID(tag) == TAG_PAGE_ID(tag_old)) {
-			if (TAG_PARENT(tag) == TAG_PARENT(tag_old) &&
-				TAG_SERIAL(tag) == TAG_SERIAL(tag_old) &&
-				TAG_IS_DIRTY(tag) &&		//0: dirty, 1:clear
-				TAG_IS_VALID(tag_old)) {	//0: valid, 1:invalid
-				if (i > best) 
-					best = i;
-			}
-		}
-	}
-#endif
-
-	return best;
+	return i;
 }
 
 /** 
@@ -166,7 +142,7 @@ u16 uffs_FindPageInBlockWithPageId(uffs_Device *dev,
 	for (page = page_id; page < dev->attr->pages_per_block; page++) {
 		uffs_BlockInfoLoad(dev, bc, page);
 		tag = &(bc->spares[page].tag);
-		if (TAG_PAGE_ID(tag) == page_id)
+		if (TAG_IS_GOOD(tag) && TAG_PAGE_ID(tag) == page_id)
 			return page;
 	}
 
@@ -184,7 +160,7 @@ UBOOL uffs_IsBlockPagesFullUsed(uffs_Device *dev, uffs_BlockInfo *bc)
 	uffs_BlockInfoLoad(dev, bc, dev->attr->pages_per_block - 1);
 	tag = GET_TAG(bc, dev->attr->pages_per_block - 1);
 
-	return TAG_IS_DIRTY(tag) ? U_TRUE : U_FALSE;
+	return TAG_IS_GOOD(tag) ? U_TRUE : U_FALSE;
 }
 
 /** 
@@ -246,21 +222,6 @@ u16 uffs_FindFirstFreePage(uffs_Device *dev,
 
 
 /** 
- * Find first valid page from a block, just used in mounting a partition
- */
-u16 uffs_FindFirstValidPage(uffs_Device *dev, uffs_BlockInfo *bc)
-{
-	u16 i;
-
-	for (i = 0; i < dev->attr->pages_per_block; i++) {
-		if (uffs_BlockInfoLoad(dev, bc, i) == U_SUCC)
-			return i;
-	}
-	return UFFS_INVALID_PAGE;
-}
-
-
-/** 
  * calculate sum of data, 8bit version
  * \param[in] p data pointer
  * \param[in] len length of data
@@ -268,18 +229,7 @@ u16 uffs_FindFirstValidPage(uffs_Device *dev, uffs_BlockInfo *bc)
  */
 u8 uffs_MakeSum8(const void *p, int len)
 {
-	u8 ret = 0;
-	const u8 *data = (const u8 *)p;
-
-	if (!p)
-		return 0;
-
-	while (len > 0) {
-		ret += *data++;
-		len--;
-	}
-
-	return ret;
+	return uffs_crc16sum(p, len) & 0xFF;
 }
 
 /** 
@@ -290,21 +240,7 @@ u8 uffs_MakeSum8(const void *p, int len)
  */
 u16 uffs_MakeSum16(const void *p, int len)
 {
-	u8 ret_lo = 0;
-	u8 ret_hi = 0;
-	const u8 *data = (const u8 *)p;
-
-	if (!p)
-		return 0;
-
-	while (len > 0) {
-		ret_lo += *data;
-		ret_hi ^= *data;
-		data++;
-		len--;
-	}
-
-	return (ret_hi << 8) | ret_lo;
+	return uffs_crc16sum(p, len);
 }
 
 /** 
@@ -330,7 +266,6 @@ URET uffs_CreateNewFile(uffs_Device *dev,
 	TAG_PARENT(tag) = parent;
 	TAG_SERIAL(tag) = serial;
 	TAG_DATA_LEN(tag) = sizeof(uffs_FileInfo);
-	//tag->data_sum = uffs_MakeSum16(fi->name, fi->name_len);
 
 	buf = uffs_BufGet(dev, parent, serial, 0);
 	if (buf == NULL) {
@@ -359,24 +294,23 @@ int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type)
 	u16 page;
 	u16 lastPage = dev->attr->pages_per_block - 1;
 
-	// TODO: Need to speed up this procedure!
-	// First try the last page. will hit it
-	// if it's the full loaded file/data block.
 	uffs_BlockInfoLoad(dev, bc, lastPage);
 	tag = GET_TAG(bc, lastPage);
 
-	if (type == UFFS_TYPE_FILE) {
-		if(TAG_PAGE_ID(tag) == (lastPage - 1) &&
-			TAG_DATA_LEN(tag) == dev->com.pg_data_size) {
-			size = dev->com.pg_data_size * (dev->attr->pages_per_block - 1);
-			return size;
+	if (TAG_IS_GOOD(tag)) {
+		// First try the last page.
+		// if it's the full loaded file/data block, then we have a quick path.
+		if (type == UFFS_TYPE_FILE) {
+			if (TAG_PAGE_ID(tag) == (lastPage - 1)) {
+				size = dev->com.pg_data_size * (dev->attr->pages_per_block - 2) + TAG_DATA_LEN(tag);
+				return size;
+			}
 		}
-	}
-	if (type == UFFS_TYPE_DATA) {
-		if(TAG_PAGE_ID(tag) == lastPage &&
-			TAG_DATA_LEN(tag) == dev->com.pg_data_size) {
-			size = dev->com.pg_data_size * dev->attr->pages_per_block;
-			return size;
+		if (type == UFFS_TYPE_DATA) {
+			if (TAG_PAGE_ID(tag) == lastPage) {
+				size = dev->com.pg_data_size * (dev->attr->pages_per_block - 1) + TAG_DATA_LEN(tag);
+				return size;
+			}
 		}
 	}
 
@@ -384,20 +318,27 @@ int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type)
 	// need to read all spares....
 	uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
 	tag = GET_TAG(bc, 0);
-	if (TAG_TYPE(tag) == UFFS_TYPE_FILE) {
-		page_id = 1; //In file header block, file data page_id from 1
-		i = 1;		//search from page 1
-	}
-	else {
-		page_id = 0;	//in normal file data block, page_id from 0
-		i = 0;		//in normal file data block, search from page 0
-	}
-	for (; i < dev->attr->pages_per_block; i++) {
-		tag = GET_TAG(bc, i);
-		if (page_id == TAG_PAGE_ID(tag)) {
-			page = uffs_FindBestPageInBlock(dev, bc, i);
-			size += TAG_DATA_LEN(GET_TAG(bc, page));
-			page_id++;
+
+	if (uffs_Assert(TAG_IS_GOOD(tag), "block %d page 0 does not have good tag ?", bc->block)) {
+		if (TAG_TYPE(tag) == UFFS_TYPE_FILE) {
+			page_id = 1;	//In file header block, file data page_id from 1
+			i = 1;			//search from page 1
+		}
+		else {
+			page_id = 0;	//in normal file data block, page_id from 0
+			i = 0;			//in normal file data block, search from page 0
+		}
+		for (; i < dev->attr->pages_per_block; i++) {
+			tag = GET_TAG(bc, i);
+			if (TAG_IS_GOOD(tag)) {
+				if (page_id == TAG_PAGE_ID(tag)) {
+					page = uffs_FindBestPageInBlock(dev, bc, i);
+					if (uffs_Assert(page != UFFS_INVALID_PAGE, "got an invalid page ?")) {
+						size += TAG_DATA_LEN(GET_TAG(bc, page));
+						page_id++;
+					}
+				}
+			}
 		}
 	}
 
@@ -414,12 +355,16 @@ int uffs_GetFreePagesCount(uffs_Device *dev, uffs_BlockInfo *bc)
 	int count = 0;
 	int i;
 
+	// search from the last page ... to first page
 	for (i = dev->attr->pages_per_block - 1; i >= 0; i--) {
 		uffs_BlockInfoLoad(dev, bc, i);
 		if (uffs_IsPageErased(dev, bc, (u16)i) == U_TRUE) {
 			count++;
 		}
-		else break;
+		else {
+			if (TAG_IS_GOOD(GET_TAG(bc, i)))  // it won't be any free page if we see a good tag.
+				break;
+		}
 	}
 
 	return count;
@@ -439,29 +384,12 @@ UBOOL uffs_IsPageErased(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 	uffs_BlockInfoLoad(dev, bc, page);
 	tag = GET_TAG(bc, page);
 
-	if (!TAG_IS_DIRTY(tag) &&
+	if (!TAG_IS_SEALED(tag) &&
+		!TAG_IS_DIRTY(tag) &&
 		!TAG_IS_VALID(tag)) {
 		return U_TRUE;
 	}
 
-	return U_FALSE;
-}
-
-/** 
- * \brief Is this block the last block of file ?
- *		 (no free pages, and full filled with full page_id)
- */
-UBOOL uffs_IsDataBlockReguFull(uffs_Device *dev, uffs_BlockInfo *bc)
-{
-	uffs_Tags *tag;
-	uffs_BlockInfoLoad(dev, bc, dev->attr->pages_per_block - 1);
-
-	tag = GET_TAG(bc, dev->attr->pages_per_block - 1);
-
-	if (TAG_PAGE_ID(tag) == (dev->attr->pages_per_block - 1) &&
-		TAG_DATA_LEN(tag) == dev->com.pg_data_size) {
-		return U_TRUE;
-	}
 	return U_FALSE;
 }
 
