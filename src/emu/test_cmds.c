@@ -1011,7 +1011,6 @@ static int cmd_dump(int argc, char *argv[])
 {
 	const char *mount = "/";
 	uffs_Device *dev;
-	int rc = -1;
 
 	if (argc > 1) {
 		mount = argv[1];
