@@ -483,12 +483,15 @@ static int cmd_TestPageReadWrite(int argc, char *argv[])
 	block = node->u.list.block;
 	page = 1;
 
+	TAG_DIRTY_BIT(tag) = TAG_DIRTY;
+	TAG_VALID_BIT(tag) = TAG_VALID;
 	TAG_DATA_LEN(tag) = dev->com.pg_data_size;
 	TAG_TYPE(tag) = UFFS_TYPE_DATA;
 	TAG_PAGE_ID(tag) = 3;
 	TAG_PARENT(tag) = 100;
 	TAG_SERIAL(tag) = 10;
 	TAG_BLOCK_TS(tag) = 1;
+	SEAL_TAG(tag);
 
 	ret = uffs_FlashWritePageCombine(dev, block, page, buf, tag);
 	if (UFFS_FLASH_HAVE_ERR(ret)) {

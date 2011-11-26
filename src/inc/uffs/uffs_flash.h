@@ -71,6 +71,7 @@ extern "C"{
 #define UFFS_FLASH_IO_ERR		-1		//!< I/O error
 #define UFFS_FLASH_ECC_FAIL		-2		//!< ECC failed
 #define UFFS_FLASH_BAD_BLK		-3		//!< bad block
+#define UFFS_FLASH_CRC_ERR		-4		//!< CRC failed
 #define UFFS_FLASH_UNKNOWN_ERR	-100	//!< unkown error?
 
 #define UFFS_FLASH_HAVE_ERR(e)		((e) < 0)

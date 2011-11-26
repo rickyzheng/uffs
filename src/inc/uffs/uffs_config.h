@@ -231,6 +231,13 @@
 #define CONFIG_BAD_BLOCK_POLICY_STRICT
 
 
+/**
+ * \def CONFIG_ENABLE_PAGE_DATA_CRC
+ * \note If this is enabled, UFFS save page data CRC16 sum in mini header,
+ *       it provides extra protection for data integrity.
+ */
+#define CONFIG_ENABLE_PAGE_DATA_CRC
+
 
 /** micros for calculating buffer sizes */
 

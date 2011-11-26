@@ -41,6 +41,7 @@
 #include "uffs/uffs_flash.h"
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_badblock.h"
+#include "uffs/uffs_crc.h"
 #include <string.h>
 
 #define PFX "flsh: "
@@ -477,7 +478,10 @@ ext:
  *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
  *			#UFFS_FLASH_ECC_FAIL: spare data has flip bits and ecc correct failed.
  *			#UFFS_FLASH_ECC_OK: spare data has flip bits and corrected by ecc.
+ *			#UFFS_FLASH_CRC_ERR: CRC verification failed.
  *			#UFFS_FLASH_UNKNOWN_ERR:
+ *
+ * \note if skip_ecc is U_TRUE, skip CRC as well.
  */
 int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBOOL skip_ecc)
 {
@@ -487,8 +491,8 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBO
 	u8 ecc_buf[UFFS_MAX_ECC_SIZE];
 	u8 ecc_store[UFFS_MAX_ECC_SIZE];
 	UBOOL is_bad = U_FALSE;
-
 	u8 * spare;
+
 	int ret = UFFS_FLASH_UNKNOWN_ERR;
 
 	spare = (u8 *) uffs_PoolGet(SPOOL(dev));
@@ -514,6 +518,18 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBO
 	if (UFFS_FLASH_HAVE_ERR(ret))
 		goto ext;
 
+#ifdef CONFIG_ENABLE_PAGE_DATA_CRC
+	if (!skip_ecc && HEADER(buf)->crc == uffs_crc16sum(buf->data, size - sizeof(struct uffs_MiniHeaderSt)))
+		goto ext;	// CRC is matched, no need to do ECC correction.
+	else {
+		if (!skip_ecc && (dev->attr->ecc_opt == UFFS_ECC_SOFT || dev->attr->ecc_opt == UFFS_ECC_HW)) {
+			// ECC is not enabled and CRC failed
+			ret = UFFS_FLASH_CRC_ERR;
+			goto ext;
+		}
+	}
+#endif
+
 	// make ECC for UFFS_ECC_SOFT
 	if (attr->ecc_opt == UFFS_ECC_SOFT && !skip_ecc)
 		uffs_EccMake(buf->header, size, ecc_buf);
@@ -538,6 +554,16 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBO
 			goto ext;
 	}
 
+#ifdef CONFIG_ENABLE_PAGE_DATA_CRC
+	if (!skip_ecc && ret == UFFS_FLASH_ECC_OK) {
+		// There are bit flips, do CRC check again.
+		if (HEADER(buf)->crc == uffs_crc16sum(buf->data, size - sizeof(struct uffs_MiniHeaderSt))) {
+			ret = UFFS_FLASH_CRC_ERR;
+			goto ext;
+		}
+	}
+#endif
+
 ext:
 	switch(ret) {
 		case UFFS_FLASH_IO_ERR:
@@ -556,6 +582,9 @@ ext:
 			break;
 		case UFFS_FLASH_UNKNOWN_ERR:
 			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d UNKNOWN error!", block, page);
+			break;
+		case UFFS_FLASH_CRC_ERR:
+			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d CRC failed", block, page);
 			break;
 		default:
 			break;
@@ -656,6 +685,9 @@ int uffs_FlashWritePageCombine(uffs_Device *dev,
 	header = HEADER(buf);
 	memset(header, 0xFF, sizeof(struct uffs_MiniHeaderSt));
 	header->status = 0;
+#ifdef CONFIG_ENABLE_PAGE_DATA_CRC
+	header->crc = uffs_crc16sum(buf->data, size - sizeof(struct uffs_MiniHeaderSt));
+#endif
 
 	// setup tag
 	TAG_DIRTY_BIT(tag) = TAG_DIRTY;		//!< set dirty bit
