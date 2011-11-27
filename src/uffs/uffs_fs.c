@@ -80,7 +80,7 @@ typedef enum {
 
 
 static void do_ReleaseObjectResource(uffs_Object *obj);
-static URET do_TruncateObject(uffs_Object *obj, u32 remain, UBOOL dry_run);
+static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt);
 
 
 static int _object_data[sizeof(uffs_Object) * MAX_OBJECT_HANDLE / sizeof(int)];
