@@ -107,7 +107,7 @@ void uffs_DebugMessage(int level, const char *prefix,
 
 #define ENABLE_DEBUG
 
-#include <uBase.h>
+#include <ubase.h>
 #include <sys/debug.h>
 
 
