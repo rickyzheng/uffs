@@ -44,7 +44,7 @@ const char * uffs_Version2Str(int ver);
 int uffs_GetVersion(void);
 int uffs_GetMainVersion(int ver);
 int uffs_GetMinorVersion(int ver);
-int uffs_GetThriceVersion(int ver);
+int uffs_GetTrivialVersion(int ver);
 
 #ifdef __cplusplus
 }

@@ -67,7 +67,7 @@ int uffs_GetMinorVersion(int ver)
 	return (ver & 0xff0000) >> 16;
 }
 
-int uffs_GetThriceVersion(int ver)
+int uffs_GetTrivialVersion(int ver)
 {
 	return (ver & 0xff00) >> 8;
 }
