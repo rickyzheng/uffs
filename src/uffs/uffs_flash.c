@@ -431,7 +431,7 @@ int uffs_FlashReadPageTag(uffs_Device *dev,
 				memcpy(&s, &tag->s, sizeof(s));
 				tmp_ret = TagEccCorrect(&s);
 
-				if (ret <= 0 || !TAG_IS_VALID(tag))	// can not corrected by ECC.
+				if (tmp_ret <= 0 || !TAG_IS_VALID(tag))	// can not corrected by ECC.
 					goto ext;
 			}
 			else {
