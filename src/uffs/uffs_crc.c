@@ -36,7 +36,7 @@
  * \note Created in 23 Nov, 2011
  */
 
-#include "uffs/uffs_types.h"
+#include "uffs/uffs_crc.h"
 
 /* CRC16 Table */
 static const u16 CRC16_TBL[256] = {
