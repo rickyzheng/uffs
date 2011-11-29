@@ -48,7 +48,7 @@ static char version_buf[16];
 const char * uffs_Version2Str(int ver)
 {
 	sprintf(version_buf, "%1d.%02d.%04d",
-			(ver&0xff000000) >> 24, (ver&0xff0000) >> 16, (ver&0xffff));
+			(ver & 0xff000000) >> 24, (ver & 0xff0000) >> 16, (ver & 0xffff));
 	return version_buf;
 }
 
@@ -59,10 +59,15 @@ int uffs_GetVersion(void)
 
 int uffs_GetMainVersion(int ver)
 {
-	return (ver&0xff000000) >> 24;
+	return (ver & 0xff000000) >> 24;
 }
 
 int uffs_GetMinorVersion(int ver)
 {
-	return (ver&0xff0000) >> 16;
+	return (ver & 0xff0000) >> 16;
+}
+
+int uffs_GetThriceVersion(int ver)
+{
+	return (ver & 0xff00) >> 8;
 }
