@@ -479,7 +479,7 @@ static struct uffs_DebugMsgOutputSt m_dbg_ops = {
 
 static void output_dbg_msg(const char *msg)
 {
-	printf(msg);
+	printf("%s", msg);
 }
 
 int main(int argc, char *argv[])

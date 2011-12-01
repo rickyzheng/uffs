@@ -148,6 +148,7 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj);
 //#define UFFS_DBG_LEVEL	UFFS_ERR_NORMAL	
 #define UFFS_DBG_LEVEL	UFFS_ERR_NOISY	
 
+struct uffs_DebugMsgOutputSt;
 URET uffs_InitDebugMessageOutput(struct uffs_DebugMsgOutputSt *ops);
 
 #ifdef CONFIG_ENABLE_UFFS_DEBUG_MSG

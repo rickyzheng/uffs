@@ -50,8 +50,6 @@ struct uffs_DebugMsgOutputSt {
 	void (*vprintf)(const char *fmt, va_list args);
 };
 
-struct uffs_DebugMsgOutputSt * uffs_GetDebugMsgOutput(void);
-
 /* OS specific functions */
 int uffs_SemCreate(int n);
 int uffs_SemWait(int sem);
