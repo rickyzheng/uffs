@@ -148,7 +148,15 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj);
 //#define UFFS_DBG_LEVEL	UFFS_ERR_NORMAL	
 #define UFFS_DBG_LEVEL	UFFS_ERR_NOISY	
 
+URET uffs_InitDebugMessageOutput(struct uffs_DebugMsgOutputSt *ops);
+
+#ifdef CONFIG_ENABLE_UFFS_DEBUG_MSG
 void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const char *errFmt, ...);
+void uffs_AssertCall(const char *file, int line, const char *msg, ...);
+#else
+static void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const char *errFmt, ...) {};
+static void uffs_AssertCall(const char *file, int line, const char *msg, ...) {};
+#endif
 
 #define uffs_Perror(level, fmt, ... ) \
 	uffs_DebugMessage(level, PFX, TENDSTR, fmt, ## __VA_ARGS__)
@@ -156,8 +164,6 @@ void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const 
 #define uffs_PerrorRaw(level, fmt, ... ) \
 	uffs_DebugMessage(level, NULL, NULL, fmt, ## __VA_ARGS__)
 
-
-void uffs_AssertCall(const char *file, int line, const char *msg, ...);
 
 #define uffs_Assert(expr, msg, ...) \
 	((expr) ? U_TRUE : (uffs_AssertCall(__FILE__, __LINE__, msg, ## __VA_ARGS__), U_FALSE))

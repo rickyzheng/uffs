@@ -35,104 +35,66 @@
  * \brief output debug messages
  * \author Ricky Zheng, created 10th May, 2005
  */
+#include "uffs/uffs_os.h"
 #include "uffs/uffs_public.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
 
+#define MAX_DEBUG_LINE_LENGTH	128
 
-#if !defined(_UBASE_)
-#define ENABLE_DEBUG
-//#define OUTPUT_TOFILE
-#endif
+static struct uffs_DebugMsgOutputSt * m_ops = NULL;
 
-#if !defined(_UBASE_)
+static void uffs_vprintf(const char *fmt, va_list args)
+{
+	char line_buf[MAX_DEBUG_LINE_LENGTH];
+
+	if (m_ops && m_ops->output) {
+		vsnprintf(line_buf, MAX_DEBUG_LINE_LENGTH, fmt, args);
+		m_ops->output(line_buf);
+	}
+}
+
+/**
+ * \brief Initialize debug message output functions
+ */
+URET uffs_InitDebugMessageOutput(struct uffs_DebugMsgOutputSt *ops)
+{
+	m_ops = ops;
+
+	if (m_ops == NULL || m_ops->output == NULL) {
+		m_ops = NULL;
+		return U_FAIL;
+	}
+	else if (m_ops->vprintf == NULL)
+		m_ops->vprintf = uffs_vprintf;
+
+	return U_SUCC;
+}
 
 
-#ifdef OUTPUT_TOFILE
-#define DEBUG_LOGFILE	"log.txt"
-#endif
+#ifdef CONFIG_ENABLE_UFFS_DEBUG_MSG
 
+/**
+ * \brief The main debug message output function
+ */
 void uffs_DebugMessage(int level, const char *prefix,
 					   const char *suffix, const char *errFmt, ...)
 {
+	va_list arg;
 
-#ifdef ENABLE_DEBUG
-	if (level >= UFFS_DBG_LEVEL) {
-
-		char buf[1024] = {0};
-		char *p;
-		
-
-#ifdef OUTPUT_TOFILE
-		FILE *fp = NULL;	
-#endif
-		
-		va_list arg;
-
-		if (strlen(errFmt) > 800) {
-			// dangerous!!
-			printf("uffs_Perror buffer is not enough !");
-			return;
-		}
-
-		p = buf;
-
-		if (prefix) {
-			strcpy(p, prefix);
-			p += strlen(prefix);
-		}
+	if (m_ops && level >= UFFS_DBG_LEVEL) {
+		if (prefix)
+			m_ops->output(prefix);
 
 		va_start(arg, errFmt);
-		vsprintf(p, errFmt, arg);
+		m_ops->vprintf(errFmt, arg);
 		va_end(arg);
 
 		if (suffix)
-			strcat(p, suffix);
-
-#ifdef OUTPUT_TOFILE
-		fp = fopen(DEBUG_LOGFILE, "a+b");
-		if (fp) {
-			fwrite(buf, 1, strlen(buf), fp);
-			fclose(fp);
-		}
-#else
-		printf("%s", buf);
-#endif
+			m_ops->output(suffix);
 	}
-#endif //ENABLE_DEBUG
 }
-
-#else
-
-#define ENABLE_DEBUG
-
-#include <ubase.h>
-#include <sys/debug.h>
-
-
-void uffs_DebugMessage(int level, const char *prefix,
-					   const char *suffix, const char *errFmt, ...)
-
-{
-#ifdef ENABLE_DEBUG
-	va_list args;
-	if (level >= UFFS_DBG_LEVEL) {
-		if (prefix)
-			dbg_simple_print_raw(prefix);
-		va_start(args, errFmt);
-		dbg_simple_vprintf(errFmt, args);
-		va_end(args);
-		if (suffix)
-			dbg_simple_print_raw(suffix);
-	}
-#else
-	level = level;
-	errFmt = errFmt;
-#endif //ENABLE_DEBUG
-}
-
-#endif
 
 /**
  * \brief Called when an assert occurred.
@@ -145,9 +107,18 @@ void uffs_DebugMessage(int level, const char *prefix,
 void uffs_AssertCall(const char *file, int line, const char *msg, ...)
 {
 	va_list args;
-	printf("ASSERT %s:%d - :", file, line);
-	va_start(args, msg);
-	vprintf(msg, args);
-	va_end(args);
-	printf(TENDSTR);
+	char buf[32];
+
+	if (m_ops) {
+		m_ops->output("ASSERT ");
+		m_ops->output(file);
+		sprintf(buf, ":%d - :", line);
+		m_ops->output(buf);
+		va_start(args, msg);
+		m_ops->vprintf(msg, args);
+		va_end(args);
+		m_ops->output(TENDSTR);
+	}
 }
+
+#endif

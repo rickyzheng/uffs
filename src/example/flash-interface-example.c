@@ -24,7 +24,7 @@
   this file does not by itself cause the resulting work to be covered
   by the GNU General Public License. However the source code for this
   file must still be made available in accordance with section (3) of
-  the GNU General Public License v2.my_application_main_entry
+  the GNU General Public License v2.
  
   This exception does not invalidate any other reasons why a work based
   on this file might be covered by the GNU General Public License.
@@ -383,9 +383,21 @@ static int my_init_filesystem(void)
 	return uffs_InitMountTable() == U_SUCC ? 0 : -1;
 }
 
+static void my_debug_msg_output(const char *msg)
+{
+	// FIXME: output debug messages for my platform ...
+}
+
+static struct uffs_DebugMsgOutputSt m_dbg_ops = {
+	my_debug_msg_output,
+	NULL,
+};
+
 /* application entry */
 int main()
 {
+	uffs_InitDebugMessageOutput(&m_dbg_ops);	// init debug as early as possible
+
 	my_init_filesystem();
 
 	// ... my application codes ....

@@ -33,6 +33,7 @@
 #ifndef _UFFS_OS_H_
 #define _UFFS_OS_H_
 
+#include <stdarg.h>
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_core.h"
 
@@ -43,6 +44,13 @@ extern "C"{
 #define UFFS_TASK_ID_NOT_EXIST	-1
 
 typedef int OSSEM;
+
+struct uffs_DebugMsgOutputSt {
+	void (*output)(const char *msg);
+	void (*vprintf)(const char *fmt, va_list args);
+};
+
+struct uffs_DebugMsgOutputSt * uffs_GetDebugMsgOutput(void);
 
 /* OS specific functions */
 int uffs_SemCreate(int n);

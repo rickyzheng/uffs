@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "uffs/uffs_os.h"
 #include "uffs/uffs_config.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_fs.h"
@@ -106,7 +107,6 @@ static const char *g_ecc_option_strings[] = UFFS_ECC_OPTION_STRING;
 static struct uffs_MountTableEntrySt conf_mounts[MAX_MOUNT_TABLES] = {{0}};
 static uffs_Device conf_devices[MAX_MOUNT_TABLES] = {{0}};
 static char mount_point_name[MAX_MOUNT_TABLES][MAX_MOUNT_POINT_NAME] = {{0}};
-
 
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 BOOL cmdMeminfo(const char *tail)
@@ -470,9 +470,23 @@ static void print_params(void)
 	MSGLN("");
 }
 
+/* debug message output */
+static void output_dbg_msg(const char *msg);
+static struct uffs_DebugMsgOutputSt m_dbg_ops = {
+	output_dbg_msg,
+	NULL,
+};
+
+static void output_dbg_msg(const char *msg)
+{
+	printf(msg);
+}
+
 int main(int argc, char *argv[])
 {
 	int ret;
+
+	uffs_InitDebugMessageOutput(&m_dbg_ops);	// init debug as early as possible
 
 	if (parse_options(argc, argv) < 0) {
 		return -1;

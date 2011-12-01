@@ -99,6 +99,12 @@
  */
 #define MAX_DIRTY_BUF_GROUPS	3
 
+/**
+ * \def CONFIG_ENABLE_UFFS_DEBUG_MSG
+ * \note Enable debug message output. You must call uffs_InitDebugMessageOutput()
+ *      to initialize debug apart from enable debug feature.
+ */
+#define CONFIG_ENABLE_UFFS_DEBUG_MSG
 
 /**
  * \def CONFIG_USE_GLOBAL_FS_LOCK
