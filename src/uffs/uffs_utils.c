@@ -35,7 +35,7 @@
  * \brief utilities of uffs
  * \author Ricky Zheng, created 12th May, 2005
  */
-#include "uffs/uffs_config.h"
+#include "uffs_config.h"
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_utils.h"
 #include "uffs/uffs_os.h"

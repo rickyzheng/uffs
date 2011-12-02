@@ -35,7 +35,7 @@
  * \brief uffs device operation
  * \author Ricky Zheng, created 10th May, 2005
  */
-#include "uffs/uffs_config.h"
+#include "uffs_config.h"
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_public.h"

@@ -35,7 +35,7 @@
  * \brief UFFS flash interface
  * \author Ricky Zheng, created 17th July, 2009
  */
-#include "uffs/uffs_config.h"
+#include "uffs_config.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_ecc.h"
 #include "uffs/uffs_flash.h"

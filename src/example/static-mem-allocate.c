@@ -40,7 +40,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "uffs/uffs_config.h"
+#include "uffs_config.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs_utils.h"
@@ -134,6 +134,8 @@ static int release_uffs_fs(void)
 int main(int argc, char *argv[])
 {
 	int ret;
+
+	uffs_SetupDebugOutput(); 	// setup debug output as early as possible
 
 	ret = init_uffs_fs();
 

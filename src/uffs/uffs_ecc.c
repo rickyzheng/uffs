@@ -37,7 +37,7 @@
  */
 
 #include "uffs/uffs_fs.h"
-#include "uffs/uffs_config.h"
+#include "uffs_config.h"
 #include <string.h>
 
 #define PFX "ecc : "

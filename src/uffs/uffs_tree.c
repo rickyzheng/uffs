@@ -38,7 +38,7 @@
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_pool.h"
-#include "uffs/uffs_config.h"
+#include "uffs_config.h"
 #include "uffs/uffs_flash.h"
 #include "uffs/uffs_badblock.h"
 

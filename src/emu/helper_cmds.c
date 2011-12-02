@@ -39,7 +39,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include "uffs/uffs_config.h"
+#include "uffs_config.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs_utils.h"

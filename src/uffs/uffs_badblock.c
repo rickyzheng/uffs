@@ -37,7 +37,7 @@
  */
 
 #include "uffs/uffs_fs.h"
-#include "uffs/uffs_config.h"
+#include "uffs_config.h"
 #include "uffs/uffs_ecc.h"
 #include "uffs/uffs_badblock.h"
 #include <string.h>

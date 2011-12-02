@@ -40,6 +40,7 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdio.h>
 
 #define PFX "os  : "
 
@@ -79,6 +80,17 @@ int uffs_OSGetTaskId(void)
 	return 0;
 }
 
+unsigned int uffs_GetCurDateTime(void)
+{
+	// FIXME: return system time, please modify this for your platform ! 
+	//			or just return 0 if you don't care about file time.
+	time_t tvalue;
+
+	tvalue = time(NULL);
+	
+	return (unsigned int)tvalue;
+}
+
 #if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
 void uffs_CriticalEnter(void)
 {
@@ -93,13 +105,42 @@ void uffs_CriticalExit(void)
 }
 #endif
 
-unsigned int uffs_GetCurDateTime(void)
+#if CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 0
+static void * sys_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 {
-	// FIXME: return system time, please modify this for your platform ! 
-	//			or just return 0 if you don't care about file time.
-	time_t tvalue;
+	dev = dev;
+	uffs_Perror(UFFS_ERR_NORMAL, "system memory alloc %d bytes", size);
+	return malloc(size);
+}
 
-	tvalue = time(NULL);
-	
-	return (unsigned int)tvalue;
+static URET sys_free(struct uffs_DeviceSt *dev, void *p)
+{
+	dev = dev;
+	free(p);
+	return U_SUCC;
+}
+
+void uffs_MemSetupSystemAllocator(uffs_MemAllocator *allocator)
+{
+	allocator->malloc = sys_malloc;
+	allocator->free = sys_free;
+}
+#endif
+
+
+/* debug message output throught 'printf' */
+static void output_dbg_msg(const char *msg);
+static struct uffs_DebugMsgOutputSt m_dbg_ops = {
+	output_dbg_msg,
+	NULL,
+};
+
+static void output_dbg_msg(const char *msg)
+{
+	printf("%s", msg);
+}
+
+void uffs_SetupDebugOutput(void)
+{
+	uffs_InitDebugMessageOutput(&m_dbg_ops);
 }

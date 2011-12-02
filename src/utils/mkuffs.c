@@ -40,7 +40,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "uffs/uffs_os.h"
-#include "uffs/uffs_config.h"
+#include "uffs_config.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs_utils.h"
@@ -470,23 +470,12 @@ static void print_params(void)
 	MSGLN("");
 }
 
-/* debug message output */
-static void output_dbg_msg(const char *msg);
-static struct uffs_DebugMsgOutputSt m_dbg_ops = {
-	output_dbg_msg,
-	NULL,
-};
-
-static void output_dbg_msg(const char *msg)
-{
-	printf("%s", msg);
-}
 
 int main(int argc, char *argv[])
 {
 	int ret;
 
-	uffs_InitDebugMessageOutput(&m_dbg_ops);	// init debug as early as possible
+	uffs_SetupDebugOutput(); 	// setup debug output as early as possible
 
 	if (parse_options(argc, argv) < 0) {
 		return -1;

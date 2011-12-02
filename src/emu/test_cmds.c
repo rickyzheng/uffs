@@ -38,7 +38,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "uffs/uffs_config.h"
+#include "uffs_config.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_fd.h"
 #include "uffs/uffs_utils.h"

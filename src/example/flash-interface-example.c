@@ -336,6 +336,7 @@ static void setup_flash_storage(struct uffs_StorageAttrSt *attr)
 {
 	memset(attr, 0, sizeof(struct uffs_StorageAttrSt));
 	
+	// setup NAND flash attributes.	
 	attr->total_blocks = TOTAL_BLOCKS;			/* total blocks */
 	attr->page_data_size = PAGE_DATA_SIZE;		/* page data size */
 	attr->pages_per_block = PAGES_PER_BLOCK;	/* pages per block */
@@ -347,9 +348,9 @@ static void setup_flash_storage(struct uffs_StorageAttrSt *attr)
 
 static URET my_InitDevice(uffs_Device *dev)
 {
-	dev->attr = &g_my_flash_storage;
-	dev->attr->_private = (void *) &g_nand_chip;	// hook nand_chip data structure to attr->_private
-	dev->ops = &g_my_nand_ops;
+	dev->attr = &g_my_flash_storage;			// NAND flash attributes
+	dev->attr->_private = (void *) &g_nand_chip;// hook nand_chip data structure to attr->_private
+	dev->ops = &g_my_nand_ops;					// NAND driver
     
 	return U_SUCC;
 }
@@ -383,20 +384,10 @@ static int my_init_filesystem(void)
 	return uffs_InitMountTable() == U_SUCC ? 0 : -1;
 }
 
-static void my_debug_msg_output(const char *msg)
-{
-	// FIXME: output debug messages for my platform ...
-}
-
-static struct uffs_DebugMsgOutputSt m_dbg_ops = {
-	my_debug_msg_output,
-	NULL,
-};
-
 /* application entry */
 int main()
 {
-	uffs_InitDebugMessageOutput(&m_dbg_ops);	// init debug as early as possible
+	uffs_SetupDebugOutput(); 	// setup debug output as early as possible
 
 	my_init_filesystem();
 

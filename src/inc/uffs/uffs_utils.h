@@ -34,7 +34,7 @@
 #define _UFFS_UTILS_H_
 
 #include "uffs/uffs_types.h"
-#include "uffs/uffs_config.h"
+#include "uffs_config.h"
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_core.h"
 

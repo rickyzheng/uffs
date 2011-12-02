@@ -855,40 +855,7 @@ void uffs_MemSetupNativeAllocator(uffs_MemAllocator *allocator)
 
 #endif //CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
 
-#if CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 0
-#ifdef _UBASE_
-# include <sys/i_kheap.h>
-#else
-# include <stdlib.h>
-#endif
-static void * sys_malloc(struct uffs_DeviceSt *dev, unsigned int size)
-{
-	dev = dev;
-	uffs_Perror(UFFS_ERR_NORMAL, "system memory alloc %d bytes", size);
-#ifdef _UBASE_
-	return kmalloc(size);
-#else
-	return malloc(size);
-#endif
-}
 
-static URET sys_free(struct uffs_DeviceSt *dev, void *p)
-{
-	dev = dev;
-#ifdef _UBASE_
-	kfree(p);
-#else
-	free(p);
-#endif
-	return U_SUCC;
-}
-
-void uffs_MemSetupSystemAllocator(uffs_MemAllocator *allocator)
-{
-	allocator->malloc = sys_malloc;
-	allocator->free = sys_free;
-}
-#endif //CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR
 
 #if CONFIG_USE_STATIC_MEMORY_ALLOCATOR > 0
 static void * static_malloc(struct uffs_DeviceSt *dev, unsigned int size)

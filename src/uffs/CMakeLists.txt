@@ -27,7 +27,6 @@ SET (libuffs_HEADS
 		${HDR}/uffs_badblock.h
 		${HDR}/uffs_blockinfo.h
 		${HDR}/uffs_buf.h 
-		${HDR}/uffs_config.h 
 		${HDR}/uffs_core.h 
 		${HDR}/uffs_device.h
 		${HDR}/uffs_ecc.h
@@ -47,5 +46,7 @@ SET (libuffs_HEADS
 		${HDR}/uffs_crc.h
    )
 
+INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/platform/posix)
 INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/inc)
+
 ADD_LIBRARY( uffs STATIC ${libuffs_SRCS} ${libuffs_HEADS} )
