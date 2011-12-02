@@ -88,9 +88,9 @@ void uffs_DeviceUnLock(uffs_Device *dev)
 #else
 
 /* dummy stubs */
-void uffs_DeviceInitLock(dev) {}
-void uffs_DeviceReleaseLock(dev) {}
-void uffs_DeviceLock(dev) {}
-void uffs_DeviceUnLock(dev) {}
+void uffs_DeviceInitLock(uffs_Device *dev) {}
+void uffs_DeviceReleaseLock(uffs_Device *dev) {}
+void uffs_DeviceLock(uffs_Device *dev) {}
+void uffs_DeviceUnLock(uffs_Device *dev) {}
 
 #endif
