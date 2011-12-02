@@ -35,10 +35,11 @@
  * \brief seting up uffs tree data structure
  * \author Ricky Zheng, created 13th May, 2005
  */
+
+#include "uffs_config.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_pool.h"
-#include "uffs_config.h"
 #include "uffs/uffs_flash.h"
 #include "uffs/uffs_badblock.h"
 
@@ -1061,29 +1062,13 @@ static void _InsertToEntry(uffs_Device *dev, u16 *entry,
 						   int hash, TreeNode *node)
 {
 	node->hash_next = entry[hash];
-#ifdef CONFIG_TREE_NODE_USE_DOUBLE_LINK
 	node->hash_prev = EMPTY_NODE;
 	if (entry[hash] != EMPTY_NODE) {
 		FROM_IDX(entry[hash], TPOOL(dev))->hash_prev = TO_IDX(node, TPOOL(dev));
 	}
-#endif
 	entry[hash] = TO_IDX(node, TPOOL(dev));
 }
 
-
-#ifndef CONFIG_TREE_NODE_USE_DOUBLE_LINK
-TreeNode * _FindPrevNodeFromEntry(uffs_Device *dev, u16 start, u16 find)
-{
-	TreeNode *work;
-	while (start != EMPTY_NODE) {
-		work = FROM_IDX(start, &(dev->mem.tree_pool));
-		if (work->hash_next == find) {
-			return work;
-		}
-	}
-	return NULL;
-}
-#endif
 
 /** 
  * break the node from entry
@@ -1111,7 +1096,7 @@ void uffs_BreakFromEntry(uffs_Device *dev, u8 type, TreeNode *node)
 		uffs_Perror(UFFS_ERR_SERIOUS, "unknown type when break...");
 		return;
 	}
-#ifdef CONFIG_TREE_NODE_USE_DOUBLE_LINK
+
 	if (node->hash_prev != EMPTY_NODE) {
 		work = FROM_IDX(node->hash_prev, &(dev->mem.tree_pool));
 		work->hash_next = node->hash_next;
@@ -1120,15 +1105,6 @@ void uffs_BreakFromEntry(uffs_Device *dev, u8 type, TreeNode *node)
 		work = FROM_IDX(node->hash_next, &(dev->mem.tree_pool));
 		work->hash_prev = node->hash_prev;
 	}
-#else
-	if ((work = _FindPrevNodeFromEntry(dev,
-										*entry, 
-										TO_IDX(node, &(dev->mem.tree_pool))
-										)) != NULL)
-	{
-		work->hash_next = node->hash_next;
-	}
-#endif
 
 	if (*entry == TO_IDX(node, &(dev->mem.tree_pool))) {
 		*entry = node->hash_next;

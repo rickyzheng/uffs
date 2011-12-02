@@ -35,9 +35,11 @@
  * \brief Fast fixed size memory pool management.
  * \author Ricky Zheng, Simon Kallweit
  */
- 
+
+#include "uffs_config.h" 
 #include "uffs/uffs_types.h"
 #include "uffs/uffs_os.h"
+#include "uffs/uffs_public.h"
 #include "uffs/uffs_pool.h"
 
 /*

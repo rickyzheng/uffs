@@ -34,8 +34,6 @@
 #define _UFFS_OS_H_
 
 #include <stdarg.h>
-#include "uffs/uffs_device.h"
-#include "uffs/uffs_core.h"
 
 #ifdef __cplusplus
 extern "C"{
@@ -57,11 +55,6 @@ int uffs_SemCreate(int n);
 int uffs_SemWait(int sem);
 int uffs_SemSignal(int sem);
 int uffs_SemDelete(int *sem);
-
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-void uffs_CriticalEnter(void);
-void uffs_CriticalExit(void);
-#endif
 
 int uffs_OSGetTaskId(void);	//get current task id
 unsigned int uffs_GetCurDateTime(void);

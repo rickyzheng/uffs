@@ -99,9 +99,7 @@ typedef struct uffs_TreeNodeSt {
 		struct FdataSt data;
 	} u;
 	u16 hash_next;		
-#ifdef CONFIG_TREE_NODE_USE_DOUBLE_LINK
 	u16 hash_prev;			
-#endif
 } TreeNode;
 
 

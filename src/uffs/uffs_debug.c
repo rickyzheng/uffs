@@ -35,6 +35,7 @@
  * \brief output debug messages
  * \author Ricky Zheng, created 10th May, 2005
  */
+#include "uffs_config.h"
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_public.h"
 #include <stdio.h>
@@ -120,5 +121,9 @@ void uffs_AssertCall(const char *file, int line, const char *msg, ...)
 		m_ops->output(TENDSTR);
 	}
 }
+#else
+
+void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const char *errFmt, ...) {};
+void uffs_AssertCall(const char *file, int line, const char *msg, ...) {};
 
 #endif

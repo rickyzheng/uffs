@@ -39,33 +39,6 @@
 extern "C"{
 #endif
 
-
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-
-#define HEAP_HASH_BIT	6							/* hash table bit */
-#define HEAP_HASH_SIZE (1 << (HEAP_HASH_BIT - 1))	/* hash table size */
-#define HEAP_HASH_MASK	(HEAP_HASH_SIZE - 1)		/* hash table mask */
-#define GET_HASH_INDEX(p) ((((unsigned long)(p)) >> 2) & HEAP_HASH_MASK)
-
-/* memory alloc node  */
-typedef struct HeapManagementNodeSt{
-	int task_id;					/* who alloc this block? it's the caller's task id */
-	struct HeapManagementNodeSt * next;	/* point to next node */
-	void *p;						/* point to allocated block */
-	int size;						/* block size */
-} HeapMm;
-
-typedef HeapMm* HeapHashTable;
-
-/** \note: uffs_MemInitHeap should be called before using native memory allocator on each device */
-void uffs_MemInitHeap(void *addr, int size);
-
-URET uffs_MemInitNativeAllocator(uffs_Device *dev);
-int uffs_MemReleaseNativeAllocator(uffs_Device *dev);
-
-#endif //CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
-
-
 /** uffs native memory allocator */
 typedef struct uffs_memAllocatorSt {
 	URET (*init)(struct uffs_DeviceSt *dev);			//!< init memory allocator, setup buffer sizes
@@ -90,33 +63,16 @@ typedef struct uffs_memAllocatorSt {
 	int spare_data_size;				//!< spare size consumed by UFFS, 
 										//!< calculated by UFFS according to the layout information.
 
-
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-	HeapHashTable tbl[HEAP_HASH_SIZE];
-	int count;
-	int maxused;
-#endif
-
-#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR > 0
+	/* for static memory allocator */
 	char *buf_start;
 	int buf_size;
 	int pos;
-#endif
+
 
 } uffs_MemAllocator;
 
-
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-void uffs_MemSetupNativeAllocator(uffs_MemAllocator *allocator);
-#endif
-
-#if CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 0
 void uffs_MemSetupSystemAllocator(uffs_MemAllocator *allocator);
-#endif
-
-#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR > 0
 void uffs_MemSetupStaticAllocator(uffs_MemAllocator *allocator, void *pool, int size);
-#endif
 
 #ifdef __cplusplus
 }

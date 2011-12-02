@@ -36,8 +36,8 @@
  * \author Ricky Zheng, created 8th May, 2005
  */
 
-#include "uffs/uffs_version.h"
 #include "uffs_config.h"
+#include "uffs/uffs_version.h"
 
 #include <stdio.h>
 #define PFX "ver : "

@@ -40,7 +40,6 @@
 #define _UFFS_PUBLIC_H_
 
 #include "uffs/uffs_types.h"
-#include "uffs_config.h"
 #include "uffs/uffs_core.h"
 #include "uffs/uffs.h"
 
@@ -151,13 +150,8 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj);
 struct uffs_DebugMsgOutputSt;
 URET uffs_InitDebugMessageOutput(struct uffs_DebugMsgOutputSt *ops);
 
-#ifdef CONFIG_ENABLE_UFFS_DEBUG_MSG
 void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const char *errFmt, ...);
 void uffs_AssertCall(const char *file, int line, const char *msg, ...);
-#else
-static void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const char *errFmt, ...) {};
-static void uffs_AssertCall(const char *file, int line, const char *msg, ...) {};
-#endif
 
 #define uffs_Perror(level, fmt, ... ) \
 	uffs_DebugMessage(level, PFX, TENDSTR, fmt, ## __VA_ARGS__)

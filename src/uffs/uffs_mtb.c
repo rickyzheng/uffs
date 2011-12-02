@@ -35,10 +35,9 @@
  * \brief mount table operations
  * \author Ricky Zheng, created 11th July, 2009
  */
-
+#include "uffs_config.h"
 #include "uffs/uffs_types.h"
 #include "uffs/uffs_public.h"
-#include "uffs_config.h"
 #include "uffs/uffs_tree.h"
 #include "uffs/uffs_mtb.h"
 #include "uffs/uffs_fd.h"

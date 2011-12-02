@@ -39,8 +39,6 @@
 #ifndef _UFFS_FD_H_
 #define _UFFS_FD_H_
 
-
-#include "uffs_config.h"
 #include "uffs/uffs_core.h"
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs.h"

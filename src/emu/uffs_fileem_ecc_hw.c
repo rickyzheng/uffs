@@ -44,7 +44,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include "uffs_config.h"
 #include "uffs/uffs_device.h"
 #include "uffs_fileem.h"
 #include "uffs/uffs_ecc.h"

@@ -46,17 +46,10 @@ extern "C"{
 //get UFFS disk version, if fail, return 0
 int uffs_GetUFFSVersion(struct uffs_DeviceSt *dev);
 
-#ifdef CONFIG_USE_GLOBAL_FS_LOCK
 void uffs_InitGlobalFsLock(void);
 void uffs_ReleaseGlobalFsLock(void);
 void uffs_GlobalFsLockLock(void);
 void uffs_GlobalFsLockUnlock(void);
-#else
-#define uffs_InitGlobalFsLock()
-#define uffs_ReleaseGlobalFsLock()
-#define uffs_GlobalFsLockLock()
-#define uffs_GlobalFsLockUnlock()
-#endif
 
 URET uffs_FormatDevice(uffs_Device *dev, UBOOL force);
 

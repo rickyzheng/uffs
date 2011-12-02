@@ -38,6 +38,7 @@
 
 #include <string.h> 
 #include <stdio.h>
+#include "uffs_config.h"
 #include "uffs/uffs_find.h"
 
 #define TPOOL(dev) &((dev)->mem.tree_pool)

@@ -39,6 +39,7 @@ on this file might be covered by the GNU General Public License.
 #include <string.h>
 #include <stdio.h>
 //#include <conio.h>
+#include "uffs_config.h"
 #include "cmdline.h"
 #include "uffs/uffs_fs.h"
 

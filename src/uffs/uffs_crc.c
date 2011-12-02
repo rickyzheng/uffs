@@ -36,6 +36,7 @@
  * \note Created in 23 Nov, 2011
  */
 
+#include "uffs_config.h"
 #include "uffs/uffs_crc.h"
 
 /* CRC16 Table */

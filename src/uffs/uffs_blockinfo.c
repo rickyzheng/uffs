@@ -36,6 +36,7 @@
  * \author Ricky Zheng, created 10th May, 2005
  */
 
+#include "uffs_config.h"
 #include "uffs/uffs_blockinfo.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_os.h"

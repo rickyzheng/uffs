@@ -48,7 +48,7 @@
 #ifdef CONFIG_USE_PER_DEVICE_LOCK
 void uffs_DeviceInitLock(uffs_Device *dev)
 {
-	if (dev->locl.sem == 0)
+	if (dev->lock.sem == 0)
 		dev->lock.sem = uffs_SemCreate(1);
 	dev->lock.task_id = UFFS_TASK_ID_NOT_EXIST;
 	dev->lock.counter = 0;
@@ -84,5 +84,13 @@ void uffs_DeviceUnLock(uffs_Device *dev)
 	
 	uffs_SemSignal(dev->lock.sem);
 }
+
+#else
+
+/* dummy stubs */
+void uffs_DeviceInitLock(dev) {}
+void uffs_DeviceReleaseLock(dev) {}
+void uffs_DeviceLock(dev) {}
+void uffs_DeviceUnLock(dev) {}
 
 #endif

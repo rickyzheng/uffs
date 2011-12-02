@@ -36,8 +36,8 @@
  * \author Ricky Zheng, created 10th May, 2005
  */
 
-#include "uffs/uffs_types.h"
 #include "uffs_config.h"
+#include "uffs/uffs_types.h"
 #include "uffs/uffs_core.h"
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_os.h"

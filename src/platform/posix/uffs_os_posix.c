@@ -91,20 +91,6 @@ unsigned int uffs_GetCurDateTime(void)
 	return (unsigned int)tvalue;
 }
 
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-void uffs_CriticalEnter(void)
-{
-	//TODO: enter critical section (for example, disable IRQ?)
-	return;
-}
-
-void uffs_CriticalExit(void)
-{
-	//TODO: exit from critical section (for example, enable IRQ?)
-	return;
-}
-#endif
-
 #if CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 0
 static void * sys_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 {

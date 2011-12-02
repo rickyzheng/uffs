@@ -35,9 +35,8 @@
  * \brief basic file operations
  * \author Ricky Zheng, created 12th May, 2005
  */
-
-#include "uffs/uffs_fs.h"
 #include "uffs_config.h"
+#include "uffs/uffs_fs.h"
 #include "uffs/uffs_pool.h"
 #include "uffs/uffs_ecc.h"
 #include "uffs/uffs_badblock.h"

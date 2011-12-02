@@ -39,7 +39,6 @@
 #ifndef UFFS_DEVICE_H
 #define UFFS_DEVICE_H
 
-#include "uffs_config.h"
 #include "uffs/uffs_types.h"
 #include "uffs/uffs_buf.h"
 #include "uffs/uffs_blockinfo.h"
@@ -74,7 +73,6 @@ struct uffs_PartitionSt {
 	u16 end;		//!< end block number of partition
 };
 
-#ifdef CONFIG_USE_PER_DEVICE_LOCK
 /** 
  * \struct uffs_LockSt
  * \brief lock stuffs
@@ -84,7 +82,6 @@ struct uffs_LockSt {
 	int task_id;
 	int counter;
 };
-#endif
 
 /** 
  * \struct uffs_DirtyGroupSt
@@ -161,9 +158,7 @@ struct uffs_DeviceSt {
 	struct uffs_PartitionSt			par;		//!< partition information
 	struct uffs_FlashOpsSt			*ops;		//!< flash operations
 	struct uffs_BlockInfoCacheSt	bc;			//!< block info cache
-#ifdef CONFIG_USE_PER_DEVICE_LOCK
 	struct uffs_LockSt				lock;		//!< lock data structure
-#endif
 	struct uffs_PageBufDescSt		buf;		//!< page buffers
 	struct uffs_PageCommInfoSt		com;		//!< common information
 	struct uffs_TreeSt				tree;		//!< tree list of block
@@ -174,7 +169,6 @@ struct uffs_DeviceSt {
 	int	dev_num;								//!< device number (partition number)	
 };
 
-#ifdef CONFIG_USE_PER_DEVICE_LOCK
 
 /** create the lock for uffs device */
 void uffs_DeviceInitLock(uffs_Device *dev);
@@ -188,15 +182,6 @@ void uffs_DeviceLock(uffs_Device *dev);
 /** unlock uffs device */
 void uffs_DeviceUnLock(uffs_Device *dev);
 
-#else
-
-/* dummy stubs */
-#define uffs_DeviceInitLock(dev)	do{}while(0)
-#define uffs_DeviceReleaseLock(dev)	do{}while(0)
-#define uffs_DeviceLock(dev)		do{}while(0)
-#define uffs_DeviceUnLock(dev)		do{}while(0)
-
-#endif
 
 #ifdef __cplusplus
 }

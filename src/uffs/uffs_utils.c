@@ -76,6 +76,13 @@ void uffs_GlobalFsLockUnlock(void)
 	uffs_SemSignal(_global_lock);
 }
 
+#else
+
+void uffs_InitGlobalFsLock(void) {}
+void uffs_ReleaseGlobalFsLock(void) {}
+void uffs_GlobalFsLockLock(void) {}
+void uffs_GlobalFsLockUnlock(void) {}
+
 #endif
 
 

@@ -36,7 +36,8 @@
  */
   
 #include <string.h>
-
+#include "uffs_config.h"
+#include "uffs/uffs_os.h"
 #include "uffs/uffs_device.h"
 #include "uffs/uffs_flash.h"
 #include "uffs/uffs_mtb.h"

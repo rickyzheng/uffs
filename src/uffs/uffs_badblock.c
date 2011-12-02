@@ -35,9 +35,8 @@
  * \brief bad block checking and recovering
  * \author Ricky Zheng, created in 13th Jun, 2005
  */
-
-#include "uffs/uffs_fs.h"
 #include "uffs_config.h"
+#include "uffs/uffs_fs.h"
 #include "uffs/uffs_ecc.h"
 #include "uffs/uffs_badblock.h"
 #include <string.h>

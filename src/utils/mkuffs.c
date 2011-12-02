@@ -39,8 +39,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "uffs/uffs_os.h"
 #include "uffs_config.h"
+#include "uffs/uffs_os.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs_utils.h"
@@ -65,11 +65,6 @@ int main()
 extern struct cli_commandset * get_helper_cmds(void);
 extern struct cli_commandset * get_test_cmds(void);
 extern void femu_init_uffs_device(uffs_Device *dev);
-
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-static int conf_memory_pool_size_kb = 800; /* default allocate 100k memory. */
-static void *memory_pool = NULL;
-#endif
 
 static int conf_command_line_mode = 0;
 static int conf_verbose_mode = 0;
@@ -108,58 +103,6 @@ static struct uffs_MountTableEntrySt conf_mounts[MAX_MOUNT_TABLES] = {{0}};
 static uffs_Device conf_devices[MAX_MOUNT_TABLES] = {{0}};
 static char mount_point_name[MAX_MOUNT_TABLES][MAX_MOUNT_POINT_NAME] = {{0}};
 
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-BOOL cmdMeminfo(const char *tail)
-{
-	const char *mount = "/";
-	int i;
-	HeapMm *mm;
-	int count = 0;
-	int blocks = 0;
-
-	uffs_Device *dev;
-	
-	if (tail) 
-		mount = cli_getparam(tail, NULL);
-
-	dev = uffs_GetDeviceFromMountPoint(mount);
-
-	if (!dev) {
-		MSGLN("can't get device from mount point %s", mount);
-		return TRUE;
-	}
-	
-	for (i = 0; i < HEAP_HASH_SIZE; i++) {
-		mm = dev->mem.tbl[i];
-		while (mm) {
-			MSG("%d, ", mm->size);
-			count += mm->size;
-			blocks++;
-			mm = mm->next;
-		}
-	}
-	MSGLN("");
-	MSGLN(">>> total allocated %d blocks (%d bytes), max %d bytes. <<<", blocks, count, dev->mem.maxused);
-	
-	uffs_PutDevice(dev);
-
-	return TRUE;
-}
-#endif
-
-
-static const struct cli_command basic_cmds[] = 
-{
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-    { cmdMeminfo,	"mem",			"<mount>",			"show native memory allocator infomation" },
-#endif
-    { NULL, NULL, NULL, NULL }
-};
-
-static struct cli_commandset basic_cmdset = {
-	basic_cmds,
-};
-
 static void setup_storage(struct uffs_StorageAttrSt *attr)
 {
 	attr->total_blocks = conf_total_blocks;				/* total blocks */
@@ -195,21 +138,7 @@ static int init_uffs_fs(void)
 	if(bIsFileSystemInited) return -4;
 	bIsFileSystemInited = 1;
 
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-	// init protected heap for native memory allocator
-	memory_pool = malloc(conf_memory_pool_size_kb * 1024);
-	if (memory_pool)
-		uffs_MemInitHeap(memory_pool, conf_memory_pool_size_kb * 1024);
-	else {
-		uffs_Perror(UFFS_ERR_SERIOUS, "Can't alloc memory (size = %dKB) for uffs.", conf_memory_pool_size_kb);
-		return -1;
-	}
-#endif
-
 	while (mtbl->dev) {
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-		uffs_MemSetupNativeAllocator(&mtbl->dev->mem);
-#endif
 
 #if CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 0
 		uffs_MemSetupSystemAllocator(&mtbl->dev->mem);
@@ -226,12 +155,6 @@ static int release_uffs_fs(void)
 {
 	int ret;
 	ret = uffs_ReleaseMountTable();
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-	if (memory_pool) {
-		free(memory_pool);
-		memory_pool = NULL;
-	}
-#endif
 	return ret;
 }
 
@@ -393,16 +316,6 @@ static int parse_options(int argc, char *argv[])
 					usage++;
 				}
 			}
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-			else if (!strcmp(arg, "-a") || !strcmp(arg, "--alloc")) {
-				if (++iarg > argc) 
-					usage++;
-				else if (sscanf(argv[iarg], "%d", &conf_memory_pool_size_kb) < 1)
-					usage++;
-				if (conf_memory_pool_size_kb <= 0) 
-					usage++;
-			}
-#endif
             else {
                 MSGLN("Unknown option: %s, try %s --help", arg, argv[0]);
 				return -1;
@@ -429,9 +342,6 @@ static int parse_options(int argc, char *argv[])
 		MSGLN("  -x  --ecc-option     <none|soft|hw|auto>  ECC option, default=%s", g_ecc_option_strings[ECC_OPTION_DEFAULT]);
 		MSGLN("  -z  --ecc-size       <n>                  ECC size, default=0 (auto)");
         MSGLN("  -e  --exec           <file>               execute a script file");
-#if CONFIG_USE_NATIVE_MEMORY_ALLOCATOR > 0
-		MSGLN("  -a  --alloc          <size>       allocate size(KB) of memory for uffs, default 100");
-#endif		
         MSGLN("");
 
         return -1;
@@ -512,7 +422,6 @@ int main(int argc, char *argv[])
 
 	cli_add_commandset(get_helper_cmds());
 	cli_add_commandset(get_test_cmds());
-	cli_add_commandset(&basic_cmdset);
 	if (conf_command_line_mode) {
 		if (conf_exec_script) {
 			cli_interpret(script_command);

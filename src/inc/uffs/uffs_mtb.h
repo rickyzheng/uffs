@@ -40,7 +40,6 @@
 #define _UFFS_MTB_H_
 
 #include "uffs/uffs_types.h"
-#include "uffs_config.h"
 #include "uffs/uffs_core.h"
 #include "uffs/uffs.h"
 

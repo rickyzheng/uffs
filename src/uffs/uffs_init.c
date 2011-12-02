@@ -36,9 +36,9 @@
  * \author Ricky Zheng, created 12th May, 2005
  */
 
+#include "uffs_config.h"
 #include "uffs/uffs_types.h"
 #include "uffs/uffs_public.h"
-#include "uffs_config.h"
 #include "uffs/uffs_tree.h"
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs_badblock.h"

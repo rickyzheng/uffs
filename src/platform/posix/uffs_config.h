@@ -134,17 +134,6 @@
 #define CONFIG_USE_STATIC_MEMORY_ALLOCATOR 0
 
 /**
- * \def CONFIG_USE_NATIVE_MEMORY_ALLOCATOR
- * \note  the native memory allocator should only be used for
- *        tracking memory leak bugs or tracking memory consuming.
- *        In your final product, you either disable the native memory
- *        allocator or use the system heap as the memory pool for the
- *        native memory allocator.
- */
-#define CONFIG_USE_NATIVE_MEMORY_ALLOCATOR 0
-
-
-/**
  * \def CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR
  * \note  using system platform's 'malloc' and 'free'.
  */
@@ -161,12 +150,6 @@
  *		 It's not recommended to open this define for normal applications.
  */
 //#define CONFIG_FLUSH_BUF_AFTER_WRITE
-
-/**
- * \def CONFIG_TREE_NODE_USE_DOUBLE_LINK
- * \note: enable double link tree node will speed up insert/delete operation,
- */
-#define CONFIG_TREE_NODE_USE_DOUBLE_LINK
 
 
 /**
@@ -311,11 +294,11 @@
 #error "CLONE_BUFFERS_THRESHOLD should >= 2 when CONFIG_PAGE_WRITE_VERIFY is enabled."
 #endif
 
-#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR + CONFIG_USE_NATIVE_MEMORY_ALLOCATOR + CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 1
+#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR + CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 1
 #error "Please enable ONLY one memory allocator"
 #endif
 
-#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR + CONFIG_USE_NATIVE_MEMORY_ALLOCATOR + CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR == 0
+#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR + CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR == 0
 #error "Please enable ONE of memory allocators"
 #endif
 

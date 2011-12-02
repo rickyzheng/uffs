@@ -35,9 +35,8 @@
  * \brief ecc maker and correct
  * \author Ricky Zheng, created in 12th Jun, 2005
  */
-
-#include "uffs/uffs_fs.h"
 #include "uffs_config.h"
+#include "uffs/uffs_fs.h"
 #include <string.h>
 
 #define PFX "ecc : "
