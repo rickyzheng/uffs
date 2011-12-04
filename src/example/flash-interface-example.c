@@ -92,7 +92,7 @@ struct my_nand_chip {
 #if CONFIG_USE_STATIC_MEMORY_ALLOCATOR == 0
 int main()
 {
-	uffs_Perror(UFFS_ERR_NORMAL, "This example need CONFIG_USE_STATIC_MEMORY_ALLOCATOR = 1");
+	uffs_Perror(UFFS_MSG_NORMAL, "This example need CONFIG_USE_STATIC_MEMORY_ALLOCATOR = 1");
 	return 0;
 }
 #else

@@ -83,7 +83,7 @@ int femu_InitFlash(uffs_Device *dev)
 	if (emu->emu_filename == NULL)
 		emu->emu_filename = UFFS_FEMU_FILE_NAME;
 
-	uffs_Perror(UFFS_ERR_NORMAL,  "femu device init.");
+	uffs_Perror(UFFS_MSG_NORMAL,  "femu device init.");
 
 	emu->em_monitor_page = (u8 *) malloc(sizeof(emu->em_monitor_page[0]) * total_pages);
 	if (!emu->em_monitor_page)
@@ -155,7 +155,7 @@ int femu_ReleaseFlash(uffs_Device *dev)
 
 	if (emu->initCount == 0) {
 
-		uffs_Perror(UFFS_ERR_NORMAL,  "femu device release.");
+		uffs_Perror(UFFS_MSG_NORMAL,  "femu device release.");
 
 		if (emu->fp) {
 			fclose(emu->fp);

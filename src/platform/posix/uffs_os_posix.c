@@ -31,8 +31,8 @@
 */
 
 /**
- * \file uffs_os_linux.c
- * \brief emulation on linux host
+ * \file uffs_os_posix.c
+ * \brief Emulation on POSIX host. This is just a dumb implementation, does not really create semaphores.
  * \author Ricky Zheng
  */
 #include "uffs/uffs_os.h"
@@ -95,7 +95,7 @@ unsigned int uffs_GetCurDateTime(void)
 static void * sys_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 {
 	dev = dev;
-	uffs_Perror(UFFS_ERR_NORMAL, "system memory alloc %d bytes", size);
+	uffs_Perror(UFFS_MSG_NORMAL, "system memory alloc %d bytes", size);
 	return malloc(size);
 }
 
@@ -128,5 +128,5 @@ static void output_dbg_msg(const char *msg)
 
 void uffs_SetupDebugOutput(void)
 {
-	uffs_InitDebugMessageOutput(&m_dbg_ops);
+	uffs_InitDebugMessageOutput(&m_dbg_ops, UFFS_MSG_NOISY);
 }

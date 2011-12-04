@@ -65,7 +65,7 @@
 		fd -= FD_OFFSET; \
 		if ( (fd >> FD_SIGNATURE_SHIFT) != _fd_signature ) { \
 			uffs_set_error(-UEBADF); \
-			uffs_Perror(UFFS_ERR_NOISY, "invalid fd: %d (sig: %d, expect: %d)", \
+			uffs_Perror(UFFS_MSG_NOISY, "invalid fd: %d (sig: %d, expect: %d)", \
 					fd + FD_OFFSET, fd >> FD_SIGNATURE_SHIFT, _fd_signature); \
 			uffs_GlobalFsLockUnlock(); \
 			return (ret); \
@@ -76,7 +76,7 @@
 				uffs_PoolVerify(uffs_GetObjectPool(), (obj)) == U_FALSE || \
 				uffs_PoolCheckFreeList(uffs_GetObjectPool(), (obj)) == U_TRUE) { \
 			uffs_set_error(-UEBADF); \
-			uffs_Perror(UFFS_ERR_NOISY, "invalid obj"); \
+			uffs_Perror(UFFS_MSG_NOISY, "invalid obj"); \
 			uffs_GlobalFsLockUnlock(); \
 			return (ret); \
 		} \
@@ -94,7 +94,7 @@
 				uffs_PoolVerify(&_dir_pool, (dirp)) == U_FALSE || \
 				uffs_PoolCheckFreeList(&_dir_pool, (dirp)) == U_TRUE) { \
 			uffs_set_error(-UEBADF); \
-			uffs_Perror(UFFS_ERR_NOISY, "invalid dirp"); \
+			uffs_Perror(UFFS_MSG_NOISY, "invalid dirp"); \
 			uffs_GlobalFsLockUnlock(); \
 			return (ret); \
 		} \
@@ -112,7 +112,7 @@
 				uffs_PoolVerify(&_dir_pool, (dirp)) == U_FALSE || \
 				uffs_PoolCheckFreeList(&_dir_pool, (dirp)) == U_TRUE) { \
 			uffs_set_error(-UEBADF); \
-			uffs_Perror(UFFS_ERR_NOISY, "invalid dirp"); \
+			uffs_Perror(UFFS_MSG_NOISY, "invalid dirp"); \
 			uffs_GlobalFsLockUnlock(); \
 			return; \
 		} \

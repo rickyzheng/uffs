@@ -62,7 +62,7 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj)
 {
 	switch (src - obj) {
 	case 0:
-		uffs_Perror(UFFS_ERR_SERIOUS,
+		uffs_Perror(UFFS_MSG_SERIOUS,
 					"the two block have the same time stamp ?");
 		break;
 	case 1:
@@ -72,7 +72,7 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj)
 	case 2:
 		return U_FALSE;
 	default:
-		uffs_Perror(UFFS_ERR_SERIOUS,  "time stamp out of range !");
+		uffs_Perror(UFFS_MSG_SERIOUS,  "time stamp out of range !");
 		break;
 	}
 
@@ -269,7 +269,7 @@ URET uffs_CreateNewFile(uffs_Device *dev,
 
 	buf = uffs_BufGet(dev, parent, serial, 0);
 	if (buf == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, "get buf fail.");
+		uffs_Perror(UFFS_MSG_SERIOUS, "get buf fail.");
 		return U_FAIL;
 	}
 
@@ -318,7 +318,6 @@ int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type)
 	// need to read all spares....
 	uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
 	tag = GET_TAG(bc, 0);
-
 	if (uffs_Assert(TAG_IS_GOOD(tag), "block %d page 0 does not have good tag ?", bc->block)) {
 		if (TAG_TYPE(tag) == UFFS_TYPE_FILE) {
 			page_id = 1;	//In file header block, file data page_id from 1

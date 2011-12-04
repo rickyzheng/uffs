@@ -97,7 +97,7 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 	// pick up an erased good block
 	good = uffs_TreeGetErasedNode(dev);
 	if (good == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, "no free block to replace bad block!");
+		uffs_Perror(UFFS_MSG_SERIOUS, "no free block to replace bad block!");
 		return;
 	}
 
@@ -105,7 +105,7 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 	bc = uffs_BlockInfoGet(dev, dev->bad.block);
 	
 	if (bc == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, "can't get bad block info");
+		uffs_Perror(UFFS_MSG_SERIOUS, "can't get bad block info");
 		return;
 	}
 
@@ -118,13 +118,13 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 		page = uffs_FindBestPageInBlock(dev, bc, page);
 		if (page == UFFS_INVALID_PAGE) {
 			// got an invalid page ? it's bad block anyway ...
-			uffs_Perror(UFFS_ERR_SERIOUS, "bad block recover (block %d) not finished", bc->block);
+			uffs_Perror(UFFS_MSG_SERIOUS, "bad block recover (block %d) not finished", bc->block);
 			break;
 		}
 		tag = GET_TAG(bc, page);
 		buf = uffs_BufClone(dev, NULL);
 		if (buf == NULL) {	
-			uffs_Perror(UFFS_ERR_SERIOUS, "Can't clone a new buf!");
+			uffs_Perror(UFFS_MSG_SERIOUS, "Can't clone a new buf!");
 			succRecov = U_FALSE;
 			break;
 		}
@@ -132,14 +132,14 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 		//		so just load data even ECC is not OK.
 		ret = uffs_LoadPhyDataToBufEccUnCare(dev, buf, bc->block, page);
 		if (ret == U_FAIL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, "I/O error ?");
+			uffs_Perror(UFFS_MSG_SERIOUS, "I/O error ?");
 			uffs_BufFreeClone(dev, buf);
 			succRecov = U_FALSE;
 			break;
 		}
 		buf->data_len = TAG_DATA_LEN(tag);
 		if (buf->data_len > dev->com.pg_data_size) {
-			uffs_Perror(UFFS_ERR_NOISY, "data length over flow!!!");
+			uffs_Perror(UFFS_MSG_NOISY, "data length over flow!!!");
 			buf->data_len = dev->com.pg_data_size;
 		}
 
@@ -158,7 +158,7 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 		uffs_BufFreeClone(dev, buf);
 
 		if (ret == UFFS_FLASH_IO_ERR) {
-			uffs_Perror(UFFS_ERR_NORMAL, "I/O error ?");
+			uffs_Perror(UFFS_MSG_NORMAL, "I/O error ?");
 			succRecov = U_FALSE;
 			break;
 		}
@@ -187,7 +187,7 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 			}
 			
 			//from now, the 'bad' is actually good block :)))
-			uffs_Perror(UFFS_ERR_NOISY,
+			uffs_Perror(UFFS_MSG_NOISY,
 						"new bad block %d found, and replaced by %d!",
 						dev->bad.block, good->u.list.block);
 			uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
@@ -196,7 +196,7 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 			uffs_BadBlockProcess(dev, good);
 		}
 		else {
-			uffs_Perror(UFFS_ERR_SERIOUS,
+			uffs_Perror(UFFS_MSG_SERIOUS,
 						"can't find the reported bad block(%d) in the tree???",
 						dev->bad.block);
 			if (goodBlockIsDirty == U_TRUE)
@@ -222,7 +222,7 @@ void uffs_BadBlockAdd(uffs_Device *dev, int block)
 		return;
 
 	if (dev->bad.block != UFFS_INVALID_BLOCK)
-		uffs_Perror(UFFS_ERR_SERIOUS, "Can't add more then one bad block !");
+		uffs_Perror(UFFS_MSG_SERIOUS, "Can't add more then one bad block !");
 	else
 		dev->bad.block = block;
 }

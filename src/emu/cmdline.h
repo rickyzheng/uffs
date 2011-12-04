@@ -69,7 +69,7 @@ void cli_main_entry();
 
 #define u_assert(x) \
 	((x) ? TRUE : \
-			(uffs_PerrorRaw(UFFS_ERR_NORMAL, \
+			(uffs_PerrorRaw(UFFS_MSG_NORMAL, \
 				"Assert failed at %s:%s:%d: '%s' is not true.\n", \
 				__FILE__, __FUNCTION__, __LINE__, #x), FALSE))
 

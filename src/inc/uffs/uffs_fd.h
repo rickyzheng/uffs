@@ -56,8 +56,8 @@ extern "C"{
 #define	US_IFREG	0x8000	/* regular */
 #define	US_IFLNK	0xA000	/* symbolic link */
 #define	US_IFDIR	0x4000	/* directory */
-#define	US_IREAD	00400	/* read permission */
-#define	US_IWRITE	00200	/* write permission */
+#define	US_IREAD	0000400	/* read permission */
+#define	US_IWRITE	0000200	/* write permission */
 
 #define	US_IRWXU	00700	/* RWX	owner */
 #define	US_IRUSR	00400	/* R	owner */

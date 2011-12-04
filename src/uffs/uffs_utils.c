@@ -99,7 +99,7 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 
 	buf = uffs_BufClone(dev, NULL);
 	if (buf == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS,
+		uffs_Perror(UFFS_MSG_SERIOUS,
 					"Alloc page buffer fail ! Format stoped.");
 		goto ext;
 	}
@@ -224,7 +224,7 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 	ret = uffs_BufFlushAll(dev);
 
 	if (dev->ref_count > 1 && force != U_TRUE) {
-		uffs_Perror(UFFS_ERR_NORMAL,
+		uffs_Perror(UFFS_MSG_NORMAL,
 					"can't format when dev->ref_count = %d",
 					dev->ref_count);
 		ret = U_FAIL;
@@ -240,13 +240,13 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 		uffs_BufIsAllFree(dev) == U_FALSE &&
 		force == U_TRUE)
 	{
-		uffs_Perror(UFFS_ERR_NORMAL, "some page still in used!");
+		uffs_Perror(UFFS_MSG_NORMAL, "some page still in used!");
 		ret = U_FAIL;
 	}
 
 	for (slot = 0; ret == U_SUCC && slot < MAX_DIRTY_BUF_GROUPS; slot++) {
 		if (dev->buf.dirtyGroup[slot].count > 0) {
-			uffs_Perror(UFFS_ERR_SERIOUS, "there still have dirty pages!");
+			uffs_Perror(UFFS_MSG_SERIOUS, "there still have dirty pages!");
 			ret = U_FAIL;
 		}
 	}
@@ -256,7 +256,7 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 
 
 	if (ret == U_SUCC && uffs_BlockInfoIsAllFree(dev) == U_FALSE) {
-		uffs_Perror(UFFS_ERR_NORMAL,
+		uffs_Perror(UFFS_MSG_NORMAL,
 					"there still have block info cache ? fail to format");
 		ret = U_FAIL;
 	}

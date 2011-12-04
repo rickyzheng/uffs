@@ -81,7 +81,7 @@ extern "C"{
 #define UENOTDIR 12		/** Not a directory */
 #define UEISDIR 13		/** Is a directory */    
 
-#define UEUNKNOWN	100	/** unknown error */
+#define UEUNKNOWN_ERR	100	/** unknown error */
 
 
 

@@ -50,8 +50,8 @@
 #include "uffs/uffs_ecc.h"
 
 #define PFX "femu: "
-#define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
-#define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
+#define MSG(msg,...) uffs_PerrorRaw(UFFS_MSG_NORMAL, msg, ## __VA_ARGS__)
+#define MSGLN(msg,...) uffs_Perror(UFFS_MSG_NORMAL, msg, ## __VA_ARGS__)
 
 static int femu_hw_WritePageWithLayout(uffs_Device *dev, u32 block, u32 page,
 							const u8 *data, int data_len, const u8 *ecc, const uffs_TagStore *ts)

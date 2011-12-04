@@ -66,7 +66,7 @@ void uffs_DeviceLock(uffs_Device *dev)
 	uffs_SemWait(dev->lock.sem);
 	
 	if (dev->lock.counter != 0) {
-		uffs_Perror(UFFS_ERR_NORMAL,
+		uffs_Perror(UFFS_MSG_NORMAL,
 					"Lock device, counter %d NOT zero?!", dev->lock.counter);
 	}
 
@@ -78,7 +78,7 @@ void uffs_DeviceUnLock(uffs_Device *dev)
 	dev->lock.counter--;
 
 	if (dev->lock.counter != 0) {
-		uffs_Perror(UFFS_ERR_NORMAL,
+		uffs_Perror(UFFS_MSG_NORMAL,
 					"Unlock device, counter %d NOT zero?!", dev->lock.counter);
 	}
 	

@@ -137,21 +137,27 @@ UBOOL uffs_IsSrcNewerThanObj(int src, int obj);
 
 
 /********************************** debug & error *************************************/
-#define UFFS_ERR_NOISY		-1
-#define UFFS_ERR_NORMAL		0
-#define UFFS_ERR_SERIOUS	1
-#define UFFS_ERR_DEAD		2
+#define UFFS_MSG_NOISY		-1
+#define UFFS_MSG_NORMAL		0
+#define UFFS_MSG_SERIOUS	1
+#define UFFS_MSG_DEAD		2
+#define UFFS_MSG_NOMSG		100
 
 #define TENDSTR "\n"
 
-//#define UFFS_DBG_LEVEL	UFFS_ERR_NORMAL	
-#define UFFS_DBG_LEVEL	UFFS_ERR_NOISY	
-
 struct uffs_DebugMsgOutputSt;
-URET uffs_InitDebugMessageOutput(struct uffs_DebugMsgOutputSt *ops);
+URET uffs_InitDebugMessageOutput(struct uffs_DebugMsgOutputSt *ops, int msg_level);
+void uffs_DebugSetMessageLevel(int msg_level);
 
 void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const char *errFmt, ...);
 void uffs_AssertCall(const char *file, int line, const char *msg, ...);
+
+#ifdef _COMPILER_DO_NOT_SUPPORT_MACRO_VALIST_REPLACE_
+/* For those compilers do not support valist parameter replace in macro define */
+void uffs_Perror(int level, const char *fmt, ...);
+void uffs_PerrorRaw(int level, const char *fmt, ...);
+UBOOL uffs_Assert(UBOOL expr, const char *fmt, ...);
+#else
 
 #define uffs_Perror(level, fmt, ... ) \
 	uffs_DebugMessage(level, PFX, TENDSTR, fmt, ## __VA_ARGS__)
@@ -159,9 +165,10 @@ void uffs_AssertCall(const char *file, int line, const char *msg, ...);
 #define uffs_PerrorRaw(level, fmt, ... ) \
 	uffs_DebugMessage(level, NULL, NULL, fmt, ## __VA_ARGS__)
 
-
 #define uffs_Assert(expr, msg, ...) \
 	((expr) ? U_TRUE : (uffs_AssertCall(__FILE__, __LINE__, msg, ## __VA_ARGS__), U_FALSE))
+
+#endif
 
 #define uffs_Panic() \
 	do { \

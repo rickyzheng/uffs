@@ -204,14 +204,14 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 	}
 
 	if (UFFS_SPARE_BUFFER_SIZE > dev->mem.spare_pool_size) {
-		uffs_Perror(UFFS_ERR_DEAD,
+		uffs_Perror(UFFS_MSG_DEAD,
 					"Spare buffer require %d but only %d available.",
 					UFFS_SPARE_BUFFER_SIZE, dev->mem.spare_pool_size);
 		memset(pool, 0, sizeof(uffs_Pool));
 		goto ext;
 	}
 
-	uffs_Perror(UFFS_ERR_NOISY,
+	uffs_Perror(UFFS_MSG_NOISY,
 					"alloc spare buffers %d bytes.",
 					UFFS_SPARE_BUFFER_SIZE);
 	uffs_PoolInit(pool, dev->mem.spare_pool_buf,
@@ -225,12 +225,12 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 	}
 
 	if (dev->ops->WritePage == NULL && dev->ops->WritePageWithLayout == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, "Flash driver must provide 'WritePage' or 'WritePageWithLayout' function!");
+		uffs_Perror(UFFS_MSG_SERIOUS, "Flash driver must provide 'WritePage' or 'WritePageWithLayout' function!");
 		goto ext;
 	}
 
 	if (dev->ops->ReadPage == NULL && dev->ops->ReadPageWithLayout == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, "Flash driver must provide 'ReadPage' or 'ReadPageWithLayout' function!");
+		uffs_Perror(UFFS_MSG_SERIOUS, "Flash driver must provide 'ReadPage' or 'ReadPageWithLayout' function!");
 		goto ext;
 	}
 
@@ -241,11 +241,11 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 			dev->attr->ecc_size = NOMINAL_ECC_SIZE(dev);
 		}
 
-		uffs_Perror(UFFS_ERR_NORMAL, "ECC size %d", dev->attr->ecc_size);
+		uffs_Perror(UFFS_MSG_NORMAL, "ECC size %d", dev->attr->ecc_size);
 
 		if ((dev->attr->data_layout && !dev->attr->ecc_layout) ||
 			(!dev->attr->data_layout && dev->attr->ecc_layout)) {
-			uffs_Perror(UFFS_ERR_SERIOUS,
+			uffs_Perror(UFFS_MSG_SERIOUS,
 						"Please setup data_layout and ecc_layout, "
 						"or leave them all NULL !");
 			goto ext;
@@ -273,26 +273,26 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 	}
 	else if (dev->attr->layout_opt == UFFS_LAYOUT_FLASH) {
 		if (dev->ops->WritePageWithLayout == NULL || dev->ops->ReadPageWithLayout == NULL) {
-			uffs_Perror(UFFS_ERR_SERIOUS, "When using UFFS_LAYOUT_FLASH option, "
+			uffs_Perror(UFFS_MSG_SERIOUS, "When using UFFS_LAYOUT_FLASH option, "
 				"flash driver must provide 'WritePageWithLayout' and 'ReadPageWithLayout' function!");
 			goto ext;
 		}
 	}
 	else {
-		uffs_Perror(UFFS_ERR_SERIOUS, "Invalid layout_opt: %d", dev->attr->layout_opt);
+		uffs_Perror(UFFS_MSG_SERIOUS, "Invalid layout_opt: %d", dev->attr->layout_opt);
 		goto ext;
 	}
 
 	if (dev->ops->EraseBlock == NULL) {
-		uffs_Perror(UFFS_ERR_SERIOUS, "Flash driver MUST implement 'EraseBlock()' function !");
+		uffs_Perror(UFFS_MSG_SERIOUS, "Flash driver MUST implement 'EraseBlock()' function !");
 		goto ext;
 	}
 
 	dev->mem.spare_data_size = CalculateSpareDataSize(dev);
-	uffs_Perror(UFFS_ERR_NORMAL, "UFFS consume spare data size %d", dev->mem.spare_data_size);
+	uffs_Perror(UFFS_MSG_NORMAL, "UFFS consume spare data size %d", dev->mem.spare_data_size);
 
 	if (dev->mem.spare_data_size > dev->attr->spare_size) {
-		uffs_Perror(UFFS_ERR_SERIOUS, "NAND spare(%dB) can't hold UFFS spare data(%dB) !",
+		uffs_Perror(UFFS_MSG_SERIOUS, "NAND spare(%dB) can't hold UFFS spare data(%dB) !",
 						dev->attr->spare_size, dev->mem.spare_data_size);
 		goto ext;
 	}
@@ -456,7 +456,7 @@ int uffs_FlashReadPageTag(uffs_Device *dev,
 ext:
 	if (is_bad) {
 		uffs_BadBlockAdd(dev, block);
-		uffs_Perror(UFFS_ERR_NORMAL,
+		uffs_Perror(UFFS_MSG_NORMAL,
 					"A new bad block (%d) is detected.", block);
 	}
 
@@ -567,24 +567,24 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBO
 ext:
 	switch(ret) {
 		case UFFS_FLASH_IO_ERR:
-			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d I/O error", block, page);
+			uffs_Perror(UFFS_MSG_NORMAL, "Read block %d page %d I/O error", block, page);
 			break;
 		case UFFS_FLASH_ECC_FAIL:
-			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d ECC failed", block, page);
+			uffs_Perror(UFFS_MSG_NORMAL, "Read block %d page %d ECC failed", block, page);
 			ret = UFFS_FLASH_BAD_BLK;	// treat ECC FAIL as BAD BLOCK
 			is_bad = U_TRUE;
 			break;
 		case UFFS_FLASH_ECC_OK:
-			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d bit flip corrected by ECC", block, page);
+			uffs_Perror(UFFS_MSG_NORMAL, "Read block %d page %d bit flip corrected by ECC", block, page);
 			break;
 		case UFFS_FLASH_BAD_BLK:
-			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d BAD BLOCK found", block, page);
+			uffs_Perror(UFFS_MSG_NORMAL, "Read block %d page %d BAD BLOCK found", block, page);
 			break;
 		case UFFS_FLASH_UNKNOWN_ERR:
-			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d UNKNOWN error!", block, page);
+			uffs_Perror(UFFS_MSG_NORMAL, "Read block %d page %d UNKNOWN error!", block, page);
 			break;
 		case UFFS_FLASH_CRC_ERR:
-			uffs_Perror(UFFS_ERR_NORMAL, "Read block %d page %d CRC failed", block, page);
+			uffs_Perror(UFFS_MSG_NORMAL, "Read block %d page %d CRC failed", block, page);
 			break;
 		default:
 			break;
@@ -738,7 +738,7 @@ int uffs_FlashWritePageCombine(uffs_Device *dev,
 		ret = uffs_FlashReadPage(dev, block, page, verify_buf, U_FALSE);
 		if (!UFFS_FLASH_HAVE_ERR(ret)) {
 			if (memcmp(buf->header, verify_buf->header, size) != 0) {
-				uffs_Perror(UFFS_ERR_NORMAL,
+				uffs_Perror(UFFS_MSG_NORMAL,
 							"Page write verify fail (block %d page %d)",
 							block, page);
 				ret = UFFS_FLASH_BAD_BLK;
@@ -816,7 +816,7 @@ URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block)
 {
 	int ret;
 
-	uffs_Perror(UFFS_ERR_NORMAL, "Mark bad block: %d", block);
+	uffs_Perror(UFFS_MSG_NORMAL, "Mark bad block: %d", block);
 
 	if (dev->ops->MarkBadBlock)
 		return dev->ops->MarkBadBlock(dev, block) == 0 ? U_SUCC : U_FAIL;
@@ -874,7 +874,7 @@ UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block)
 		}
 	}
 
-	//uffs_Perror(UFFS_ERR_NOISY, "Block %d is %s", block, ret ? "BAD" : "GOOD");
+	//uffs_Perror(UFFS_MSG_NOISY, "Block %d is %s", block, ret ? "BAD" : "GOOD");
 
 	return ret;
 }

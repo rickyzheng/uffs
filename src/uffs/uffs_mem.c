@@ -54,14 +54,14 @@ static void * static_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 	size += (size % sizeof(long) ? sizeof(long) - (size % sizeof(long)) : 0);
 
 	if (mem->buf_size - mem->pos < (int)size) {
-		uffs_Perror(UFFS_ERR_SERIOUS,
+		uffs_Perror(UFFS_MSG_SERIOUS,
 					"Memory alloc failed! (alloc %d, free %d)",
 					size, mem->buf_size - mem->pos);
 	}
 	else {
 		p = mem->buf_start + mem->pos;
 		mem->pos += size;
-		uffs_Perror(UFFS_ERR_NOISY,
+		uffs_Perror(UFFS_MSG_NOISY,
 					"0x%p: Allocated %d, free %d",
 					p, size, mem->buf_size - mem->pos);
 	}
@@ -78,7 +78,7 @@ void uffs_MemSetupStaticAllocator(uffs_MemAllocator *allocator,
 	allocator->malloc = static_malloc;
 	allocator->free = NULL;  //never free memory for static memory allocator
 
-	uffs_Perror(UFFS_ERR_NOISY,
+	uffs_Perror(UFFS_MSG_NOISY,
 				"System static memory: %d bytes", allocator->buf_size);
 	
 }

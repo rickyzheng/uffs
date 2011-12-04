@@ -46,8 +46,8 @@ on this file might be covered by the GNU General Public License.
 #define PROMPT "UFFS>"
 
 #define PFX "cli : "
-#define MSGLN(msg,...) uffs_Perror(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
-#define MSG(msg,...) uffs_PerrorRaw(UFFS_ERR_NORMAL, msg, ## __VA_ARGS__)
+#define MSGLN(msg,...) uffs_Perror(UFFS_MSG_NORMAL, msg, ## __VA_ARGS__)
+#define MSG(msg,...) uffs_PerrorRaw(UFFS_MSG_NORMAL, msg, ## __VA_ARGS__)
 
 #define MAX_CLI_ARGS_BUF_LEN	120
 #define MAX_CLI_ARGS_NUM		20
