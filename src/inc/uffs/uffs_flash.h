@@ -278,7 +278,7 @@ UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block);
 int uffs_FlashEraseBlock(uffs_Device *dev, int block);
 
 /* mark a clean page as 'dirty' (and 'invalid') */
-int uffs_FlashMarkDirtyPage(uffs_Device *dev, int block, int page);
+int uffs_FlashMarkDirtyPage(uffs_Device *dev, uffs_BlockInfo *bc, int page);
 
 /**
  * get page head info

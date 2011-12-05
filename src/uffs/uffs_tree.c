@@ -445,7 +445,7 @@ static URET _ScanAndFixUnCleanPage(uffs_Device *dev, uffs_BlockInfo *bc)
 			uffs_Perror(UFFS_MSG_NORMAL,
 						"unclean page found, block %d page %d, mark it.",
 						bc->block, page);
-			uffs_FlashMarkDirtyPage(dev, bc->block, page);
+			uffs_FlashMarkDirtyPage(dev, bc, page);
 		}
 	}
 
