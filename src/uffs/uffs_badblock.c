@@ -188,8 +188,8 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 			
 			//from now, the 'bad' is actually good block :)))
 			uffs_Perror(UFFS_MSG_NOISY,
-						"new bad block %d found, and replaced by %d!",
-						dev->bad.block, good->u.list.block);
+						"new bad block %d found, and replaced by %d, type %d!",
+						dev->bad.block, good->u.list.block, type);
 			uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 			//we reuse the 'good' node as bad block node, and process the bad block.
 			good->u.list.block = dev->bad.block;

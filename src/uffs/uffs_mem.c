@@ -72,7 +72,7 @@ static void * static_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 void uffs_MemSetupStaticAllocator(uffs_MemAllocator *allocator,
 								  void *pool, int size)
 {
-	allocator->buf_start = (unsigned char *)pool;
+	allocator->buf_start = (char *)pool;
 	allocator->buf_size = size;
 	allocator->pos = 0;
 	allocator->malloc = static_malloc;

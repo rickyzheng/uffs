@@ -676,14 +676,11 @@ static URET do_FlushObject(uffs_Object *obj)
  */
 URET uffs_FlushObject(uffs_Object *obj)
 {
-	uffs_Device *dev;
-
 	if(obj->dev == NULL || obj->open_succ != U_TRUE) {
 		obj->err = UEBADF;
 		goto ext;
 	}
 
-	dev = obj->dev;
 	uffs_ObjectDevLock(obj);
 
 	if (do_FlushObject(obj) != U_SUCC)
@@ -703,8 +700,8 @@ ext:
  */
 URET uffs_CloseObject(uffs_Object *obj)
 {
-	uffs_Device *dev;
 #ifdef CONFIG_CHANGE_MODIFY_TIME
+	uffs_Device *dev;
 	uffs_Buf *buf;
 	uffs_FileInfo fi;
 #endif
@@ -714,12 +711,13 @@ URET uffs_CloseObject(uffs_Object *obj)
 		goto ext;
 	}
 
-	dev = obj->dev;
+
 	uffs_ObjectDevLock(obj);
 
 	if (obj->oflag & (UO_WRONLY|UO_RDWR|UO_APPEND|UO_CREATE|UO_TRUNC)) {
 
 #ifdef CONFIG_CHANGE_MODIFY_TIME
+        dev = obj->dev;
 		if (obj->node) {
 			//need to change the last modify time stamp
 			if (obj->type == UFFS_TYPE_DIR)
@@ -1198,7 +1196,7 @@ long uffs_SeekObject(uffs_Object *obj, long offset, int origin)
 		uffs_ObjectDevUnLock(obj);
 	}
 
-	return (obj->err == UENOERR ? obj->pos : -1);
+	return (obj->err == UENOERR ? (long)obj->pos : -1);
 }
 
 /**
