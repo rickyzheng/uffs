@@ -50,8 +50,24 @@
 
 #define PFX "test: "
 
+#define	MAX_TEST_BUF_LEN	8192
+
+#define SEQ_INIT	10
+#define SEQ_MOD_LEN	120
+
 #define MSG(msg,...) uffs_PerrorRaw(UFFS_MSG_NORMAL, msg, ## __VA_ARGS__)
 #define MSGLN(msg,...) uffs_Perror(UFFS_MSG_NORMAL, msg, ## __VA_ARGS__)
+
+
+static void memcp_seq(void *des, int size, int start_pos)
+{
+	int i;
+	u8 *p = (u8 *)des;
+	
+	for (i = 0; i < size; i++, p++) {
+		*p = (start_pos + SEQ_INIT + i) % SEQ_MOD_LEN;
+	}
+}
 
 static UBOOL check_entry_exist(const char *name)
 {
@@ -64,16 +80,12 @@ static URET do_write_test_file(int fd, int size)
 {
 	long pos;
 	unsigned char buf[100];
-	unsigned char data;
-	int i, len;
+	int len;
 
 	while (size > 0) {
 		pos = uffs_seek(fd, 0, USEEK_CUR);
 		len = (size > sizeof(buf) ? sizeof(buf) : size);
-		data = pos & 0xFF;
-		for (i = 0; i < len; i++, data++) {
-			buf[i] = data;
-		}
+		memcp_seq(buf, len, pos);
 		if (uffs_write(fd, buf, len) != len) {
 			MSGLN("Write file failed, size %d at %d", len, pos);
 			return U_FAIL;
@@ -120,6 +132,7 @@ static URET test_verify_file(const char *file_name, UBOOL noecc)
 	int ret = U_FAIL;
 	unsigned char buf[100];
 	int i, pos, len;
+	u8 x;
 
 	if ((fd = uffs_open(file_name, (noecc ? UO_RDONLY|UO_NOECC : UO_RDONLY))) < 0) {
 		MSGLN("Can't open file %s for read.", file_name);
@@ -132,12 +145,13 @@ static URET test_verify_file(const char *file_name, UBOOL noecc)
 		if (len <= 0)
 			goto test_failed;
 		for (i = 0; i < len; i++) {
-			if (buf[i] != (pos++ & 0xFF)) {
-				pos--;
-				MSGLN("Verify file %s failed at: %d, expect %x but got %x", file_name, pos, pos & 0xFF, buf[i]);
+			x = (SEQ_INIT + pos + i) % SEQ_MOD_LEN;
+			if (buf[i] != x) {
+				MSGLN("Verify file %s failed at: %d, expect 0x%02x but got 0x%02x", file_name, pos + i, x, buf[i]);
 				goto test_failed;
 			}
 		}
+		pos += len;
 	}
 
 	if (pos != uffs_seek(fd, 0, USEEK_END)) {
@@ -895,6 +909,102 @@ static int cmd_twrite(int argc, char *argv[])
 }
 
 /**
+ * read and check seq file
+ *	t_check_seq <fd> <size>
+ */
+static int cmd_tcheck_seq(int argc, char *argv[])
+{
+	int fd;
+	int len, size;
+	int ret = 0, r_ret = 0;
+	long pos;
+	u8 buf[MAX_TEST_BUF_LEN];
+	int i;
+	u8 x;
+
+	CHK_ARGC(3, 3);
+
+	if (sscanf(argv[1], "%d", &fd) != 1) {
+		return -1;
+	}
+
+	if (sscanf(argv[2], "%d", &len) != 1) {
+		return -1;
+	}
+
+	pos = uffs_tell(fd);
+	while (len > 0) {
+		size = (len > sizeof(buf) ? sizeof(buf) : len);
+		if ((r_ret = uffs_read(fd, buf, size)) < 0) {
+			MSGLN("Read fail! fd = %d, size = %d, pos = %ld", fd, size, pos);
+			ret = -1;
+			break;
+		}
+
+		// check seq
+		for (i = 0; i < r_ret; i++) {
+			x = (pos + SEQ_INIT + i) % SEQ_MOD_LEN;
+			if (buf[i] != x) {
+				MSGLN("Check fail! fd = %d, pos = %ld (expect 0x%02x but 0x%02x)\n", fd, pos + i, x, buf[i]);
+				ret = -1;
+				break;
+			}
+		}
+
+		if (ret < 0)
+			break;
+
+		len -= r_ret;
+		pos += r_ret;
+	}
+
+	return ret;
+}
+
+
+
+/**
+ * write random seq to file
+ *	t_write_seq <fd> <size>
+ */
+static int cmd_twrite_seq(int argc, char *argv[])
+{
+	int fd;
+	int len = 0, size = 0;
+	long pos = 0;
+	int ret = 0, w_ret = 0;
+	u8 buf[MAX_TEST_BUF_LEN];
+
+	CHK_ARGC(3, 3);
+	if (sscanf(argv[1], "%d", &fd) != 1) {
+		return -1;
+	}
+
+	if (sscanf(argv[2], "%d", &len) != 1) {
+		return -1;
+	}
+
+	pos = uffs_tell(fd);
+	while (len > 0) {
+		size = (len < sizeof(buf) ? len : sizeof(buf));
+		memcp_seq(buf, size, pos);
+		if ((w_ret = uffs_write(fd, buf, size)) < 0) {
+			MSGLN("write fail! fd = %d, size = %d, pos = %ld", fd, size, pos);
+			ret = -1;
+			break;
+		}
+		pos += w_ret;
+		len -= w_ret;
+	}
+
+	if (ret == 0)
+		cli_env_set('1', len);
+
+	return ret;
+}
+
+
+/**
  * read and check file
  *	t_read <fd> <txt>
  */
@@ -929,6 +1039,7 @@ static int cmd_tread(int argc, char *argv[])
 
 	return ret;
 }
+
 
 static void do_dump_page(uffs_Device *dev, uffs_Buf *buf)
 {
@@ -1046,7 +1157,9 @@ static const struct cli_command test_cmds[] =
 
 	{ cmd_topen,				"t_open",		"<oflg> <file>",	"open file, fd save to $1", },
 	{ cmd_tread,				"t_read",		"<fd> <txt>",		"read <fd> and check against <txt>", },
+	{ cmd_tcheck_seq,			"t_check_seq",	"<fd> <size>",		"read seq file <fd> and check", },
 	{ cmd_twrite,				"t_write",		"<fd> <txt> [...]",	"write <fd>", },
+	{ cmd_twrite_seq,			"t_write_seq",	"<fd> <size>",	"write seq file <fd>", },
 	{ cmd_tseek,				"t_seek",		"<fd> <offset> [<origin>]",	"seek <fd> file pointer to <offset> from <origin>", },
 	{ cmd_tclose,				"t_close",		"<fd>",				"close <fd>", },
 	{ cmd_dump,					"dump",			"<mount>",			"dump <mount>", },

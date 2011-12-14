@@ -39,7 +39,7 @@
 extern "C"{
 #endif
 
-/** uffs native memory allocator */
+/** uffs memory allocator */
 typedef struct uffs_memAllocatorSt {
 	URET (*init)(struct uffs_DeviceSt *dev);			//!< init memory allocator, setup buffer sizes
 	URET (*release)(struct uffs_DeviceSt *dev);			//!< release memory allocator (for dynamic memory allocation)

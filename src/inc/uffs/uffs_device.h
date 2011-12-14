@@ -164,7 +164,7 @@ struct uffs_DeviceSt {
 	struct uffs_TreeSt				tree;		//!< tree list of block
 	struct uffs_NewBadBlockSt		bad;		//!< new discovered bad block
 	struct uffs_FlashStatSt			st;			//!< statistic (counters)
-	struct uffs_memAllocatorSt		mem;		//!< uffs native memory allocator
+	struct uffs_memAllocatorSt		mem;		//!< uffs memory allocator
 	u32	ref_count;								//!< device reference count
 	int	dev_num;								//!< device number (partition number)	
 };
