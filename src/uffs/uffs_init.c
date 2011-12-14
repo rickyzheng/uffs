@@ -46,9 +46,42 @@
 
 #define PFX "init: "
 
+static URET uffs_InitDeviceConfig(uffs_Device *dev)
+{
+#if CONFIG_USE_STATIC_MEMORY_ALLOCATOR > 0
+	dev->cfg.bc_caches = MAX_CACHED_BLOCK_INFO;
+	dev->cfg.page_buffers = MAX_PAGE_BUFFERS;
+	dev->cfg.dirty_pages = MAX_DIRTY_PAGES_IN_A_BLOCK;
+	dev->cfg.dirty_groups = MAX_DIRTY_BUF_GROUPS;
+	dev->reserved_free_blocks = MINIMUN_ERASED_BLOCK;
+#else
+	if (dev->cfg.bc_caches == 0)
+		dev->cfg.bc_caches = MAX_CACHED_BLOCK_INFO;
+	if (dev->cfg.page_buffers == 0)
+		dev->cfg.page_buffers = MAX_PAGE_BUFFERS;
+	if (dev->cfg.dirty_pages == 0)
+		dev->cfg.dirty_pages = MAX_DIRTY_PAGES_IN_A_BLOCK;
+	if (dev->cfg.dirty_groups == 0)
+		dev->cfg.dirty_groups = MAX_DIRTY_BUF_GROUPS;
+	if (dev->cfg.reserved_free_blocks == 0)
+		dev->cfg.reserved_free_blocks = MINIMUN_ERASED_BLOCK;
+
+	if (!uffs_Assert(dev->cfg.dirty_groups <= MAX_DIRTY_BUF_GROUPS, "invalid config: dirty_groups = %d\n", dev->cfg.dirty_groups))
+		return U_FAIL;
+	if (!uffs_Assert(dev->cfg.page_buffers - CLONE_BUFFERS_THRESHOLD >= 3, "invalid config: page_buffers = %d\n", dev->cfg.page_buffers))
+		return U_FAIL;
+
+#endif
+	return U_SUCC;
+}
+
 URET uffs_InitDevice(uffs_Device *dev)
 {
 	URET ret;
+
+	ret = uffs_InitDeviceConfig(dev);
+	if (ret != U_SUCC)
+		return U_FAIL;
 
 	if (dev->mem.init) {
 		if (dev->mem.init(dev) != U_SUCC) {
@@ -62,19 +95,20 @@ URET uffs_InitDevice(uffs_Device *dev)
 	uffs_DeviceInitLock(dev);
 	uffs_BadBlockInit(dev);
 
+
 	if (uffs_FlashInterfaceInit(dev) != U_SUCC) {
 		uffs_Perror(UFFS_MSG_SERIOUS, "Can't initialize flash interface !");
 		goto fail;
 	}
 
 	uffs_Perror(UFFS_MSG_NOISY, "init page buf");
-	ret = uffs_BufInit(dev, MAX_PAGE_BUFFERS, MAX_DIRTY_PAGES_IN_A_BLOCK);
+	ret = uffs_BufInit(dev, dev->cfg.page_buffers, dev->cfg.dirty_pages);
 	if (ret != U_SUCC) {
 		uffs_Perror(UFFS_MSG_DEAD, "Initialize page buffers fail");
 		goto fail;
 	}
 	uffs_Perror(UFFS_MSG_NOISY, "init block info cache");
-	ret = uffs_BlockInfoInitCache(dev, MAX_CACHED_BLOCK_INFO);
+	ret = uffs_BlockInfoInitCache(dev, dev->cfg.bc_caches);
 	if (ret != U_SUCC) {
 		uffs_Perror(UFFS_MSG_DEAD, "Initialize block info fail");
 		goto fail;

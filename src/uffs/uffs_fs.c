@@ -349,7 +349,7 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 		goto ext_1;
 	}
 
-	if (obj->dev->tree.erased_count < MINIMUN_ERASED_BLOCK) {
+	if (obj->dev->tree.erased_count < obj->dev->cfg.reserved_free_blocks) {
 		uffs_Perror(UFFS_MSG_NOISY,
 					"insufficient block in create obj");
 		obj->err = UENOMEM;
@@ -926,7 +926,7 @@ static int do_WriteObject(uffs_Object *obj, const void *data, int len)
 
 		if (write_start == fnode->u.file.len && fdn > 0 &&
 			write_start == GetStartOfDataBlock(obj, fdn)) {
-			if (dev->tree.erased_count < MINIMUN_ERASED_BLOCK) {
+			if (dev->tree.erased_count < dev->cfg.reserved_free_blocks) {
 				uffs_Perror(UFFS_MSG_NOISY, "insufficient block in write obj, new block");
 				break;
 			}

@@ -144,6 +144,20 @@ typedef struct uffs_FlashStatSt {
 } uffs_FlashStat;
 
 
+/**
+ * \struct uffs_ConfigSt
+ * \typedef uffs_Config
+ * \brief uffs config parameters
+ */
+typedef struct uffs_ConfigSt {
+	int bc_caches;
+	int page_buffers;
+	int dirty_pages;
+	int dirty_groups;
+	int reserved_free_blocks;
+} uffs_Config;
+
+
 /** 
  * \struct uffs_DeviceSt
  * \brief The core data structure of UFFS, all information needed by manipulate UFFS object
@@ -165,6 +179,7 @@ struct uffs_DeviceSt {
 	struct uffs_NewBadBlockSt		bad;		//!< new discovered bad block
 	struct uffs_FlashStatSt			st;			//!< statistic (counters)
 	struct uffs_memAllocatorSt		mem;		//!< uffs memory allocator
+	struct uffs_ConfigSt			cfg;		//!< uffs config
 	u32	ref_count;								//!< device reference count
 	int	dev_num;								//!< device number (partition number)	
 };

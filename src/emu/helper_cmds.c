@@ -338,9 +338,9 @@ static int cmd_st(int argc, char *argv[])
 	MSG("----------- basic info -----------" TENDSTR);
 	MSG("TreeNode size:         %d" TENDSTR, sizeof(TreeNode));
 	MSG("TagStore size:         %d" TENDSTR, sizeof(struct uffs_TagStoreSt));
-	MSG("MaxCachedBlockInfo:    %d" TENDSTR, MAX_CACHED_BLOCK_INFO);
-	MSG("MaxPageBuffers:        %d" TENDSTR, MAX_PAGE_BUFFERS);
-	MSG("MaxDirtyPagesPerBlock: %d" TENDSTR, MAX_DIRTY_PAGES_IN_A_BLOCK);
+	MSG("MaxCachedBlockInfo:    %d" TENDSTR, dev->cfg.bc_caches);
+	MSG("MaxPageBuffers:        %d" TENDSTR, dev->cfg.page_buffers);
+	MSG("MaxDirtyPagesPerBlock: %d" TENDSTR, dev->cfg.dirty_pages);
 	MSG("MaxPathLength:         %d" TENDSTR, MAX_PATH_LENGTH);
 	MSG("MaxObjectHandles:      %d" TENDSTR, MAX_OBJECT_HANDLE);
 	MSG("FreeObjectHandles:     %d" TENDSTR, uffs_PoolGetFreeCount(uffs_GetObjectPool()));

@@ -244,7 +244,7 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 		ret = U_FAIL;
 	}
 
-	for (slot = 0; ret == U_SUCC && slot < MAX_DIRTY_BUF_GROUPS; slot++) {
+	for (slot = 0; ret == U_SUCC && slot < dev->cfg.dirty_groups; slot++) {
 		if (dev->buf.dirtyGroup[slot].count > 0) {
 			uffs_Perror(UFFS_MSG_SERIOUS, "there still have dirty pages!");
 			ret = U_FAIL;

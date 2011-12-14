@@ -157,7 +157,7 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 	dev->buf.dirty_buf_max = (dirty_buf_max > dev->attr->pages_per_block ?
 								dev->attr->pages_per_block : dirty_buf_max);
 
-	for (slot = 0; slot < MAX_DIRTY_BUF_GROUPS; slot++) {
+	for (slot = 0; slot < dev->cfg.dirty_groups; slot++) {
 		dev->buf.dirtyGroup[slot].dirty = NULL;
 		dev->buf.dirtyGroup[slot].count = 0;
 	}
@@ -170,7 +170,7 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 URET uffs_BufFlushAll(struct uffs_DeviceSt *dev)
 {
 	int slot;
-	for (slot = 0; slot < MAX_DIRTY_BUF_GROUPS; slot++) {
+	for (slot = 0; slot < dev->cfg.dirty_groups; slot++) {
 		if(_BufFlush(dev, FALSE, slot) != U_SUCC) {
 			uffs_Perror(UFFS_MSG_NORMAL,
 						"fail to flush buffer(slot %d)", slot);
@@ -1058,7 +1058,7 @@ static int _FindMostDirtyGroup(struct uffs_DeviceSt *dev)
 	int i, slot = -1;
 	int max_count = 0;
 
-	for (i = 0; i < MAX_DIRTY_BUF_GROUPS; i++) {
+	for (i = 0; i < dev->cfg.dirty_groups; i++) {
 		if (dev->buf.dirtyGroup[i].dirty &&
 				dev->buf.dirtyGroup[i].lock == 0) {
 			if (dev->buf.dirtyGroup[i].count > max_count) {
@@ -1075,7 +1075,7 @@ static int _FindMostDirtyGroup(struct uffs_DeviceSt *dev)
 URET uffs_BufLockGroup(struct uffs_DeviceSt *dev, int slot)
 {
 	URET ret = U_FAIL;
-	if (slot >= 0 && slot < MAX_DIRTY_BUF_GROUPS) {
+	if (slot >= 0 && slot < dev->cfg.dirty_groups) {
 		dev->buf.dirtyGroup[slot].lock++;
 		ret = U_SUCC;
 	}	
@@ -1087,7 +1087,7 @@ URET uffs_BufUnLockGroup(struct uffs_DeviceSt *dev, int slot)
 {
 	URET ret = U_FAIL;
 
-	if (slot >= 0 && slot < MAX_DIRTY_BUF_GROUPS) {
+	if (slot >= 0 && slot < dev->cfg.dirty_groups) {
 		if (dev->buf.dirtyGroup[slot].lock > 0)
 			dev->buf.dirtyGroup[slot].lock--;
 		else {
@@ -1209,7 +1209,7 @@ URET uffs_BufFlushGroupMatchParent(struct uffs_DeviceSt *dev, u16 parent)
 	uffs_Buf *buf;
 	URET ret = U_SUCC;
 
-	for (slot = 0; slot < MAX_DIRTY_BUF_GROUPS && ret == U_SUCC; slot++) {
+	for (slot = 0; slot < dev->cfg.dirty_groups && ret == U_SUCC; slot++) {
 		if (dev->buf.dirtyGroup[slot].dirty) {
 			buf = dev->buf.dirtyGroup[slot].dirty;
 			if (buf->parent == parent) {
@@ -1232,7 +1232,7 @@ int uffs_BufFindFreeGroupSlot(struct uffs_DeviceSt *dev)
 {
 	int i, slot = -1;
 
-	for (i = 0; i < MAX_DIRTY_BUF_GROUPS; i++) {
+	for (i = 0; i < dev->cfg.dirty_groups; i++) {
 		if (dev->buf.dirtyGroup[i].dirty == NULL) {
 			slot = i;
 			break;
@@ -1255,7 +1255,7 @@ int uffs_BufFindGroupSlot(struct uffs_DeviceSt *dev, u16 parent, u16 serial)
 	uffs_Buf *buf;
 	int i, slot = -1;
 
-	for (i = 0; i < MAX_DIRTY_BUF_GROUPS; i++) {
+	for (i = 0; i < dev->cfg.dirty_groups; i++) {
 		if (dev->buf.dirtyGroup[i].dirty) {
 			buf = dev->buf.dirtyGroup[i].dirty;
 			if (buf->parent == parent && buf->serial == serial) {
