@@ -76,24 +76,16 @@ extern "C"{
  * \brief POSIX dirent
  */
 struct uffs_dirent {
-    int d_ino;		/* inode number (serial number of this object) */
-    char d_name[MAX_FILENAME_LENGTH];	/* name of this object */
-
-    int d_off;		/* offset to this dirent */
+    int d_ino;							/* inode number (serial number of this object) */
+    int d_off;							/* offset to this dirent */
     unsigned short int d_reclen;		/* length of this uffs_dirent */
     unsigned short int d_namelen;		/* length of this d_name */
     unsigned char d_type;				/* type of this record */
+    char d_name[MAX_FILENAME_LENGTH];	/* name of this object */
 };
 
-/**
- * \brief POSIX DIR
- */
-typedef struct uffs_dirSt {
-    struct uffs_ObjectSt   *obj;		/* dir object */
-    struct uffs_FindInfoSt f;			/* find info */
-    struct uffs_ObjectInfoSt info;		/* object info */
-    struct uffs_dirent dirent;			/* dir entry */
-} uffs_DIR;
+struct uffs_dirSt;
+typedef struct uffs_dirSt uffs_DIR;
 
 /**
  * \brief POSIX stat

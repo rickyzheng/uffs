@@ -43,6 +43,16 @@
 #include "uffs/uffs_utils.h"
 #define PFX "fd  : "
 
+/**
+ * \brief POSIX DIR
+ */
+struct uffs_dirSt {
+    struct uffs_ObjectSt   *obj;		/* dir object */
+    struct uffs_FindInfoSt f;			/* find info */
+    struct uffs_ObjectInfoSt info;		/* object info */
+    struct uffs_dirent dirent;			/* dir entry */
+};
+
 
 #define FD_OFFSET		3	//!< just make file handler more like POSIX (0, 1, 2 for stdin/stdout/stderr)
 
