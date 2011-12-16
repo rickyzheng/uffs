@@ -47,6 +47,7 @@
 #include "uffs/uffs_find.h"
 #include "uffs/uffs_badblock.h"
 #include "cmdline.h"
+#include "api_srv.h"
 
 #define PFX "test: "
 
@@ -58,6 +59,16 @@
 #define MSG(msg,...) uffs_PerrorRaw(UFFS_MSG_NORMAL, msg, ## __VA_ARGS__)
 #define MSGLN(msg,...) uffs_Perror(UFFS_MSG_NORMAL, msg, ## __VA_ARGS__)
 
+#ifdef ENABLE_API_SRV
+extern int apisrv_start(void);
+#else
+#error "!!!"
+static int apisrv_start(void)
+{
+    MSGLN("API server not available for this platform");
+    return -1; 
+}
+#endif
 
 static void memcp_seq(void *des, int size, int start_pos)
 {
@@ -1141,7 +1152,10 @@ static int cmd_dump(int argc, char *argv[])
 	return 0;
 }
 
-
+static int cmd_apisrv(int argc, char *argv[])
+{
+	return apisrv_start();
+}
 
 static const struct cli_command test_cmds[] = 
 {
@@ -1163,6 +1177,8 @@ static const struct cli_command test_cmds[] =
 	{ cmd_tseek,				"t_seek",		"<fd> <offset> [<origin>]",	"seek <fd> file pointer to <offset> from <origin>", },
 	{ cmd_tclose,				"t_close",		"<fd>",				"close <fd>", },
 	{ cmd_dump,					"dump",			"<mount>",			"dump <mount>", },
+
+	{ cmd_apisrv,				"apisrv",		NULL,				"start API test server", },
 
     { NULL, NULL, NULL, NULL }
 };
