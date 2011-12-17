@@ -52,6 +52,10 @@
 extern "C"{
 #endif
 
+/**
+ * \def MAX_DIRTY_BUF_GROUPS
+ */
+#define MAX_DIRTY_BUF_GROUPS    3
 
 
 /** 

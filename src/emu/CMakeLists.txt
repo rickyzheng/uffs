@@ -12,6 +12,7 @@ SET (libemu_SRCS
 		test_cmds.c
 		api_srv.c
 		api_srv.h
+		api_srv_public.c
 	)
 
 IF (UNIX)

@@ -144,6 +144,10 @@ void uffs_rewinddir(uffs_DIR *dirp);
 int uffs_get_error(void);
 int uffs_set_error(int err);
 
+int uffs_version(void);
+int uffs_format(const char *mount_point);
+
+
 #ifdef __cplusplus
 }
 #endif

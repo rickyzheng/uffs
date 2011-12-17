@@ -41,6 +41,7 @@
 #include "uffs/uffs_fs.h"
 #include "uffs/uffs_fd.h"
 #include "uffs/uffs_utils.h"
+#include "uffs/uffs_version.h"
 #define PFX "fd  : "
 
 /**
@@ -660,5 +661,9 @@ int uffs_rmdir(const char *name)
 	return ret;
 }
 
+int uffs_version(void)
+{
+	return uffs_GetVersion();
+}
 
 

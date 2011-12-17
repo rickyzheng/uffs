@@ -3,3 +3,5 @@ ADD_SUBDIRECTORY(uffs)
 ADD_SUBDIRECTORY(utils)
 ADD_SUBDIRECTORY(example)
 ADD_SUBDIRECTORY(platform/posix)
+ADD_SUBDIRECTORY(test/clients)
+

@@ -59,256 +59,35 @@
 #include "api_srv.h"
 
 #define PFX NULL
-#define MSG(msg,...) uffs_PerrorRaw(UFFS_MSG_NORMAL, msg, ## __VA_ARGS__)
-#define MSGLN(msg,...) uffs_Perror(UFFS_MSG_NORMAL, msg, ## __VA_ARGS__)
 
 #define BACKLOGS	10
 
-struct uffs_ApiSrvMsgSt {
-	struct uffs_ApiSrvHeaderSt header;
-	u8 *data;
+static int _io_read(int fd, void *buf, size_t len)
+{
+    return recv(fd, buf, len, MSG_WAITALL);
+}
+
+static int _io_write(int fd, const void *buf, size_t len)
+{
+    return send(fd, buf, len, 0);
+}
+
+static int _io_close(int fd)
+{
+    return close(fd);
+}
+
+static struct uffs_ApiSrvIoSt m_io = {
+    .read = _io_read,
+    .write = _io_write,
+    .close = _io_close,
 };
 
-// unload parameters from message.
-static int unload_params(struct uffs_ApiSrvMsgSt *msg, ...)
-{
-	int ret = 0;
-	int n;
-	u8 *p;
-	u8 *data;
-	struct uffs_ApiSrvHeaderSt *header = &msg->header;
+static struct uffs_ApiSt m_api = {
+	.uffs_version = uffs_version,
+	.uffs_open = uffs_open,
+};
 
-	va_list args;
-
-	va_start(args, msg);
-
-	for (n = 0, data = msg->data; n < header->n_params; n++) {
-		p = va_arg(args, void *);
-		if (p == NULL)
-			break;
-		memcpy(p, data, header->param_size[n]);
-		data += header->param_size[n];
-	}
-
-	if (n != header->n_params) {
-		MSGLN("Extract parameter for cmd %d failed ! parameter number mismatched.");
-		ret = -1;
-	}
-
-	if (data - msg->data != header->data_len) {
-		MSGLN("Extract parameter for cmd %d failed ! data len mismatched.");
-		ret = -1;
-	}
-
-	va_end(args);
-
-	return ret;
-}
-
-// load response data. the parameter list: (&param1, size1, &param2, size2, .... NULL)
-static int make_response(struct uffs_ApiSrvMsgSt *msg, ...)
-{
-	int ret = 0;
-	int n;
-	size_t len;
-	struct uffs_ApiSrvHeaderSt *header = &msg->header;
-	u8 *p;
-	u8 * params[UFFS_API_MAX_PARAMS];
-
-	va_list args;
-
-	header->cmd |= UFFS_API_ACK_BIT;
-
-	va_start(args, msg);
-
-	for (n = 0, len = 0; n < UFFS_API_MAX_PARAMS; n++) {
-		p = va_arg(args, u8 *);
-		if (p == NULL)	// terminator
-			break;
-		params[n] = p;
-		header->param_size[n] = va_arg(args, size_t);
-		len += header->param_size[n];
-	}
-	header->n_params = n;
-
-	va_end(args);
-
-	if (len > header->data_len) {
-		free(msg->data);
-		header->data_len = 0;
-		msg->data = (u8 *)malloc(len);
-		if (msg->data == NULL) {
-			MSGLN("Fail to malloc %d bytes", len);
-			ret = -1;
-			goto ext;
-		}
-		header->data_len = len;
-	}
-
-	for (n = 0, p = msg->data; n < header->n_params; n++) {
-		memcpy(p, params[n], header->param_size[n]);
-		p += header->param_size[n];
-	}
-
-ext:
-
-	return ret;
-}
-
-// calculate crc and send msg.
-static int reply(int fd, struct uffs_ApiSrvMsgSt *msg)
-{
-	int ret;
-
-	msg->header.data_crc = uffs_crc16sum(msg->data, msg->header.data_len);
-	msg->header.header_crc = uffs_crc16sum(&msg->header, sizeof(struct uffs_ApiSrvHeaderSt));
-
-	ret = send(fd, &msg->header, sizeof(struct uffs_ApiSrvHeaderSt), 0);
-	if (ret < 0) {
-		perror("Sending header failed");
-	}
-	else {
-		ret = send(fd, msg->data, msg->header.data_len, 0);
-		if (ret < 0) {
-			perror("Sending data failed");
-		}
-	}
-
-	return ret;
-}
-
-
-static int check_apisrv_header(struct uffs_ApiSrvHeaderSt *header)
-{
-	return 0;
-}
-
-static int check_apisrv_msg(struct uffs_ApiSrvMsgSt *msg)
-{
-	return 0;
-}
-
-static int process_cmd(int fd, struct uffs_ApiSrvMsgSt *msg)
-{
-	struct uffs_ApiSrvHeaderSt *header = &msg->header;
-	int ret = 0;
-	char name[256];
-
-	switch(UFFS_API_CMD(header)) {
-	case UFFS_API_GET_VER_CMD:
-	{
-		int val;
-		val = uffs_GetVersion();
-		ret = make_response(msg, &val, sizeof(val), NULL);
-		if (ret == 0)
-			reply(fd, msg);
-		break;
-	}
-	case UFFS_API_OPEN_CMD:
-	{
-		int open_mode;
-		unload_params(msg, name, &open_mode);
-		break;
-	}
-	case UFFS_API_CLOSE_CMD:
-		break;
-	case UFFS_API_READ_CMD:
-		break;
-	case UFFS_API_WRITE_CMD:
-		break;
-	case UFFS_API_FLUSH_CMD:
-		break;
-	case UFFS_API_SEEK_CMD:
-		break;
-	case UFFS_API_TELL_CMD:
-		break;
-	case UFFS_API_EOF_CMD:
-		break;
-	case UFFS_API_RENAME_CMD:
-		break;
-	case UFFS_API_REMOVE_CMD:
-		break;
-	case UFFS_API_TRUNCATE_CMD:
-		break;
-	case UFFS_API_MKDIR_CMD:
-		break;
-	case UFFS_API_RMDIR_CMD:
-		break;
-	case UFFS_API_STAT_CMD:
-		break;
-	case UFFS_API_LSTAT_CMD:
-		break;
-	case UFFS_API_FSTAT_CMD:
-		break;
-	case UFFS_API_OPEN_DIR_CMD:
-		break;
-	case UFFS_API_CLOSE_DIR_CMD:
-		break;
-	case UFFS_API_READ_DIR_CMD:
-		break;
-	case UFFS_API_REWIND_DIR_CMD:
-		break;
-	case UFFS_API_GET_ERR_CMD:
-		break;
-	case UFFS_API_SET_ERR_CMD:
-		break;
-	case UFFS_API_FORMAT_CMD:
-		break;
-	case UFFS_API_GET_TOTAL_CMD:
-		break;
-	case UFFS_API_GET_FREE_CMD:
-		break;
-	case UFFS_API_GET_USED_CMD:
-		break;
-	default:
-		MSGLN("Unknown command %x", header->cmd);
-		ret = -1;
-		break;
-	}
-
-	return ret;
-}
-
-static int apisrv_serve(int fd)
-{
-	int ret = 0;
-	struct uffs_ApiSrvMsgSt msg;
-	struct uffs_ApiSrvHeaderSt *header = &msg.header;
-	u8 *data = NULL;
-
-	memset(&msg, 0, sizeof(struct uffs_ApiSrvMsgSt));
-
-	ret = recv(fd, header, sizeof(struct uffs_ApiSrvHeaderSt), MSG_WAITALL);
-	if (ret < 0)
-		goto ext;
-
-	ret = check_apisrv_header(header);
-	if (ret < 0)
-		goto ext;
-
-	if (header->data_len > 0) {
-		data = (u8 *)malloc(header->data_len);
-		if (data == NULL) {
-			MSGLN("Malloc %d failed", header->data_len);
-			ret = -1;
-			goto ext;
-		}
-	}
-
-	msg.data = data;
-
-	ret = check_apisrv_msg(&msg);
-	if (ret == 0)
-		ret = process_cmd(fd, &msg);
-	else
-		MSGLN("Data CRC check failed!");
-
-ext:
-	if (data)
-		free(data);
-
-	return ret;
-}
 
 int apisrv_start(void)
 {
@@ -352,14 +131,16 @@ int apisrv_start(void)
 
 	sin_size = sizeof(struct sockaddr_in);
 
+	apisrv_setup_io(&m_io);
+
 	do {
 		new_fd = accept(srv_fd, (struct sockaddr *)&peer_addr, &sin_size);
 		if (new_fd >= 0) {
-			ret = apisrv_serve(new_fd);
+			ret = apisrv_serve(new_fd, &m_api);
 			if (ret >= 0)
 				close(new_fd);
 		}
-	} while (ret > 0);
+	} while (ret >= 0);
 
 ext:
 	if (srv_fd >= 0)

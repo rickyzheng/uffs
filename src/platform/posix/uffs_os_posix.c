@@ -35,6 +35,8 @@
  * \brief Emulation on POSIX host. This is just a dumb implementation, does not really create semaphores.
  * \author Ricky Zheng
  */
+
+#include "uffs_config.h"
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_public.h"
 #include <memory.h>

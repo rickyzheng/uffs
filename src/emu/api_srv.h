@@ -35,6 +35,8 @@
  * \brief UFFS API test server definitions 
  * \author Ricky Zheng, created 16 Dec, 2011
  */
+#include "uffs/uffs_types.h"
+#include "uffs/uffs_fd.h"
 
 #ifndef _UFFS_API_SRV_H_
 #define _UFFS_API_SRV_H_
@@ -74,14 +76,63 @@
 
 #define UFFS_API_MAX_PARAMS             8
 
+struct uffs_ApiSrvMsgSt;
+
 struct uffs_ApiSrvHeaderSt {
-        u32 cmd;                // command
-        u32 data_len;           // data length
-        u32 n_params;           // parameter numbers
-        u32 param_size[UFFS_API_MAX_PARAMS];    // parameter list
-        u16 data_crc;           // data CRC16
-        u16 header_crc;         // header CRC16
+	u32 cmd;                // command
+	u32 data_len;           // data length
+	u32 n_params;           // parameter numbers
+	u32 param_size[UFFS_API_MAX_PARAMS];    // parameter list
+	u16 data_crc;           // data CRC16
+	u16 header_crc;         // header CRC16
 };
+
+struct uffs_ApiSrvIoSt {
+	int (*open)(void *addr);
+	int (*read)(int fd, void *buf, size_t len);
+	int (*write)(int fd, const void *buf, size_t len);
+	int (*close)(int fd);
+	void *addr;
+};
+
+struct uffs_ApiSt {
+	int (*uffs_version)(void);
+	int (*uffs_open)(const char *name, int oflag, ...);
+	int (*uffs_close)(int fd);
+	int (*uffs_read)(int fd, void *data, int len);
+	int (*uffs_write)(int fd, const void *data, int len);
+	int (*uffs_flush)(int fd);
+	long (*uffs_seek)(int fd, long offset, int origin);
+	long (*uffs_tell)(int fd);
+	int (*uffs_eof)(int fd);
+	int (*uffs_rename)(const char *old_name, const char *new_name);
+	int (*uffs_remove)(const char *name);
+	int (*uffs_truncate)(int fd, long remain);
+	int (*uffs_mkdir)(const char *name, ...);
+	int (*uffs_rmdir)(const char *name);
+	int (*uffs_stat)(const char *name, struct uffs_stat *buf);
+	int (*uffs_lstat)(const char *name, struct uffs_stat *buf);
+	int (*uffs_fstat)(int fd, struct uffs_stat *buf);
+	uffs_DIR * (*uffs_opendir)(const char *path);
+	int (*uffs_closedir)(uffs_DIR *dirp);
+	struct uffs_dirent * (*uffs_readdir)(uffs_DIR *dirp);
+	void (*uffs_rewinddir)(uffs_DIR *dirp);
+	int (*uffs_get_error)(void);
+	int (*uffs_set_error)(int err);
+	int (*uffs_format)(const char *mount_point);
+	int (*uffs_space_used)(const char *mount_point);
+	int (*uffs_space_free)(const char *mount_point);
+	int (*uffs_space_total)(const char *mount_point);
+};
+
+struct uffs_ApiSrvMsgSt {
+    struct uffs_ApiSrvHeaderSt header;
+    u8 *data;
+};
+
+int apisrv_setup_io(struct uffs_ApiSrvIoSt *io);
+int apisrv_serve(int fd, struct uffs_ApiSt *api);
+struct uffs_ApiSt * apisrv_get_client(void);
 
 #endif
 
