@@ -41,6 +41,7 @@
 
 
 #include "uffs/uffs_types.h"
+#include "uffs/uffs_os.h"
 
 #ifdef __cplusplus
 extern "C"{
@@ -63,7 +64,7 @@ typedef struct uffs_PoolSt {
 	u32 buf_size;				//!< size of a buffer
 	u32 num_bufs;				//!< number of buffers in the pool
 	uffs_PoolEntry *free_list;	//!< linked list of free buffers
-	int sem;					//!< buffer lock
+	OSSEM sem;					//!< buffer lock
 } uffs_Pool;
 
 URET uffs_PoolInit(uffs_Pool *pool, void *mem, u32 mem_size, u32 buf_size, u32 num_bufs);

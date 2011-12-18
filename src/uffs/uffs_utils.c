@@ -52,13 +52,12 @@
 #define SPOOL(dev) &((dev)->mem.spare_pool)
 
 #ifdef CONFIG_USE_GLOBAL_FS_LOCK
-static int _global_lock = 0;
+static OSSEM _global_lock = OSSEM_NOT_INITED;
 
 /* global file system lock */
 void uffs_InitGlobalFsLock(void)
 {
-	if (_global_lock == 0)
-		_global_lock = uffs_SemCreate(1);
+	uffs_SemCreate(&_global_lock);
 }
 
 void uffs_ReleaseGlobalFsLock(void)

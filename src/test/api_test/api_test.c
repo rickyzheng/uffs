@@ -61,7 +61,8 @@ int apisrv_setup_io(struct uffs_ApiSrvIoSt *io)
 static int apisrv_unload_params(struct uffs_ApiSrvMsgSt *msg, ...)
 {
     int ret = 0;
-    int n, len, size;
+    int len, size;
+	u32 n;
     u8 *p;
     u8 *data;
     struct uffs_ApiSrvHeaderSt *header = &msg->header;
@@ -105,7 +106,7 @@ static int apisrv_unload_params(struct uffs_ApiSrvMsgSt *msg, ...)
 static int apisrv_make_message(struct uffs_ApiSrvMsgSt *msg, ...)
 {
     int ret = 0;
-    int n;
+    u32 n;
     size_t len;
     struct uffs_ApiSrvHeaderSt *header = &msg->header;
     u8 *p;
@@ -346,7 +347,7 @@ static int call_remote(int cmd, ...)
 	struct uffs_ApiSrvMsgSt msg;
 	struct uffs_ApiSrvHeaderSt *header = &msg.header;
 	int ret = -1, fd = -1;
-	int n = 0;
+	u32 n = 0;
 	u8 *p;
 	int len, size;
 	u8 * params[UFFS_API_MAX_PARAMS];
@@ -436,8 +437,8 @@ static int _uffs_open(const char *name, int oflag, ...)
 
 
 static struct uffs_ApiSt m_client_api = {
-	.uffs_version = _uffs_version,
-	.uffs_open = _uffs_open,
+	_uffs_version,
+	_uffs_open,
 };
 
 struct uffs_ApiSt * apisrv_get_client(void)

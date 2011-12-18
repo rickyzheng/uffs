@@ -82,7 +82,7 @@ struct uffs_PartitionSt {
  * \brief lock stuffs
  */
 struct uffs_LockSt {
-	int sem;
+	OSSEM sem;
 	int task_id;
 	int counter;
 };

@@ -31,7 +31,7 @@
 */
 
 /**
- * \file api_srv.c
+ * \file api_test_server_posix.c
  * \brief uffs API test server.
  * \author Ricky Zheng
  */

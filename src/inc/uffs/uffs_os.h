@@ -41,7 +41,8 @@ extern "C"{
 
 #define UFFS_TASK_ID_NOT_EXIST	-1
 
-typedef int OSSEM;
+typedef void * OSSEM;
+#define OSSEM_NOT_INITED	(NULL)
 
 struct uffs_DebugMsgOutputSt {
 	void (*output)(const char *msg);
@@ -51,10 +52,10 @@ struct uffs_DebugMsgOutputSt {
 void uffs_SetupDebugOutput(void);
 
 /* OS specific functions */
-int uffs_SemCreate(int n);
-int uffs_SemWait(int sem);
-int uffs_SemSignal(int sem);
-int uffs_SemDelete(int *sem);
+int uffs_SemCreate(OSSEM *sem);
+int uffs_SemWait(OSSEM sem);
+int uffs_SemSignal(OSSEM sem);
+int uffs_SemDelete(OSSEM *sem);
 
 int uffs_OSGetTaskId(void);	//get current task id
 unsigned int uffs_GetCurDateTime(void);

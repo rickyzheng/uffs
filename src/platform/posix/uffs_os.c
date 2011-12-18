@@ -43,37 +43,51 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #define PFX "os  : "
 
-int uffs_SemCreate(int n)
+int uffs_SemCreate(OSSEM *sem)
 {
-	//TODO: ... create semaphore, return semaphore handler (rather then return n) ...
-	return n;
+	pthread_mutex_t *mutex = (pthread_mutex_t *) malloc(pthread_mutex_t);
+	int ret = -1;
+
+	if (mutex) {
+		ret = pthread_mutex_init(mutex, NULL /* default attr */);
+		if (ret == 0) {
+			*sem = (OSSEM *)mutex;			
+		}
+		else {
+			free(mutex);
+		}
+	}
+	
+	return ret;
 }
 
-int uffs_SemWait(int sem)
+int uffs_SemWait(OSSEM sem)
 {
-	if (sem) {
-		//TODO: ... wait semaphore available ...
-	}
-	return 0;
+	return pthread_mutex_lock((pthread_mutex_t *)sem);
 }
 
-int uffs_SemSignal(int sem)
+int uffs_SemSignal(OSSEM sem)
 {
-	if (sem) {
-		//TODO: ... release semaphore ...
-	}
-	return 0;
+	return pthread_mutex_unlock((pthread_mutex_t *)sem);;
 }
 
-int uffs_SemDelete(int *sem)
+int uffs_SemDelete(OSSEM *sem)
 {
-	if (sem) {
-		//TODO: ... delete semaphore ...
+	pthread_mutex_t *mutex = (pthread_mutex_t *) (*sem);
+	int ret = -1;
+	
+	if (mutex) {
+		ret = pthread_mutex_destroy(mutex);
+		if (ret == 0) {
+			free(mutex);
+			*sem = 0;
+		}			
 	}
-	return 0;
+	return ret;
 }
 
 int uffs_OSGetTaskId(void)

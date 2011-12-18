@@ -96,9 +96,8 @@ URET uffs_PoolInit(uffs_Pool *pool,
 	pool->mem = (u8 *)mem;
 	pool->buf_size = buf_size;
 	pool->num_bufs = num_bufs;
-	if (pool->sem == 0)
-		pool->sem = uffs_SemCreate(1);
-	
+
+	uffs_SemCreate(&pool->sem);	
 	uffs_SemWait(pool->sem);
 
 	// Initialize the free_list
