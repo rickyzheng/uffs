@@ -49,7 +49,7 @@
 
 int uffs_SemCreate(OSSEM *sem)
 {
-	pthread_mutex_t *mutex = (pthread_mutex_t *) malloc(pthread_mutex_t);
+	pthread_mutex_t *mutex = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
 	int ret = -1;
 
 	if (mutex) {
