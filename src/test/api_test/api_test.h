@@ -134,5 +134,8 @@ int apisrv_setup_io(struct uffs_ApiSrvIoSt *io);
 int apisrv_serve(int fd, struct uffs_ApiSt *api);
 struct uffs_ApiSt * apisrv_get_client(void);
 
+/* from api_test_server_{platform}.c */
+int apisrv_start(void);
+
 #endif
 

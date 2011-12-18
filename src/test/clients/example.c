@@ -14,7 +14,7 @@
 
 #include "uffs/uffs_fd.h"
 #include "uffs/uffs_crc.h"
-#include "api_srv.h"
+#include "api_test.h"
 
 
 static int _io_read(int fd, void *buf, size_t len)

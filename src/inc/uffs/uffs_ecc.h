@@ -42,7 +42,6 @@
 #include <string.h>
 
 #include "uffs/uffs_fs.h"
-#include "uffs_config.h"
 #include "uffs/uffs_core.h"
 
 #ifdef __cplusplus

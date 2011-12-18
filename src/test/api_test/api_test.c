@@ -31,7 +31,7 @@ on this file might be covered by the GNU General Public License.
 */
 
 /**
-* \file api_srv_public.c
+* \file api_test.c
 * \brief API test server public functions 
 * \author Ricky Zheng, created in 16 Dec, 2011 
 */
@@ -41,7 +41,7 @@ on this file might be covered by the GNU General Public License.
 #include <stdarg.h>
 #include <stdlib.h>
 #include "uffs/uffs_crc.h"
-#include "api_srv.h"
+#include "api_test.h"
 
 
 static struct uffs_ApiSrvIoSt *m_io = NULL;

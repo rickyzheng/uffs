@@ -45,8 +45,6 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
-
-#include "uffs_config.h"
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_fs.h"
@@ -56,7 +54,7 @@
 #include "uffs/uffs_crc.h"
 #include "uffs/uffs_fd.h"
 #include "uffs/uffs_version.h"
-#include "api_srv.h"
+#include "api_test.h"
 
 #define PFX NULL
 

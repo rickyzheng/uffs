@@ -47,7 +47,7 @@
 #include "uffs/uffs_find.h"
 #include "uffs/uffs_badblock.h"
 #include "cmdline.h"
-#include "api_srv.h"
+#include "api_test.h"
 
 #define PFX "test: "
 
@@ -59,16 +59,6 @@
 #define MSG(msg,...) uffs_PerrorRaw(UFFS_MSG_NORMAL, msg, ## __VA_ARGS__)
 #define MSGLN(msg,...) uffs_Perror(UFFS_MSG_NORMAL, msg, ## __VA_ARGS__)
 
-#ifdef ENABLE_API_SRV
-extern int apisrv_start(void);
-#else
-#error "!!!"
-static int apisrv_start(void)
-{
-    MSGLN("API server not available for this platform");
-    return -1; 
-}
-#endif
 
 static void memcp_seq(void *des, int size, int start_pos)
 {

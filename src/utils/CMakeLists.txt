@@ -7,5 +7,5 @@ LINK_DIRECTORIES(${uffs_BINARY_DIR}/src/uffs)
 
 SET(mkuffs_SRCS mkuffs.c)
 ADD_EXECUTABLE(mkuffs ${mkuffs_SRCS})
-TARGET_LINK_LIBRARIES(mkuffs emu uffs emu platform_posix)
+TARGET_LINK_LIBRARIES(mkuffs emu uffs emu platform_posix apitest)
 
