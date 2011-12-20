@@ -655,10 +655,10 @@ static int call_remote(int cmd, ...)
 	int ret = -1, fd = -1;
 	u32 n = 0;
 	u8 *p;
-	int len, size;
+	size_t len, size;
 	u8 * params[UFFS_API_MAX_PARAMS];
 	size_t return_size[UFFS_API_MAX_PARAMS];
-	int n_params = 0;
+	u32 n_params = 0;
 	va_list args;
 
 	memset(&msg, 0, sizeof(struct uffs_ApiSrvMsgSt));

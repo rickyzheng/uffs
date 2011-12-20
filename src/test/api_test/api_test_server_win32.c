@@ -39,7 +39,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int apisrv_start(void)
+int api_server_start(void)
 {
 	printf("API test server is not available on WIN32, stay tune ...\n");
 

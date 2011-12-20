@@ -45,6 +45,12 @@
 		return apisrv_get_client()->F P ; \
 	}
 
+#define VW(F, T, P) \
+	void F T \
+	{ \
+		apisrv_get_client()->F P ; \
+	}
+
 W(int, uffs_version, (), ())
 W(int, uffs_open, (const char *name, int oflag, ...), (name, oflag))
 W(int, uffs_close, (int fd), (fd))
@@ -65,7 +71,7 @@ W(int, uffs_fstat, (int fd, struct uffs_stat *buf), (fd, buf))
 W(uffs_DIR *, uffs_opendir, (const char *path), (path))
 W(int, uffs_closedir, (uffs_DIR *dirp), (dirp))
 W(struct uffs_dirent *, uffs_readdir, (uffs_DIR *dirp), (dirp))
-W(void, uffs_rewinddir, (uffs_DIR *dirp), (dirp))
+VW(uffs_rewinddir, (uffs_DIR *dirp), (dirp))
 W(int, uffs_get_error, (void), ())
 W(int, uffs_set_error, (int err), (err))
 W(int, uffs_format, (const char *mount), (mount))
