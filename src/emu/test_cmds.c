@@ -1144,7 +1144,7 @@ static int cmd_dump(int argc, char *argv[])
 
 static int cmd_apisrv(int argc, char *argv[])
 {
-	return apisrv_start();
+	return api_server_start();
 }
 
 static const struct cli_command test_cmds[] = 

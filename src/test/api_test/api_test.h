@@ -136,7 +136,10 @@ int apisrv_serve(int fd, struct uffs_ApiSt *api);
 struct uffs_ApiSt * apisrv_get_client(void);
 
 /* from api_test_server_{platform}.c */
-int apisrv_start(void);
+int api_server_start(void);
+
+/* from api_test_client_{platform}.c */
+int api_client_init(const char *server_addr);
 
 #endif
 

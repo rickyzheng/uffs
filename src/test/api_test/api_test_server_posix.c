@@ -112,7 +112,7 @@ static struct uffs_ApiSt m_api = {
 };
 
 
-int apisrv_start(void)
+int api_server_start(void)
 {
 	int srv_fd = -1, new_fd = -1;
 	struct sockaddr_in my_addr;
