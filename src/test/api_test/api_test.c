@@ -43,6 +43,13 @@ on this file might be covered by the GNU General Public License.
 #include "uffs/uffs_crc.h"
 #include "api_test.h"
 
+#define DEBUG
+
+#ifdef DEBUG
+#define DBG printf
+#else
+#define DBG(...)
+#endif
 
 static struct uffs_ApiSrvIoSt *m_io = NULL;
 
@@ -78,7 +85,7 @@ static int apisrv_unload_params(struct uffs_ApiSrvMsgSt *msg, ...)
 		len = va_arg(args, int);
 		size = header->param_size[n];
 		if (size > len) {
-			printf("cmd %d return param %d overflow (max %d but %d)\n",
+			printf("cmd %d unload param %d overflow (max %d but %d)\n",
 					header->cmd, n, len, size);
 			ret = -1;
 			break;
@@ -88,12 +95,12 @@ static int apisrv_unload_params(struct uffs_ApiSrvMsgSt *msg, ...)
     }
 
     if (n != header->n_params) {
-        printf("Extract parameter for cmd %d failed ! parameter number mismatched.\n", header->cmd);
+        printf("cmd %d unload params failed!\n", header->cmd);
         ret = -1;
     }
 
     if (data - msg->data != header->data_len) {
-        printf("Extract parameter for cmd %d failed ! data len mismatched.\n", header->cmd);
+        printf("cmd %d unload params failed! data len mismatched.\n", header->cmd);
         ret = -1;
     }
 
@@ -107,7 +114,7 @@ static int apisrv_make_message(struct uffs_ApiSrvMsgSt *msg, ...)
 {
     int ret = 0;
     u32 n;
-    size_t len;
+    size_t len, size;
     struct uffs_ApiSrvHeaderSt *header = &msg->header;
     u8 *p;
     u8 * params[UFFS_API_MAX_PARAMS];
@@ -121,12 +128,21 @@ static int apisrv_make_message(struct uffs_ApiSrvMsgSt *msg, ...)
         if (p == NULL)  // terminator
             break;
         params[n] = p;
-        header->param_size[n] = va_arg(args, size_t);
+		size = va_arg(args, size_t);
+		if (size > header->return_size[n]) {
+			printf("WARNING: cmd %d make message param %d expect %d but %d, truncated.\n", header->cmd, n, header->return_size[n], size);
+			size = header->return_size[n];
+		}
+	    header->param_size[n] = size;
         len += header->param_size[n];
     }
     header->n_params = n;
 
     va_end(args);
+
+	// free buffer if already allocated.
+	if (msg->data)
+		free(msg->data);
 
 	msg->data = (u8 *)malloc(len);
 	if (msg->data == NULL) {
@@ -231,23 +247,21 @@ static int apisrv_free_message(struct uffs_ApiSrvMsgSt *msg)
 	return 0;
 }
 
-static int process_cmd(int fd, struct uffs_ApiSrvMsgSt *msg, struct uffs_ApiSt *api)
+static int process_cmd(int sock, struct uffs_ApiSrvMsgSt *msg, struct uffs_ApiSt *api)
 {
     struct uffs_ApiSrvHeaderSt *header = &msg->header;
     int ret = 0;
     char name[256];
 
-    printf("Received cmd = %d, data_len = %d\n", UFFS_API_CMD(header), header->data_len);
+    //DBG("Received cmd = %d, params %d, data_len = %d\n", UFFS_API_CMD(header), header->n_params, header->data_len);
 
     switch(UFFS_API_CMD(header)) {
     case UFFS_API_GET_VER_CMD:
     {
         int val;
         val = api->uffs_version();
-		apisrv_free_message(msg);
+		DBG("uffs_version() = 0x%08x\n", val);
         ret = apisrv_make_message(msg, &val, sizeof(val), NULL);
-        if (ret == 0)
-            apisrv_send_message(fd, msg);
         break;
     }
     case UFFS_API_OPEN_CMD:
@@ -255,70 +269,362 @@ static int process_cmd(int fd, struct uffs_ApiSrvMsgSt *msg, struct uffs_ApiSt *
         int open_mode;
 		int fd;
         ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), &open_mode, sizeof(open_mode), NULL);
-		apisrv_free_message(msg);
 		if (ret == 0) {
 			fd = api->uffs_open(name, open_mode);
+			DBG("uffs_open(name = \"%s\", open_mode = 0x%x) = %d\n", name, open_mode, fd);
 			ret = apisrv_make_message(msg, &fd, sizeof(fd), -1, 0, -1, 0, NULL);
-			if (ret == 0)
-				apisrv_send_message(fd, msg);
 		}
         break;
     }
     case UFFS_API_CLOSE_CMD:
+	{
+		int fd, r;
+		ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), NULL);
+		if (ret == 0) {
+			r = api->uffs_close(fd);
+			DBG("uffs_close(fd = %d) = %d\n", fd, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
         break;
+	}
     case UFFS_API_READ_CMD:
+	{
+		int fd, r, len;
+		void *buf = NULL;
+
+		ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), -1, 0, &len, sizeof(len), NULL);
+		if (ret == 0) {
+			if (len > 0) {
+				buf = malloc(len);
+				if (buf == NULL) {
+					printf("malloc %d bytes failed.\n", len);
+					ret = -1;
+				}
+			}
+
+			if (ret == 0) {
+				r = api->uffs_read(fd, buf, len);
+				DBG("uffs_read(fd = %d, buf = {...}, len = %d) = %d\n", fd, len, r);
+				ret = apisrv_make_message(msg, &r, sizeof(r),
+											-1, 0,	/* fd */
+											buf ? buf : (void *)-1, buf ? len : 0,	/* buf */
+											-1, 0,	/* len */
+											NULL);
+			}
+		}
+
+		if (buf)
+			free(buf);
+
         break;
+	}
     case UFFS_API_WRITE_CMD:
+	{
+		int fd, r, len;
+		void *buf = NULL;
+
+		buf = malloc(header->data_len);
+		if (buf == NULL) {
+			printf("malloc %d failed.\n", header->data_len);
+			ret = -1;
+		}
+		else {
+			ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), buf, header->data_len, &len, sizeof(len), NULL);
+			if (ret == 0) {
+				r = api->uffs_write(fd, buf, len);
+				DBG("uffs_write(fd = %d, buf = {...}, len = %d) = %d\n", fd, len, r);
+				ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, -1, 0, -1, 0, NULL);
+			}
+			free(buf);
+		}
+
         break;
+	}
     case UFFS_API_FLUSH_CMD:
+	{
+		int fd, r;
+
+		ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), NULL);
+		if (ret == 0) {
+			r = api->uffs_flush(fd);
+			DBG("uffs_flush(fd = %d) = %d\n", fd, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
+
         break;
+	}
     case UFFS_API_SEEK_CMD:
+	{
+		int fd, origin;
+		long r, offset;
+
+		ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), &offset, sizeof(offset), &origin, sizeof(origin), NULL);
+		if (ret == 0) {
+			r = api->uffs_seek(fd, offset, origin);
+			DBG("uffs_seek(fd = %d, offset = %ld, origin = %d) = %ld\n", fd, offset, origin, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, -1, 0, -1, 0, NULL);
+		}
+
         break;
+	}
     case UFFS_API_TELL_CMD:
+	{
+		int fd;
+		long r;
+
+		ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), NULL);
+		if (ret == 0) {
+			r = api->uffs_tell(fd);
+			DBG("uffs_tell(fd = %d) = %ld\n", fd, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
         break;
+	}
     case UFFS_API_EOF_CMD:
+	{
+		int fd, r;
+
+		ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), NULL);
+		if (ret == 0) {
+			r = api->uffs_eof(fd);
+			DBG("uffs_eof(fd = %d) = %d\n", fd, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
         break;
+	}
     case UFFS_API_RENAME_CMD:
+	{
+		int r;
+		char *oldname = NULL;
+		char *newname = NULL;
+
+		oldname = (char *)malloc(header->data_len);
+		newname = (char *)malloc(header->data_len);
+
+		if (oldname && newname) {
+			ret = apisrv_unload_params(msg, -1, 0, oldname, header->data_len, newname, header->data_len, NULL);
+			if (ret == 0) {
+				r = api->uffs_rename(oldname, newname);
+				DBG("uffs_rename(old = \"%s\", new = \"%s\") = %d\n", oldname, newname, r);
+				ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, -1, 0, NULL);
+			}
+		}
+		else {
+			printf("malloc %d bytes failed.\n", header->data_len);
+			ret = -1;
+		}
+
+		if (oldname)
+			free(oldname);
+		if (newname)
+			free(newname);
+
         break;
+	}
     case UFFS_API_REMOVE_CMD:
+	{
+		int r;
+
+		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), NULL);
+		if (ret == 0) {
+			r = api->uffs_remove(name);
+			DBG("uffs_remove(name = \"%s\") = %d\n", name, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
         break;
+	}
     case UFFS_API_TRUNCATE_CMD:
+	{
+		int fd, r;
+		long remain;
+
+		ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), &remain, sizeof(remain), NULL);
+		if (ret == 0) {
+			r = api->uffs_truncate(fd, remain);
+			DBG("uffs_truncate(fd = %d, remain = %ld) = %d\n", fd, remain, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, -1, 0, NULL);
+		}
         break;
+	}
     case UFFS_API_MKDIR_CMD:
+	{
+		int r;
+
+		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), NULL);
+		if (ret == 0) {
+			r = api->uffs_mkdir(name);
+			DBG("uffs_mkdir(name = \"%s\") = %d\n", name, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
         break;
+	}
     case UFFS_API_RMDIR_CMD:
+	{
+		int r;
+
+		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), NULL);
+		if (ret == 0) {
+			r = api->uffs_rmdir(name);
+			DBG("uffs_rmdir(name= \"%s\") = %d\n", name, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
         break;
+	}
     case UFFS_API_STAT_CMD:
-        break;
     case UFFS_API_LSTAT_CMD:
+	{
+		struct uffs_stat buf;
+		int r;
+
+		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), -1, 0, NULL);
+		if (ret == 0) {
+			r = api->uffs_stat(name, &buf);
+			DBG("uffs_stat(name = \"%s\", buf = {...}) = %d\n", name, r); 
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, &buf, sizeof(struct uffs_stat), NULL);
+		}
         break;
+	}
     case UFFS_API_FSTAT_CMD:
+	{
+		int fd, r;
+		struct uffs_stat buf;
+
+		ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), -1, 0, NULL);
+		if (ret == 0) {
+			r = api->uffs_fstat(fd, &buf);
+			DBG("uffs_fstat(fd = %d, buf = {...}) = %d\n", fd, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, &buf, sizeof(struct uffs_stat), NULL);
+		}
         break;
+	}
     case UFFS_API_OPEN_DIR_CMD:
+	{
+		uffs_DIR *dirp;
+		
+		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), NULL);
+		if (ret == 0) {
+			dirp = api->uffs_opendir(name);
+			DBG("uffs_opendir(name = \"%s\") = %p\n", name, dirp);
+			ret = apisrv_make_message(msg, &dirp, sizeof(uffs_DIR *), -1, 0, NULL);
+		}
         break;
+	}
     case UFFS_API_CLOSE_DIR_CMD:
+	{
+		uffs_DIR *dirp;
+		int r;
+
+		ret = apisrv_unload_params(msg, -1, 0, &dirp, sizeof(uffs_DIR *), NULL);
+		if (ret == 0) {
+			r = api->uffs_closedir(dirp);
+			DBG("uffs_closedir(dirp = %p) = %d\n", dirp, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
         break;
+	}
     case UFFS_API_READ_DIR_CMD:
+	{
+		uffs_DIR *dirp;
+		struct uffs_dirent *dent;
+
+		ret = apisrv_unload_params(msg, -1, 0, &dirp, sizeof(uffs_DIR *), NULL);
+		if (ret == 0) {
+			dent = api->uffs_readdir(dirp);
+			DBG("uffs_readdir(dirp = %p) = %s\n", dirp, dent ? "{...}" : "NULL");
+			ret = apisrv_make_message(msg, dent, sizeof(struct uffs_dirent), -1, 0, NULL);
+		}
         break;
+	}
     case UFFS_API_REWIND_DIR_CMD:
+	{
+		uffs_DIR *dirp;
+
+		ret = apisrv_unload_params(msg, -1, 0, &dirp, sizeof(uffs_DIR *), NULL);
+		if (ret == 0) {
+			api->uffs_rewinddir(dirp);
+			DBG("uffs_rewinddir(dirp = %p)\n", dirp);
+			ret = apisrv_make_message(msg, 0, -1, 0, -1, NULL);
+		}
         break;
+	}
     case UFFS_API_GET_ERR_CMD:
+	{
+		int r;
+
+		r = api->uffs_get_error();
+		DBG("uffs_get_error() = %d\n", r);
+		ret = apisrv_make_message(msg, &r, sizeof(r), NULL);
+
         break;
+	}
     case UFFS_API_SET_ERR_CMD:
+	{
+		int err, r;
+
+		ret = apisrv_unload_params(msg, -1, 0, &err, sizeof(err), NULL);
+		if (ret == 0) {
+			r = api->uffs_set_error(err);
+			DBG("uffs_set_error(err = %d) = %d\n", err, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
         break;
+	}
     case UFFS_API_FORMAT_CMD:
+	{
+		int r;
+
+		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), NULL);
+		if (ret == 0) {
+			r = api->uffs_format(name);
+			DBG("uffs_format(mount = \"%s\") = %d\n", name, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
         break;
-    case UFFS_API_GET_TOTAL_CMD:
+	}
+    case UFFS_API_SPACE_TOTAL_CMD:
+	{
+		long r;
+
+		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), NULL);
+		if (ret == 0) {
+			r = api->uffs_space_total(name);
+			DBG("uffs_space_total(mount = \"%s\") = %ld\n", name, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
         break;
-    case UFFS_API_GET_FREE_CMD:
+	}
+    case UFFS_API_SPACE_FREE_CMD:
+	{
+		long r;
+
+		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), NULL);
+		if (ret == 0) {
+			r = api->uffs_space_free(name);
+			DBG("uffs_space_free(mount = \"%s\") = %ld\n", name, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
         break;
-    case UFFS_API_GET_USED_CMD:
+	}
+    case UFFS_API_SPACE_USED_CMD:
+	{
+		long r;
+
+		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), NULL);
+		if (ret == 0) {
+			r = api->uffs_space_used(name);
+			DBG("uffs_space_used(mount = \"%s\") = %ld\n", name, r);
+			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
+		}
         break;
+	}
     default:
         printf("Unknown command %x\n", header->cmd);
         ret = -1;
         break;
     }
+
+	if (ret == 0)
+		ret = apisrv_send_message(sock, msg);
 
     return ret;
 }
@@ -340,7 +646,7 @@ int apisrv_serve(int fd, struct uffs_ApiSt *api)
 
 /**
  * variable parameters list:
- *  &ret, size_ret, &param1, size_param1, &param2, size_param2, ... NULL
+ *  &ret, size_ret, return_size_ret, &param1, size_param1, return_size_param1, &param2, size_param2, return_size_param2... NULL
  **/
 static int call_remote(int cmd, ...)
 {
@@ -351,6 +657,7 @@ static int call_remote(int cmd, ...)
 	u8 *p;
 	int len, size;
 	u8 * params[UFFS_API_MAX_PARAMS];
+	size_t return_size[UFFS_API_MAX_PARAMS];
 	int n_params = 0;
 	va_list args;
 
@@ -362,6 +669,7 @@ static int call_remote(int cmd, ...)
 
 	header->cmd = cmd;
 
+	// parse tparameter list
 	va_start(args, cmd);
 	for (n = 0, len = 0; n < UFFS_API_MAX_PARAMS; n++) {
 		p = va_arg(args, u8 *);
@@ -370,12 +678,15 @@ static int call_remote(int cmd, ...)
 		params[n] = p;
 		size = va_arg(args, int);
 		header->param_size[n] = size;
+		header->return_size[n] = va_arg(args, int);
+		return_size[n] = header->return_size[n];
 		len += size;
 	}
 	va_end(args);
 
 	n_params = n;
 	header->n_params = n;
+	DBG("C: cmd %d, params %d, data_len %d\n", cmd, n, len);
 
 	msg.data = (u8 *) malloc(len);
 	if (msg.data == NULL) {
@@ -383,12 +694,24 @@ static int call_remote(int cmd, ...)
 		goto ext;
 	}
 	header->data_len = len;
+
+	// now, load parameters
+	for (n = 0, len = 0; n < n_params; n++) {
+		if (header->param_size[n] > 0) {
+			memcpy(msg.data + len, params[n], header->param_size[n]);
+			len += header->param_size[n];
+		}
+	}
+
+	// send
 	ret = apisrv_send_message(fd, &msg);
 	if (ret < 0)
 		goto ext;
 
+	// free data pointer
 	apisrv_free_message(&msg);
 
+	// receive response
 	ret = apisrv_read_message(fd, &msg);
 	if (ret < 0)
 		goto ext;
@@ -402,7 +725,13 @@ static int call_remote(int cmd, ...)
 	// now, unload return parameters
 	for (n = 0, p = msg.data; n < header->n_params; n++) {
 		size = header->param_size[n];
-		memcpy(params[n], p, size);
+		if (return_size[n] != header->return_size[n]) {
+			printf("WARNING: cmd %d param %d return size not kept ? expect %d but %d\n", header->cmd, n, return_size[n], header->return_size[n]);
+		}
+		memcpy(params[n], p, size > return_size[n] ? return_size[n] : size);
+		if (size > return_size[n]) {
+			printf("WARNING: cmd %d return param %d overflow, expect %d but %d\n", header->cmd, n, return_size[n], size);
+		}
 		p += size;
 	}
 	
@@ -417,28 +746,379 @@ ext:
 
 static int _uffs_version(void)
 {
-	int version;
-	int ret;
+	int version = 0;
+	int ret = -1;
 
-	ret = call_remote(UFFS_API_GET_VER_CMD, &version, sizeof(version), NULL);
+	ret = call_remote(UFFS_API_GET_VER_CMD, &version, 0, sizeof(version), NULL);
 
 	return ret < 0 ? 0 : version;
 }
 
 static int _uffs_open(const char *name, int oflag, ...)
 {
-	int fd;
-	int ret;
+	int fd = -1;
+	int ret = -1;
 
-	ret = call_remote(UFFS_API_OPEN_CMD, &fd, sizeof(fd), name, strlen(name), &oflag, sizeof(oflag), NULL);
+	ret = call_remote(UFFS_API_OPEN_CMD, &fd, 0, sizeof(fd), 
+						name, strlen(name), 0, 
+						&oflag, sizeof(oflag), 0, 
+						NULL);
 
 	return ret < 0 ? ret : fd;
+}
+
+static int _uffs_close(int fd)
+{
+	int r = -1;
+	int ret = -1;
+
+	ret = call_remote(UFFS_API_CLOSE_CMD, &r, 0, sizeof(r), &fd, sizeof(fd), 0, NULL);
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_read(int fd, void *buf, int len)
+{
+	int r = -1, ret = -1;
+
+	if (buf) {
+		ret = call_remote(UFFS_API_READ_CMD, &r, 0, sizeof(r), 
+						&fd, sizeof(fd), 0, 
+						buf, 0, len, 
+						&len, sizeof(len), 0,
+						NULL);
+	}
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_write(int fd, const void *buf, int len)
+{
+	int r = -1, ret = -1;
+
+	if (buf) {
+		ret = call_remote(UFFS_API_WRITE_CMD, &r, 0, sizeof(r),
+						&fd, sizeof(fd), 0,
+						buf, len, 0,
+						&len, sizeof(len), 0,
+						NULL);
+	}
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_flush(int fd)
+{
+	int r = -1, ret = -1;
+
+	ret = call_remote(UFFS_API_FLUSH_CMD, &r, 0, sizeof(r),
+						&fd, sizeof(fd), 0,
+						NULL);
+
+	return ret < 0 ? ret : r;
+}
+
+static long _uffs_seek(int fd, long offset, int origin)
+{
+	long r = -1L;
+	int ret = -1;
+
+	ret = call_remote(UFFS_API_SEEK_CMD, &r, 0, sizeof(r),
+						&fd, sizeof(fd), 0,
+						&offset, sizeof(offset), 0,
+						&origin, sizeof(origin), 0,
+						NULL);
+
+	return ret < 0 ? -1L : r;
+}
+
+static long _uffs_tell(int fd)
+{
+	long r = -1L;
+	int ret = -1;
+
+	ret = call_remote(UFFS_API_TELL_CMD, &r, 0, sizeof(r),
+						&fd, sizeof(fd), 0,
+						NULL);
+
+	return ret < 0 ? -1L : r;
+}
+
+static int _uffs_eof(int fd)
+{
+	int r = -1, ret = -1;
+
+	ret = call_remote(UFFS_API_EOF_CMD, &r, 0, sizeof(r),
+						&fd, sizeof(fd), 0,
+						NULL);
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_rename(const char *oldname, const char *newname)
+{
+	int r = -1, ret = -1;
+
+	if (oldname && newname) {
+		ret = call_remote(UFFS_API_RENAME_CMD, &r, 0, sizeof(r),
+							oldname, strlen(oldname) + 1, 0,
+							newname, strlen(newname) + 1, 0,
+							NULL);
+	}
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_remove(const char *name)
+{
+	int ret = -1, r = -1;
+
+	if (name) {
+		ret = call_remote(UFFS_API_REMOVE_CMD, &r, 0, sizeof(r),
+							name, strlen(name) + 1, 0,
+							NULL);
+	}
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_truncate(int fd, long remain)
+{
+	int r = -1, ret = -1;
+
+	ret = call_remote(UFFS_API_TRUNCATE_CMD, &r, 0, sizeof(r),
+						&fd, sizeof(fd), 0,
+						&remain, sizeof(remain), 0,
+						NULL);
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_mkdir(const char *name, ...)
+{
+	int r = -1, ret = -1;
+
+	if (name) {
+		ret = call_remote(UFFS_API_MKDIR_CMD, &r, 0, sizeof(r),
+							name, strlen(name) + 1, 0,
+							NULL);
+	}
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_rmdir(const char *name)
+{
+	int r = -1, ret = -1;
+
+	if (name) {
+		ret = call_remote(UFFS_API_RMDIR_CMD, &r, 0, sizeof(r),
+							name, strlen(name) + 1, 0,
+							NULL);
+	}
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_stat(const char *name, struct uffs_stat *buf)
+{
+	int r = -1, ret = -1;
+
+	if (name && buf) {
+		ret = call_remote(UFFS_API_STAT_CMD, &r, 0, sizeof(r),
+							name, strlen(name) + 1, 0,
+							buf, 0, sizeof(struct uffs_stat),
+							NULL);
+	}
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_lstat(const char *name, struct uffs_stat *buf)
+{
+	int r = -1, ret = -1;
+
+	if (name && buf) {
+		ret = call_remote(UFFS_API_LSTAT_CMD, &r, 0, sizeof(r),
+							name, strlen(name) + 1, 0,
+							buf, 0, sizeof(struct uffs_stat),
+							NULL);
+	}
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_fstat(int fd, struct uffs_stat *buf)
+{
+	int r = -1, ret = -1;
+
+	if (buf) {
+		ret = call_remote(UFFS_API_FSTAT_CMD, &r, 0, sizeof(r),
+							&fd, sizeof(fd), 0,
+							buf, 0, sizeof(struct uffs_stat),
+							NULL);
+	}
+
+	return ret < 0 ? ret : r;
+}
+
+static uffs_DIR * _uffs_opendir(const char *path)
+{
+	uffs_DIR *dirp = NULL;
+	int ret = -1;
+
+	if (path) {
+		ret = call_remote(UFFS_API_OPEN_DIR_CMD, &dirp, 0, sizeof(uffs_DIR *),
+							path, strlen(path) + 1, 0,
+							NULL);
+	}
+
+	return ret < 0 ? NULL : dirp;
+}
+
+static int _uffs_closedir(uffs_DIR *dirp)
+{
+	int r = -1, ret = -1;
+
+	if (dirp) {
+		ret = call_remote(UFFS_API_CLOSE_DIR_CMD, &r, 0, sizeof(r),
+							&dirp, sizeof(uffs_DIR *), 0,
+							NULL);
+	}
+
+	return ret < 0 ? ret : r;
+}
+
+/**
+ * Note: this is not a thread-safe but we have advantage of not calling 'free' after ...
+ */
+static struct uffs_dirent * _uffs_readdir(uffs_DIR *dirp)
+{
+	static struct uffs_dirent dirent_cache[256];
+	static unsigned char pos = 0;
+
+	int ret = -1;
+	struct uffs_dirent *dent = NULL;
+
+	if (dirp) {
+		dent = &dirent_cache[pos++]; // change 'pos++' to atomic can make this function thread-safe... 
+		ret = call_remote(UFFS_API_READ_DIR_CMD, dent, 0, sizeof(struct uffs_dirent),
+							&dirp, sizeof(uffs_DIR *), 0,
+							NULL);
+	}
+
+	return ret < 0 ? NULL : dent;
+}
+
+static void _uffs_rewinddir(uffs_DIR *dirp)
+{
+	if (dirp) {
+		call_remote(UFFS_API_REWIND_DIR_CMD, -1, 0, 0,
+						&dirp, sizeof(uffs_DIR *), 0,
+						NULL);
+	}
+}
+
+static int _uffs_get_error(void)
+{
+	int r = -1, ret = -1;
+
+	ret = call_remote(UFFS_API_GET_ERR_CMD, &r, 0, sizeof(r), NULL);
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_set_error(int err)
+{
+	int r = -1, ret = -1;
+
+	ret = call_remote(UFFS_API_SET_ERR_CMD, &r, 0, sizeof(r),
+						&err, sizeof(err), 0,
+						NULL);
+
+	return ret < 0 ? ret : r;
+}
+
+static int _uffs_format(const char *mount)
+{
+	int r = -1, ret = -1;
+
+	if (mount)
+		ret = call_remote(UFFS_API_FORMAT_CMD, &r, 0, sizeof(r),
+						mount, strlen(mount) + 1, 0,
+						NULL);
+
+	return ret < 0 ? ret : r;
+}
+
+static long _uffs_space_total(const char *mount)
+{
+	long r = -1L;
+	int ret = -1;
+
+	if (mount)
+		ret = call_remote(UFFS_API_SPACE_TOTAL_CMD, &r, 0, sizeof(r),
+							mount, strlen(mount) + 1, 0,
+							NULL);
+
+	return ret < 0 ? -1L : r;
+}
+
+static long _uffs_space_used(const char *mount)
+{
+	long r = -1L;
+	int ret = -1;
+
+	if (mount)
+		ret = call_remote(UFFS_API_SPACE_USED_CMD, &r, 0, sizeof(r),
+							mount, strlen(mount) + 1, 0,
+							NULL);
+
+	return ret < 0 ? -1L : r;
+}
+
+static long _uffs_space_free(const char *mount)
+{
+	long r = -1L;
+	int ret = -1;
+
+	if (mount)
+		ret = call_remote(UFFS_API_SPACE_FREE_CMD, &r, 0, sizeof(r),
+							mount, strlen(mount) + 1, 0,
+							NULL);
+
+	return ret < 0 ? -1L : r;
 }
 
 
 static struct uffs_ApiSt m_client_api = {
 	_uffs_version,
 	_uffs_open,
+	_uffs_close,
+	_uffs_read,
+	_uffs_write,
+	_uffs_flush,
+	_uffs_seek,
+	_uffs_tell,
+	_uffs_eof,
+	_uffs_rename,
+	_uffs_remove,
+	_uffs_truncate,
+	_uffs_mkdir,
+	_uffs_rmdir,
+	_uffs_stat,
+	_uffs_lstat,
+	_uffs_fstat,
+	_uffs_opendir,
+	_uffs_closedir,
+	_uffs_readdir,
+	_uffs_rewinddir,
+	_uffs_get_error,
+	_uffs_set_error,
+	_uffs_format,
+	_uffs_space_total,
+	_uffs_space_used,
+	_uffs_space_free,
 };
 
 struct uffs_ApiSt * apisrv_get_client(void)

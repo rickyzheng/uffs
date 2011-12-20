@@ -147,6 +147,10 @@ int uffs_set_error(int err);
 int uffs_version(void);
 int uffs_format(const char *mount_point);
 
+long uffs_space_total(const char *mount_point);
+long uffs_space_used(const char *mount_point);
+long uffs_space_free(const char *mount_point);
+
 
 #ifdef __cplusplus
 }

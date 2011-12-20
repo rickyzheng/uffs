@@ -82,8 +82,33 @@ static struct uffs_ApiSrvIoSt m_io = {
 };
 
 static struct uffs_ApiSt m_api = {
-	.uffs_version = uffs_version,
-	.uffs_open = uffs_open,
+    uffs_version,
+    uffs_open,
+    uffs_close,
+    uffs_read,
+    uffs_write,
+    uffs_flush,
+    uffs_seek,
+    uffs_tell,
+    uffs_eof,
+    uffs_rename,
+    uffs_remove,
+    uffs_truncate,
+    uffs_mkdir,
+    uffs_rmdir,
+    uffs_stat,
+    uffs_lstat,
+    uffs_fstat,
+    uffs_opendir,
+    uffs_closedir,
+    uffs_readdir,
+    uffs_rewinddir,
+    uffs_get_error,
+    uffs_set_error,
+    uffs_format,
+    uffs_space_total,
+    uffs_space_used,
+    uffs_space_free,
 };
 
 

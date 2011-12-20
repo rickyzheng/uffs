@@ -67,9 +67,9 @@
 #define UFFS_API_GET_ERR_CMD            21
 #define UFFS_API_SET_ERR_CMD            22
 #define UFFS_API_FORMAT_CMD             23
-#define UFFS_API_GET_TOTAL_CMD          24
-#define UFFS_API_GET_FREE_CMD           25
-#define UFFS_API_GET_USED_CMD           26
+#define UFFS_API_SPACE_TOTAL_CMD        24
+#define UFFS_API_SPACE_FREE_CMD         25
+#define UFFS_API_SPACE_USED_CMD         26
 
 #define UFFS_API_CMD(header)            ((header)->cmd & 0xFF)
 #define UFFS_API_ACK_BIT                (1 << 31)
@@ -83,6 +83,7 @@ struct uffs_ApiSrvHeaderSt {
 	u32 data_len;           // data length
 	u32 n_params;           // parameter numbers
 	u32 param_size[UFFS_API_MAX_PARAMS];    // parameter list
+	u32 return_size[UFFS_API_MAX_PARAMS];	// return parameter list
 	u16 data_crc;           // data CRC16
 	u16 header_crc;         // header CRC16
 };
@@ -120,9 +121,9 @@ struct uffs_ApiSt {
 	int (*uffs_get_error)(void);
 	int (*uffs_set_error)(int err);
 	int (*uffs_format)(const char *mount_point);
-	int (*uffs_space_used)(const char *mount_point);
-	int (*uffs_space_free)(const char *mount_point);
-	int (*uffs_space_total)(const char *mount_point);
+	long (*uffs_space_total)(const char *mount_point);
+	long (*uffs_space_used)(const char *mount_point);
+	long (*uffs_space_free)(const char *mount_point);
 };
 
 struct uffs_ApiSrvMsgSt {

@@ -42,6 +42,8 @@
 #include "uffs/uffs_fd.h"
 #include "uffs/uffs_utils.h"
 #include "uffs/uffs_version.h"
+#include "uffs/uffs_mtb.h"
+#include "uffs/uffs_public.h"
 #define PFX "fd  : "
 
 /**
@@ -664,6 +666,66 @@ int uffs_rmdir(const char *name)
 int uffs_version(void)
 {
 	return uffs_GetVersion();
+}
+
+int uffs_format(const char *mount_point)
+{
+	uffs_Device *dev = NULL;
+	URET ret = U_FAIL;
+
+	dev = uffs_GetDeviceFromMountPoint(mount_point);
+	if (dev) {
+		uffs_GlobalFsLockLock();
+		ret = uffs_FormatDevice(dev, U_TRUE);
+		uffs_GlobalFsLockUnlock();
+	}
+
+	return ret == U_SUCC ? 0 : -1;
+}
+
+long uffs_space_total(const char *mount_point)
+{
+	uffs_Device *dev = NULL;
+	long ret = -1L;
+
+	dev = uffs_GetDeviceFromMountPoint(mount_point);
+	if (dev) {
+		uffs_GlobalFsLockLock();
+		ret = (long) uffs_GetDeviceTotal(dev);
+		uffs_GlobalFsLockUnlock();
+	}
+
+	return ret;
+}
+
+long uffs_space_used(const char *mount_point)
+{
+	uffs_Device *dev = NULL;
+	long ret = -1L;
+
+	dev = uffs_GetDeviceFromMountPoint(mount_point);
+	if (dev) {
+		uffs_GlobalFsLockLock();
+		ret = (long) uffs_GetDeviceUsed(dev);
+		uffs_GlobalFsLockUnlock();
+	}
+
+	return ret;
+}
+
+long uffs_space_free(const char *mount_point)
+{
+	uffs_Device *dev = NULL;
+	long ret = -1L;
+
+	dev = uffs_GetDeviceFromMountPoint(mount_point);
+	if (dev) {
+		uffs_GlobalFsLockLock();
+		ret = (long) uffs_GetDeviceFree(dev);
+		uffs_GlobalFsLockUnlock();
+	}
+
+	return ret;
 }
 
 
