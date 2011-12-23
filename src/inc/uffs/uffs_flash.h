@@ -42,6 +42,7 @@
 #include "uffs/uffs_types.h"
 #include "uffs/uffs_core.h"
 #include "uffs/uffs_device.h"
+#include "uffs/uffs_fs.h"
 
 #ifdef __cplusplus
 extern "C"{

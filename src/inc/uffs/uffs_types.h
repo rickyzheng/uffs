@@ -45,6 +45,17 @@ extern "C"{
 #include <sys/utypes.h>
 #endif
 
+#include <stdint.h>
+
+#define i8 int8_t
+#define u8 uint8_t
+#define i16 int16_t
+#define u16 uint16_t
+#define i32 int32_t
+#define u32 uint32_t
+
+#if 0
+
 /** 
  * \file uffs_types.h
  * \brief basic types used on uffs
@@ -84,6 +95,8 @@ typedef int i32;
  * \brief 32 bit unsigned integer
  */
 typedef unsigned int u32;
+
+#endif
 
 
 #ifndef _UBASE_

@@ -42,6 +42,7 @@
 #include "uffs/uffs_mtb.h"
 #include "uffs/uffs_fd.h"
 #include "uffs/uffs_utils.h"
+#include "uffs/uffs_fs.h"
 #include <string.h>
 
 #define PFX "mtb : "

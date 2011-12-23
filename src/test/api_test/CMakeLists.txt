@@ -20,8 +20,16 @@ IF (WIN32)
 	SET (libapitest_client_SRCS ${libapitest_client_SRCS} api_test_client_win32.c)
 ENDIF()
 
+SET (libapitest_sqlite3_SRCS
+		${libapitest_client_SRCS}
+		os_uffs.c
+		os_uffs.h
+	)
+
 INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/inc)
 ADD_LIBRARY(apitest_server STATIC ${libapitest_server_SRCS})
 ADD_LIBRARY(apitest_client STATIC ${libapitest_client_SRCS})
+ADD_LIBRARY(apitest_sqlite3 SHARED ${libapitest_sqlite3_SRCS})
+
 
 

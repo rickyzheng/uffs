@@ -54,7 +54,7 @@
 #define UFFS_API_EOF_CMD                8
 #define UFFS_API_RENAME_CMD             9
 #define UFFS_API_REMOVE_CMD             10
-#define UFFS_API_TRUNCATE_CMD           11
+#define UFFS_API_FTRUNCATE_CMD          11
 #define UFFS_API_MKDIR_CMD              12
 #define UFFS_API_RMDIR_CMD              13
 #define UFFS_API_STAT_CMD               14
@@ -90,8 +90,8 @@ struct uffs_ApiSrvHeaderSt {
 
 struct uffs_ApiSrvIoSt {
 	int (*open)(void *addr);
-	int (*read)(int fd, void *buf, size_t len);
-	int (*write)(int fd, const void *buf, size_t len);
+	int (*read)(int fd, void *buf, int len);
+	int (*write)(int fd, const void *buf, int len);
 	int (*close)(int fd);
 	void *addr;
 };
@@ -108,7 +108,7 @@ struct uffs_ApiSt {
 	int (*uffs_eof)(int fd);
 	int (*uffs_rename)(const char *old_name, const char *new_name);
 	int (*uffs_remove)(const char *name);
-	int (*uffs_truncate)(int fd, long remain);
+	int (*uffs_ftruncate)(int fd, long remain);
 	int (*uffs_mkdir)(const char *name, ...);
 	int (*uffs_rmdir)(const char *name);
 	int (*uffs_stat)(const char *name, struct uffs_stat *buf);

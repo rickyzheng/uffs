@@ -60,12 +60,12 @@
 
 #define BACKLOGS	10
 
-static int _io_read(int fd, void *buf, size_t len)
+static int _io_read(int fd, void *buf, int len)
 {
     return recv(fd, buf, len, MSG_WAITALL);
 }
 
-static int _io_write(int fd, const void *buf, size_t len)
+static int _io_write(int fd, const void *buf, int len)
 {
     return send(fd, buf, len, 0);
 }
@@ -93,7 +93,7 @@ static struct uffs_ApiSt m_api = {
     uffs_eof,
     uffs_rename,
     uffs_remove,
-    uffs_truncate,
+    uffs_ftruncate,
     uffs_mkdir,
     uffs_rmdir,
     uffs_stat,

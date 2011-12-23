@@ -39,15 +39,11 @@
 #ifndef _UFFS_FD_H_
 #define _UFFS_FD_H_
 
-#include "uffs/uffs_core.h"
-#include "uffs/uffs_fs.h"
-#include "uffs/uffs.h"
-#include "uffs/uffs_find.h"
-#include <string.h>
-
 #ifdef __cplusplus
 extern "C"{
 #endif
+
+#include "uffs/uffs.h"
 
 /**
  * \brief definitions for uffs_stat::st_mode
@@ -81,7 +77,7 @@ struct uffs_dirent {
     unsigned short int d_reclen;		/* length of this uffs_dirent */
     unsigned short int d_namelen;		/* length of this d_name */
     unsigned char d_type;				/* type of this record */
-    char d_name[MAX_FILENAME_LENGTH];	/* name of this object */
+    char d_name[256];					/* name of this object */
 };
 
 struct uffs_dirSt;
@@ -101,17 +97,10 @@ struct uffs_stat {
     long		st_size;    /* total size, in bytes */
     int			st_blksize; /* blocksize for filesystem I/O */
     int			st_blocks;  /* number of blocks allocated */
-    u32			st_atime;   /* time of last access */
-    u32			st_mtime;   /* time of last modification */
-    u32			st_ctime;   /* time of last status change */
+    unsigned int	st_atime;   /* time of last access */
+    unsigned int	st_mtime;   /* time of last modification */
+    unsigned int	st_ctime;   /* time of last status change */
 };
-
-void uffs_FdSignatureIncrease(void);
-
-URET uffs_DirEntryBufInit(void);
-URET uffs_DirEntryBufRelease(void);
-uffs_Pool * uffs_DirEntryBufGetPool(void);
-int uffs_DirEntryBufPutAll(uffs_Device *dev);
 
 /* POSIX complaint file system APIs */
 
@@ -125,7 +114,7 @@ int uffs_eof(int fd);
 int uffs_flush(int fd);
 int uffs_rename(const char *old_name, const char *new_name);
 int uffs_remove(const char *name);
-int uffs_truncate(int fd, long remain);
+int uffs_ftruncate(int fd, long remain);
 
 int uffs_mkdir(const char *name, ...);
 int uffs_rmdir(const char *name);

@@ -38,8 +38,6 @@
 #ifndef _UFFS_H_
 #define _UFFS_H_
 
-#include "uffs/uffs_types.h"
-
 #ifdef __cplusplus
 extern "C"{
 #endif
@@ -92,45 +90,6 @@ extern "C"{
 #define USEEK_CUR		_SEEK_CUR
 #define USEEK_SET		_SEEK_SET
 #define USEEK_END		_SEEK_END
-
-
-
-/** 
- * \def MAX_FILENAME_LENGTH 
- * \note Be careful: it's part of the physical format (see: uffs_FileInfoSt.name)
- *    !!DO NOT CHANGE IT AFTER FILE SYSTEM IS FORMATED!!
- */
-#define MAX_FILENAME_LENGTH			32
-
-/** \note 8-bits attr goes to uffs_dirent::d_type */
-#define FILE_ATTR_DIR		(1 << 7)	//!< attribute for directory
-#define FILE_ATTR_WRITE		(1 << 0)	//!< writable
-
-
-/**
- * \structure uffs_FileInfoSt
- * \brief file/dir entry info in physical storage format
- */
-struct uffs_FileInfoSt {
-	u32 attr;				//!< file/dir attribute
-	u32 create_time;
-	u32 last_modify;
-	u32 access;
-	u32 reserved;
-	u32 name_len;			//!< length of file/dir name
-	char name[MAX_FILENAME_LENGTH];
-};
-typedef struct uffs_FileInfoSt uffs_FileInfo;
-
-/**
- * \struct uffs_ObjectInfoSt
- * \brief object info
- */
-typedef struct uffs_ObjectInfoSt {
-	uffs_FileInfo info;
-	u32 len;				//!< length of file
-	u16 serial;				//!< object serial num
-} uffs_ObjectInfo;
 
 
 #ifdef __cplusplus

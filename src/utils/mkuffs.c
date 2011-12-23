@@ -134,11 +134,20 @@ static int init_uffs_fs(void)
 {
 	static int bIsFileSystemInited = 0;
 	struct uffs_MountTableEntrySt *mtbl = &(conf_mounts[0]);
+	struct uffs_ConfigSt cfg = {
+		0,			// bc_caches - default
+		0,			// page_buffers - default
+		0,			// dirty_pages - default
+		1,			// dirty_groups - force 1
+		0,			// reserved_free_blocks - default
+	};
 
 	if(bIsFileSystemInited) return -4;
 	bIsFileSystemInited = 1;
 
 	while (mtbl->dev) {
+
+		memcpy(&mtbl->dev->cfg, &cfg, sizeof(struct uffs_ConfigSt));
 
 #if CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 0
 		uffs_MemSetupSystemAllocator(&mtbl->dev->mem);

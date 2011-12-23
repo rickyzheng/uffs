@@ -43,6 +43,7 @@
 #include "uffs/uffs_version.h"
 #include "uffs/uffs_badblock.h"
 #include "uffs/uffs_fd.h"
+#include "uffs/uffs_fs.h"
 
 #include <stdio.h>
 #include <string.h>

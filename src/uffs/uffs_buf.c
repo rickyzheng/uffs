@@ -1422,7 +1422,7 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev,
 	page = uffs_FindPageInBlockWithPageId(dev, bc, page_id);
 	if (page == UFFS_INVALID_PAGE) {
 		uffs_BlockInfoPut(dev, bc);
-		uffs_Perror(UFFS_MSG_SERIOUS, "can't find right page ?");
+		uffs_Perror(UFFS_MSG_SERIOUS, "can't find right page ? block %d page_id %d", bc->block, page_id);
 		return NULL;
 	}
 	page = uffs_FindBestPageInBlock(dev, bc, page);

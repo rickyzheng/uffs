@@ -44,6 +44,8 @@
 #include "uffs/uffs_version.h"
 #include "uffs/uffs_mtb.h"
 #include "uffs/uffs_public.h"
+#include "uffs/uffs_find.h"
+
 #define PFX "fd  : "
 
 /**
@@ -413,7 +415,7 @@ int uffs_remove(const char *name)
 	return ret;
 }
 
-int uffs_truncate(int fd, long remain)
+int uffs_ftruncate(int fd, long remain)
 {
 	int ret;
 	uffs_Object *obj;

@@ -114,7 +114,7 @@ static int apisrv_make_message(struct uffs_ApiSrvMsgSt *msg, ...)
 {
     int ret = 0;
     u32 n;
-    size_t len, size;
+    u32 len, size;
     struct uffs_ApiSrvHeaderSt *header = &msg->header;
     u8 *p;
     u8 * params[UFFS_API_MAX_PARAMS];
@@ -433,15 +433,15 @@ static int process_cmd(int sock, struct uffs_ApiSrvMsgSt *msg, struct uffs_ApiSt
 		}
         break;
 	}
-    case UFFS_API_TRUNCATE_CMD:
+    case UFFS_API_FTRUNCATE_CMD:
 	{
 		int fd, r;
 		long remain;
 
 		ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), &remain, sizeof(remain), NULL);
 		if (ret == 0) {
-			r = api->uffs_truncate(fd, remain);
-			DBG("uffs_truncate(fd = %d, remain = %ld) = %d\n", fd, remain, r);
+			r = api->uffs_ftruncate(fd, remain);
+			DBG("uffs_ftruncate(fd = %d, remain = %ld) = %d\n", fd, remain, r);
 			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, -1, 0, NULL);
 		}
         break;
@@ -655,9 +655,9 @@ static int call_remote(int cmd, ...)
 	int ret = -1, fd = -1;
 	u32 n = 0;
 	u8 *p;
-	size_t len, size;
+	u32 len, size;
 	u8 * params[UFFS_API_MAX_PARAMS];
-	size_t return_size[UFFS_API_MAX_PARAMS];
+	u32 return_size[UFFS_API_MAX_PARAMS];
 	u32 n_params = 0;
 	va_list args;
 
@@ -760,7 +760,7 @@ static int _uffs_open(const char *name, int oflag, ...)
 	int ret = -1;
 
 	ret = call_remote(UFFS_API_OPEN_CMD, &fd, 0, sizeof(fd), 
-						name, strlen(name), 0, 
+						name, strlen(name) + 1, 0, 
 						&oflag, sizeof(oflag), 0, 
 						NULL);
 
@@ -882,11 +882,11 @@ static int _uffs_remove(const char *name)
 	return ret < 0 ? ret : r;
 }
 
-static int _uffs_truncate(int fd, long remain)
+static int _uffs_ftruncate(int fd, long remain)
 {
 	int r = -1, ret = -1;
 
-	ret = call_remote(UFFS_API_TRUNCATE_CMD, &r, 0, sizeof(r),
+	ret = call_remote(UFFS_API_FTRUNCATE_CMD, &r, 0, sizeof(r),
 						&fd, sizeof(fd), 0,
 						&remain, sizeof(remain), 0,
 						NULL);
@@ -1103,7 +1103,7 @@ static struct uffs_ApiSt m_client_api = {
 	_uffs_eof,
 	_uffs_rename,
 	_uffs_remove,
-	_uffs_truncate,
+	_uffs_ftruncate,
 	_uffs_mkdir,
 	_uffs_rmdir,
 	_uffs_stat,

@@ -48,7 +48,6 @@
 extern "C"{
 #endif
 
-
 /** file object */
 struct uffs_ObjectSt {
 	/******* objects manager ********/

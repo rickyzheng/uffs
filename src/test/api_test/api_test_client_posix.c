@@ -50,12 +50,12 @@ on this file might be covered by the GNU General Public License.
 #include "api_test.h"
 
 
-static int _io_read(int fd, void *buf, size_t len)
+static int _io_read(int fd, void *buf, int len)
 {
     return recv(fd, buf, len, MSG_WAITALL);
 }
 
-static int _io_write(int fd, const void *buf, size_t len)
+static int _io_write(int fd, const void *buf, int len)
 {
     return send(fd, buf, len, 0);
 }

@@ -42,6 +42,7 @@
 #include "uffs/uffs_types.h"
 #include "uffs/uffs_core.h"
 #include "uffs/uffs.h"
+#include "uffs/uffs_pool.h"
 
 #ifdef __cplusplus
 extern "C"{
@@ -57,6 +58,44 @@ extern "C"{
 #ifndef container_of
 #define container_of(p, T, x) ((T *)((char *)(p) - offsetof(T,x)))
 #endif
+
+/** 
+ * \def MAX_FILENAME_LENGTH 
+ * \note Be careful: it's part of the physical format (see: uffs_FileInfoSt.name)
+ *    !!DO NOT CHANGE IT AFTER FILE SYSTEM IS FORMATED!!
+ */
+#define MAX_FILENAME_LENGTH         32
+
+/** \note 8-bits attr goes to uffs_dirent::d_type */
+#define FILE_ATTR_DIR       (1 << 7)    //!< attribute for directory
+#define FILE_ATTR_WRITE     (1 << 0)    //!< writable
+
+
+/**
+ * \structure uffs_FileInfoSt
+ * \brief file/dir entry info in physical storage format
+ */
+struct uffs_FileInfoSt {
+    u32 attr;               //!< file/dir attribute
+    u32 create_time;
+    u32 last_modify;
+    u32 access;
+    u32 reserved;
+    u32 name_len;           //!< length of file/dir name
+    char name[MAX_FILENAME_LENGTH];
+};
+typedef struct uffs_FileInfoSt uffs_FileInfo;
+
+/**
+ * \struct uffs_ObjectInfoSt
+ * \brief object info
+ */
+typedef struct uffs_ObjectInfoSt {
+    uffs_FileInfo info;
+    u32 len;                //!< length of file
+    u16 serial;             //!< object serial num
+} uffs_ObjectInfo;
+
 
 /**
  * \struct uffs_TagStoreSt
@@ -232,6 +271,14 @@ int uffs_GetDeviceFree(uffs_Device *dev);
 int uffs_GetDeviceTotal(uffs_Device *dev);
 
 URET uffs_LoadMiniHeader(uffs_Device *dev, int block, u16 page, struct uffs_MiniHeaderSt *header);
+
+
+/* some functions from uffs_fd.c */
+void uffs_FdSignatureIncrease(void);
+URET uffs_DirEntryBufInit(void);
+URET uffs_DirEntryBufRelease(void);
+uffs_Pool * uffs_DirEntryBufGetPool(void);
+int uffs_DirEntryBufPutAll(uffs_Device *dev);
 
 
 /************************************************************************/
