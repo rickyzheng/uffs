@@ -356,12 +356,12 @@ static int process_cmd(int sock, struct uffs_ApiSrvMsgSt *msg, struct uffs_ApiSt
     case UFFS_API_SEEK_CMD:
 	{
 		int fd, origin;
-		long r, offset;
+		i32 r, offset;
 
 		ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), &offset, sizeof(offset), &origin, sizeof(origin), NULL);
 		if (ret == 0) {
-			r = api->uffs_seek(fd, offset, origin);
-			DBG("uffs_seek(fd = %d, offset = %ld, origin = %d) = %ld\n", fd, offset, origin, r);
+			r = (i32) api->uffs_seek(fd, (long)offset, origin);
+			DBG("uffs_seek(fd = %d, offset = %d, origin = %d) = %d\n", fd, offset, origin, r);
 			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, -1, 0, -1, 0, NULL);
 		}
 
@@ -370,12 +370,12 @@ static int process_cmd(int sock, struct uffs_ApiSrvMsgSt *msg, struct uffs_ApiSt
     case UFFS_API_TELL_CMD:
 	{
 		int fd;
-		long r;
+		i32 r;
 
 		ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), NULL);
 		if (ret == 0) {
-			r = api->uffs_tell(fd);
-			DBG("uffs_tell(fd = %d) = %ld\n", fd, r);
+			r = (i32) api->uffs_tell(fd);
+			DBG("uffs_tell(fd = %d) = %d\n", fd, r);
 			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
 		}
         break;
@@ -436,12 +436,12 @@ static int process_cmd(int sock, struct uffs_ApiSrvMsgSt *msg, struct uffs_ApiSt
     case UFFS_API_FTRUNCATE_CMD:
 	{
 		int fd, r;
-		long remain;
+		i32 remain;
 
 		ret = apisrv_unload_params(msg, -1, 0, &fd, sizeof(fd), &remain, sizeof(remain), NULL);
 		if (ret == 0) {
-			r = api->uffs_ftruncate(fd, remain);
-			DBG("uffs_ftruncate(fd = %d, remain = %ld) = %d\n", fd, remain, r);
+			r = api->uffs_ftruncate(fd, (long)remain);
+			DBG("uffs_ftruncate(fd = %d, remain = %d) = %d\n", fd, remain, r);
 			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, -1, 0, NULL);
 		}
         break;
@@ -583,36 +583,36 @@ static int process_cmd(int sock, struct uffs_ApiSrvMsgSt *msg, struct uffs_ApiSt
 	}
     case UFFS_API_SPACE_TOTAL_CMD:
 	{
-		long r;
+		i32 r;
 
 		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), NULL);
 		if (ret == 0) {
-			r = api->uffs_space_total(name);
-			DBG("uffs_space_total(mount = \"%s\") = %ld\n", name, r);
+			r = (i32) api->uffs_space_total(name);
+			DBG("uffs_space_total(mount = \"%s\") = %d\n", name, r);
 			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
 		}
         break;
 	}
     case UFFS_API_SPACE_FREE_CMD:
 	{
-		long r;
+		i32 r;
 
 		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), NULL);
 		if (ret == 0) {
-			r = api->uffs_space_free(name);
-			DBG("uffs_space_free(mount = \"%s\") = %ld\n", name, r);
+			r = (i32) api->uffs_space_free(name);
+			DBG("uffs_space_free(mount = \"%s\") = %d\n", name, r);
 			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
 		}
         break;
 	}
     case UFFS_API_SPACE_USED_CMD:
 	{
-		long r;
+		i32 r;
 
 		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), NULL);
 		if (ret == 0) {
-			r = api->uffs_space_used(name);
-			DBG("uffs_space_used(mount = \"%s\") = %ld\n", name, r);
+			r = (i32) api->uffs_space_used(name);
+			DBG("uffs_space_used(mount = \"%s\") = %d\n", name, r);
 			ret = apisrv_make_message(msg, &r, sizeof(r), -1, 0, NULL);
 		}
         break;
@@ -820,28 +820,30 @@ static int _uffs_flush(int fd)
 
 static long _uffs_seek(int fd, long offset, int origin)
 {
-	long r = -1L;
+	i32 r_32bit = -1;
 	int ret = -1;
 
-	ret = call_remote(UFFS_API_SEEK_CMD, &r, 0, sizeof(r),
+	i32 offset_32bit = (i32)offset;
+
+	ret = call_remote(UFFS_API_SEEK_CMD, &r_32bit, 0, sizeof(r_32bit),
 						&fd, sizeof(fd), 0,
-						&offset, sizeof(offset), 0,
+						&offset_32bit, sizeof(offset_32bit), 0,	// only send 32bit over the network
 						&origin, sizeof(origin), 0,
 						NULL);
 
-	return ret < 0 ? -1L : r;
+	return ret < 0 ? -1L : (long)r_32bit;
 }
 
 static long _uffs_tell(int fd)
 {
-	long r = -1L;
 	int ret = -1;
+	i32 r_32bit = -1;
 
-	ret = call_remote(UFFS_API_TELL_CMD, &r, 0, sizeof(r),
+	ret = call_remote(UFFS_API_TELL_CMD, &r_32bit, 0, sizeof(r_32bit),
 						&fd, sizeof(fd), 0,
 						NULL);
 
-	return ret < 0 ? -1L : r;
+	return ret < 0 ? -1L : (long)r_32bit;
 }
 
 static int _uffs_eof(int fd)
@@ -885,10 +887,11 @@ static int _uffs_remove(const char *name)
 static int _uffs_ftruncate(int fd, long remain)
 {
 	int r = -1, ret = -1;
+	i32 remain_32bit = (i32)remain;
 
 	ret = call_remote(UFFS_API_FTRUNCATE_CMD, &r, 0, sizeof(r),
 						&fd, sizeof(fd), 0,
-						&remain, sizeof(remain), 0,
+						&remain_32bit, sizeof(remain_32bit), 0,
 						NULL);
 
 	return ret < 0 ? ret : r;
@@ -1053,41 +1056,41 @@ static int _uffs_format(const char *mount)
 
 static long _uffs_space_total(const char *mount)
 {
-	long r = -1L;
+	i32 r_32bit = -1;
 	int ret = -1;
 
 	if (mount)
-		ret = call_remote(UFFS_API_SPACE_TOTAL_CMD, &r, 0, sizeof(r),
+		ret = call_remote(UFFS_API_SPACE_TOTAL_CMD, &r_32bit, 0, sizeof(r_32bit),
 							mount, strlen(mount) + 1, 0,
 							NULL);
 
-	return ret < 0 ? -1L : r;
+	return ret < 0 ? -1L : (long)r_32bit;
 }
 
 static long _uffs_space_used(const char *mount)
 {
-	long r = -1L;
+	i32 r_32bit = -1;
 	int ret = -1;
 
 	if (mount)
-		ret = call_remote(UFFS_API_SPACE_USED_CMD, &r, 0, sizeof(r),
+		ret = call_remote(UFFS_API_SPACE_USED_CMD, &r_32bit, 0, sizeof(r_32bit),
 							mount, strlen(mount) + 1, 0,
 							NULL);
 
-	return ret < 0 ? -1L : r;
+	return ret < 0 ? -1L : (long)r_32bit;
 }
 
 static long _uffs_space_free(const char *mount)
 {
-	long r = -1L;
+	i32 r_32bit = -1;
 	int ret = -1;
 
 	if (mount)
-		ret = call_remote(UFFS_API_SPACE_FREE_CMD, &r, 0, sizeof(r),
+		ret = call_remote(UFFS_API_SPACE_FREE_CMD, &r_32bit, 0, sizeof(r_32bit),
 							mount, strlen(mount) + 1, 0,
 							NULL);
 
-	return ret < 0 ? -1L : r;
+	return ret < 0 ? -1L : (long)r_32bit;
 }
 
 

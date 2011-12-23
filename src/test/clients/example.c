@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 	int fd;
 	char buf[128];
 
-	api_client_init("127.0.0.1");
+	api_client_init("192.168.0.103");
 
 	version = uffs_version();
 	printf("Version: %08X\n", version);
