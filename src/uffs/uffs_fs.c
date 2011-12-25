@@ -651,9 +651,11 @@ static URET do_FlushObject(uffs_Object *obj)
 {
 	uffs_Device *dev;
 	URET ret = U_SUCC;
+	TreeNode *node = NULL;
 
 	dev = obj->dev;
 	if (obj->node) {
+		node = obj->node;
 		if (obj->type == UFFS_TYPE_DIR)
 			ret = uffs_BufFlushGroup(dev, obj->node->u.dir.parent,
 										obj->node->u.dir.serial);
@@ -663,6 +665,7 @@ static URET do_FlushObject(uffs_Object *obj)
 				uffs_BufFlushGroup(dev, obj->node->u.file.parent, obj->node->u.file.serial) == U_SUCC
 				) ? U_SUCC : U_FAIL;
 		}
+		uffs_Assert(node == obj->node, "obj->node change ??!!\n");
 	}
 
 	return ret;
@@ -930,7 +933,7 @@ static int do_WriteObject(uffs_Object *obj, const void *data, int len)
 				uffs_Perror(UFFS_MSG_NOISY, "insufficient block in write obj, new block");
 				break;
 			}
-			size = do_WriteNewBlock(obj, (u8 *)data + len - remain,
+			size = do_WriteNewBlock(obj, data ? (u8 *)data + len - remain : NULL,
 										remain, fnode->u.file.serial, fdn);
 
 			// Flush immediately, so that the new data node will be
@@ -955,7 +958,7 @@ static int do_WriteObject(uffs_Object *obj, const void *data, int len)
 				break;
 			}
 			size = do_WriteInternalBlock(obj, dnode, fdn,
-									(u8 *)data + len - remain, remain,
+									data ? (u8 *)data + len - remain : NULL, remain,
 									write_start - GetStartOfDataBlock(obj, fdn));
 #ifdef CONFIG_FLUSH_BUF_AFTER_WRITE
 			uffs_BufFlushGroup(dev, fnode->u.file.serial, fdn);
@@ -966,6 +969,8 @@ static int do_WriteObject(uffs_Object *obj, const void *data, int len)
 			remain -= size;
 		}
 	}
+
+	uffs_Assert(fnode == obj->node, "obj->node change ??!!\n");
 
 	return remain;
 }
@@ -983,7 +988,7 @@ static int do_WriteObject(uffs_Object *obj, const void *data, int len)
 int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 {
 	uffs_Device *dev = obj->dev;
-	TreeNode *fnode = obj->node;
+	TreeNode *fnode = NULL;
 	int remain;
 	u32 pos;
 
@@ -1005,6 +1010,8 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 		obj->err = UEACCES;  // can't write to 'read only' mode opened file
 		return 0;
 	}
+
+	fnode = obj->node;
 
 	uffs_ObjectDevLock(obj);
 
@@ -1032,6 +1039,8 @@ ext:
 
 	uffs_ObjectDevUnLock(obj);
 
+	uffs_Assert(fnode == obj->node, "obj->node change ??!!\n");
+
 	return len - remain;
 }
 
@@ -1047,7 +1056,7 @@ ext:
 int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 {
 	uffs_Device *dev = obj->dev;
-	TreeNode *fnode = obj->node;
+	TreeNode *fnode = NULL;
 	u32 remain = len;
 	u16 fdn;
 	u32 read_start;
@@ -1061,6 +1070,8 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 	if (obj == NULL)
 		return 0;
+
+	fnode = obj->node;
 
 	if (obj->dev == NULL || obj->open_succ == U_FALSE) {
 		obj->err = UEBADF;
@@ -1144,6 +1155,8 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 		uffs_BadBlockRecover(dev);
 
 	uffs_ObjectDevUnLock(obj);
+
+	uffs_Assert(fnode == obj->node, "obj->node change ??!!\n");
 
 	return len - remain;
 }
@@ -1388,6 +1401,9 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 	uffs_BlockInfo *bc;
 	uffs_Buf *buf;
 	u16 page;
+	int pos;
+
+	pos = obj->pos;   // save current file position
 
 	if (obj->dev == NULL || obj->open_succ == U_FALSE || fnode == NULL) {
 		obj->err = UEBADF;
@@ -1406,6 +1422,19 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 	}
 
 	flen = fnode->u.file.len;
+
+	if (flen < remain) {
+		// file is shorter than 'reamin', fill the gap with '\0'
+		if (run_opt == eREAL_RUN) {
+			obj->pos = flen;  // move file pointer to the end
+			if (do_WriteObject(obj, NULL, remain - flen) > 0) {	// fill '\0' ...
+				uffs_Perror(UFFS_MSG_SERIOUS, "Write object not finished. expect %d but only %d wrote.",
+												remain - flen, fnode->u.file.len - flen);
+				obj->err = UEIOERR;   // likely be an I/O error.
+			}
+			flen = obj->node->u.file.len;
+		}
+	}
 
 	while (flen > remain) {
 		fdn = GetFdnByOfs(obj, flen - 1);
@@ -1474,6 +1503,10 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 	if (HAVE_BADBLOCK(dev)) 
 		uffs_BadBlockRecover(dev);
 ext:
+	obj->pos = pos;  // keep file pointer offset not changed.
+
+	uffs_Assert(fnode == obj->node, "obj->node change ??!!\n");
+
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 
 }
