@@ -60,7 +60,7 @@
  * \note uffs cache the block info for opened directories and files,
  *       a practical value is 5 ~ MAX_OBJECT_HANDLE
  */
-#define MAX_CACHED_BLOCK_INFO	10
+#define MAX_CACHED_BLOCK_INFO	50
 
 /** 
  * \def MAX_PAGE_BUFFERS
@@ -68,7 +68,7 @@
  *       but few writing performance will be improved when this 
  *       value is become larger than 'max pages per block'
  */
-#define MAX_PAGE_BUFFERS		20
+#define MAX_PAGE_BUFFERS		40
 
 
 /** 
@@ -92,12 +92,7 @@
  *
  *       the smaller the value the frequently the buffer will be flushed.
  */
-#define MAX_DIRTY_PAGES_IN_A_BLOCK	17
-
-/**
- * \def MAX_DIRTY_BUF_GROUPS
- */
-#define MAX_DIRTY_BUF_GROUPS	3
+#define MAX_DIRTY_PAGES_IN_A_BLOCK	32
 
 /**
  * \def CONFIG_ENABLE_UFFS_DEBUG_MSG
@@ -164,15 +159,15 @@
  * \def MAX_OBJECT_HANDLE
  * maximum number of object handle 
  */
-#define MAX_OBJECT_HANDLE	10
-#define FD_SIGNATURE_SHIFT	5
+#define MAX_OBJECT_HANDLE	50
+#define FD_SIGNATURE_SHIFT	6
 
 
 /**
  * \def MAX_DIR_HANDLE
  * maximum number of uffs_DIR
  */
-#define MAX_DIR_HANDLE	5
+#define MAX_DIR_HANDLE	10
 
 /**
  * \def MINIMUN_ERASED_BLOCK
@@ -225,7 +220,7 @@
  * \note If this is enabled, UFFS save page data CRC16 sum in mini header,
  *       it provides extra protection for data integrity.
  */
-#define CONFIG_ENABLE_PAGE_DATA_CRC
+//#define CONFIG_ENABLE_PAGE_DATA_CRC
 
 
 /** micros for calculating buffer sizes */
