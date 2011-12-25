@@ -149,7 +149,7 @@
  *		 poorer writing performance).
  *		 It's not recommended to open this define for normal applications.
  */
-//#define CONFIG_FLUSH_BUF_AFTER_WRITE
+#define CONFIG_FLUSH_BUF_AFTER_WRITE
 
 
 /**

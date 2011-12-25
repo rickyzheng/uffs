@@ -665,7 +665,7 @@ static URET do_FlushObject(uffs_Object *obj)
 				uffs_BufFlushGroup(dev, obj->node->u.file.parent, obj->node->u.file.serial) == U_SUCC
 				) ? U_SUCC : U_FAIL;
 		}
-		uffs_Assert(node == obj->node, "obj->node change ??!!\n");
+		uffs_Assert(node == obj->node, "obj->node change!\n");
 	}
 
 	return ret;
@@ -970,7 +970,7 @@ static int do_WriteObject(uffs_Object *obj, const void *data, int len)
 		}
 	}
 
-	uffs_Assert(fnode == obj->node, "obj->node change ??!!\n");
+	uffs_Assert(fnode == obj->node, "obj->node change!\n");
 
 	return remain;
 }
@@ -1039,7 +1039,7 @@ ext:
 
 	uffs_ObjectDevUnLock(obj);
 
-	uffs_Assert(fnode == obj->node, "obj->node change ??!!\n");
+	uffs_Assert(fnode == obj->node, "obj->node change!\n");
 
 	return len - remain;
 }
@@ -1156,7 +1156,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 	uffs_ObjectDevUnLock(obj);
 
-	uffs_Assert(fnode == obj->node, "obj->node change ??!!\n");
+	uffs_Assert(fnode == obj->node, "obj->node change!\n");
 
 	return len - remain;
 }
@@ -1385,6 +1385,8 @@ URET uffs_TruncateObject(uffs_Object *obj, u32 remain)
 		do_TruncateObject(obj, remain, eREAL_RUN);
 	uffs_ObjectDevUnLock(obj);
 
+	uffs_FlushObject(obj);
+
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
@@ -1505,7 +1507,7 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 ext:
 	obj->pos = pos;  // keep file pointer offset not changed.
 
-	uffs_Assert(fnode == obj->node, "obj->node change ??!!\n");
+	uffs_Assert(fnode == obj->node, "obj->node change!\n");
 
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 
