@@ -44,6 +44,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_public.h"
@@ -111,8 +112,7 @@ static struct uffs_ApiSt m_api = {
     uffs_space_free,
 };
 
-
-int api_server_start(void)
+static void *api_server_main_thread(void *param)
 {
 	int srv_fd = -1, new_fd = -1;
 	struct sockaddr_in my_addr;
@@ -133,16 +133,16 @@ int api_server_start(void)
 	my_addr.sin_port = htons(SRV_PORT); 	/* short, network byte order */
 	my_addr.sin_addr.s_addr = INADDR_ANY;	/* 0.0.0.0 */
 
-	ret = bind(srv_fd, (struct sockaddr *)&my_addr, sizeof(struct sockaddr));
-	if (ret < 0) {
-	  perror("Server-bind() error");
-	  goto ext;
-	}
-
 	/* "Address already in use" error message */
 	ret = setsockopt(srv_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 	if (ret < 0) {
 	  perror("setsockopt() error");
+	  goto ext;
+	}
+
+	ret = bind(srv_fd, (struct sockaddr *)&my_addr, sizeof(struct sockaddr));
+	if (ret < 0) {
+	  perror("Server-bind() error");
 	  goto ext;
 	}
 
@@ -168,6 +168,24 @@ int api_server_start(void)
 ext:
 	if (srv_fd >= 0)
 		close(srv_fd);
+
+	return param;
+}
+
+
+int api_server_start(void)
+{
+	static int started = 0;
+	pthread_t main_thread;
+	int ret = 0;
+
+	if (!started) {
+		started = 1;
+		ret = pthread_create(&main_thread, NULL, api_server_main_thread, NULL);
+	}
+	else {
+		printf("apisrv already started.\n");
+	}
 
 	return ret;
 }

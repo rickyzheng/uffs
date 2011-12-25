@@ -686,7 +686,7 @@ static int call_remote(int cmd, ...)
 
 	n_params = n;
 	header->n_params = n;
-	DBG("C: cmd %d, params %d, data_len %d\n", cmd, n, len);
+	//DBG("C: cmd %d, params %d, data_len %d\n", cmd, n, len);
 
 	msg.data = (u8 *) malloc(len);
 	if (msg.data == NULL) {

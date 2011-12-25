@@ -389,10 +389,31 @@ static void print_params(void)
 	MSGLN("");
 }
 
+#ifdef UNIX
+#include <execinfo.h>
+#include <signal.h>
+void crash_handler(int sig)
+{
+  void *array[10];
+  size_t size;
+
+  // get void*'s for all entries on the stack
+  size = backtrace(array, 10);
+
+  // print out all the frames to stderr
+  fprintf(stderr, "Error: signal %d:\n", sig);
+  backtrace_symbols_fd(array, size, 2);
+  exit(1);
+}
+#endif
 
 int main(int argc, char *argv[])
 {
 	int ret;
+
+#ifdef UNIX
+	signal(SIGSEGV, crash_handler);
+#endif
 
 	uffs_SetupDebugOutput(); 	// setup debug output as early as possible
 
