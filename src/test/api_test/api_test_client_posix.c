@@ -105,12 +105,15 @@ int api_client_init(const char *server_addr)
 {
 	static char addr[128] = {0};
 	int ret = -1;
+	
+	if (server_addr == NULL)
+		server_addr = getenv("UFFS_TEST_SRV_ADDR");
 
 	if (server_addr && strlen(server_addr) < sizeof(addr)) {
 		strcpy(addr, server_addr);
 		m_io.addr = (void *)addr;
-		ret = apisrv_setup_io(&m_io);
 	}
+	ret = apisrv_setup_io(&m_io);
 
 	return ret;
 }

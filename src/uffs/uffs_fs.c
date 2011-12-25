@@ -991,6 +991,7 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 	TreeNode *fnode = NULL;
 	int remain;
 	u32 pos;
+	int wrote = 0;
 
 	if (obj == NULL) 
 		return 0;
@@ -1021,17 +1022,17 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 		if (obj->pos > fnode->u.file.len) {
 			// current pos pass over the end of file, need to fill the gap with '\0'
 			pos = obj->pos;	// save desired pos
-			obj->pos = fnode->u.file.len; // filling gap from the end of the file
-			remain = do_WriteObject(obj, NULL, pos - fnode->u.file.len);
+			obj->pos = fnode->u.file.len; // filling gap from the end of the file.
+			remain = do_WriteObject(obj, NULL, pos - fnode->u.file.len);  // Write filling bytes. Note: the filling data does not count as 'wrote' in this write operation.
 			obj->pos = pos - remain;
-
 			if (remain > 0)	// fail to fill the gap ? stop.
 				goto ext;
 		}
 	}
 
 	remain = do_WriteObject(obj, data, len);
-	obj->pos += (len - remain);
+	wrote = len - remain;
+	obj->pos += wrote;
 
 ext:
 	if (HAVE_BADBLOCK(dev))
@@ -1041,7 +1042,7 @@ ext:
 
 	uffs_Assert(fnode == obj->node, "obj->node change!\n");
 
-	return len - remain;
+	return wrote;
 }
 
 /**
@@ -1390,7 +1391,6 @@ URET uffs_TruncateObject(uffs_Object *obj, u32 remain)
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
-
 /** truncate obj without lock device */
 static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 {
@@ -1437,67 +1437,68 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 			flen = obj->node->u.file.len;
 		}
 	}
+	else {
+		while (flen > remain) {
+			fdn = GetFdnByOfs(obj, flen - 1);
 
-	while (flen > remain) {
-		fdn = GetFdnByOfs(obj, flen - 1);
+			//uffs_BufFlushGroup(dev, obj->serial, fdn);	//!< flush the buffer
 
-		//uffs_BufFlushGroup(dev, obj->serial, fdn);	//!< flush the buffer
-
-		block_start = GetStartOfDataBlock(obj, fdn);
-		if (remain <= block_start && fdn > 0) {
-			node = uffs_TreeFindDataNode(dev, obj->serial, fdn);
-			if (node == NULL) {
-				uffs_Perror(UFFS_MSG_SERIOUS,
-							"can't find data node when trancate obj.");
-				obj->err = UEIOERR;
-				goto ext;
-			}
-			bc = uffs_BlockInfoGet(dev, node->u.data.block);
-			if (bc == NULL) {
-				uffs_Perror(UFFS_MSG_SERIOUS,
-							"can't get block info when trancate obj.");
-				obj->err = UEIOERR;
-				goto ext;
-			}
-
-			for (page = 0; page < dev->attr->pages_per_block; page++) {
-				buf = uffs_BufFind(dev, fnode->u.file.serial, fdn, page);
-				if (buf) {
-					//!< ok, the buffer was loaded before ...
-					if (uffs_BufIsFree(buf) == U_FALSE) {
-						uffs_BlockInfoPut(dev, bc);
-						goto ext;	//!< and someone is still holding the buffer,
-									//   can't truncate it !!!
-					}
-					else if (run_opt == eREAL_RUN)
-						uffs_BufMarkEmpty(dev, buf);	//!< discard the buffer
+			block_start = GetStartOfDataBlock(obj, fdn);
+			if (remain <= block_start && fdn > 0) {
+				node = uffs_TreeFindDataNode(dev, obj->serial, fdn);
+				if (node == NULL) {
+					uffs_Perror(UFFS_MSG_SERIOUS,
+								"can't find data node when trancate obj.");
+					obj->err = UEIOERR;
+					goto ext;
 				}
-			}
+				bc = uffs_BlockInfoGet(dev, node->u.data.block);
+				if (bc == NULL) {
+					uffs_Perror(UFFS_MSG_SERIOUS,
+								"can't get block info when trancate obj.");
+					obj->err = UEIOERR;
+					goto ext;
+				}
 
-			if (run_opt == eREAL_RUN) {
-				uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
-				uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, node);
-				uffs_FlashEraseBlock(dev, bc->block);
-				node->u.list.block = bc->block;
-				if (HAVE_BADBLOCK(dev))
-					uffs_BadBlockProcess(dev, node);
-				else
-					uffs_TreeInsertToErasedListTail(dev, node);
+				for (page = 0; page < dev->attr->pages_per_block; page++) {
+					buf = uffs_BufFind(dev, fnode->u.file.serial, fdn, page);
+					if (buf) {
+						//!< ok, the buffer was loaded before ...
+						if (uffs_BufIsFree(buf) == U_FALSE) {
+							uffs_BlockInfoPut(dev, bc);
+							goto ext;	//!< and someone is still holding the buffer,
+										//   can't truncate it !!!
+						}
+						else if (run_opt == eREAL_RUN)
+							uffs_BufMarkEmpty(dev, buf);	//!< discard the buffer
+					}
+				}
 
-				uffs_BlockInfoPut(dev, bc);
-				fnode->u.file.len = block_start;
+				if (run_opt == eREAL_RUN) {
+					uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
+					uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, node);
+					uffs_FlashEraseBlock(dev, bc->block);
+					node->u.list.block = bc->block;
+					if (HAVE_BADBLOCK(dev))
+						uffs_BadBlockProcess(dev, node);
+					else
+						uffs_TreeInsertToErasedListTail(dev, node);
+
+					uffs_BlockInfoPut(dev, bc);
+					fnode->u.file.len = block_start;
+				}
+				else {
+					uffs_BlockInfoPut(dev, bc);
+				}
+				flen = block_start;
 			}
 			else {
-				uffs_BlockInfoPut(dev, bc);
-			}
-			flen = block_start;
-		}
-		else {
-			if (do_TruncateInternalWithBlockRecover(obj, fdn,
-													remain, run_opt) == U_SUCC) {
-				if (run_opt == eREAL_RUN)
-					fnode->u.file.len = remain;
-				flen = remain;
+				if (do_TruncateInternalWithBlockRecover(obj, fdn,
+														remain, run_opt) == U_SUCC) {
+					if (run_opt == eREAL_RUN)
+						fnode->u.file.len = remain;
+					flen = remain;
+				}
 			}
 		}
 	}
@@ -1512,7 +1513,6 @@ ext:
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 
 }
-
 
 /**
  * \brief delete uffs object
