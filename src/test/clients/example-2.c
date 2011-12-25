@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 	long offset = 76800;
 	int len = 1024;
 
-	api_client_init("127.0.0.1");
+	api_client_init(NULL);
 
 	version = uffs_version();
 	printf("Version: %08X\n", version);
