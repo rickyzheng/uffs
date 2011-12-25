@@ -64,7 +64,7 @@ extern "C"{
  * \note Be careful: it's part of the physical format (see: uffs_FileInfoSt.name)
  *    !!DO NOT CHANGE IT AFTER FILE SYSTEM IS FORMATED!!
  */
-#define MAX_FILENAME_LENGTH         32
+#define MAX_FILENAME_LENGTH        128 
 
 /** \note 8-bits attr goes to uffs_dirent::d_type */
 #define FILE_ATTR_DIR       (1 << 7)    //!< attribute for directory
