@@ -82,7 +82,7 @@ static void do_ReleaseObjectResource(uffs_Object *obj);
 static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt);
 
 
-static int _object_data[sizeof(uffs_Object) * MAX_OBJECT_HANDLE / sizeof(int)];
+static int _object_data[(sizeof(struct uffs_ObjectSt) * MAX_OBJECT_HANDLE) / sizeof(int)];
 
 static uffs_Pool _object_pool;
 

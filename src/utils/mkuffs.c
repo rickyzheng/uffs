@@ -81,7 +81,7 @@ const char * conf_emu_filename = DEFAULT_EMU_FILENAME;
 #define PAGE_DATA_SIZE_DEFAULT			512
 #define PAGE_SPARE_SIZE_DEFAULT			16
 #define STATUS_BYTE_OFFSET_DEFAULT		5
-#define TOTAL_BLOCKS_DEFAULT			128
+#define TOTAL_BLOCKS_DEFAULT			512
 #define ECC_OPTION_DEFAULT				UFFS_ECC_SOFT
 //#define ECC_OPTION_DEFAULT			UFFS_ECC_HW
 //#define ECC_OPTION_DEFAULT			UFFS_ECC_HW_AUTO
@@ -137,7 +137,7 @@ static int init_uffs_fs(void)
 	struct uffs_ConfigSt cfg = {
 		0,			// bc_caches - default
 		0,			// page_buffers - default
-		0,			// dirty_pages - default
+		10,			// dirty_pages - default
 		1,			// dirty_groups - force 1
 		0,			// reserved_free_blocks - default
 	};
