@@ -364,9 +364,10 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 	}
 
 	memset(&fi, 0, sizeof(uffs_FileInfo));
-	memcpy(fi.name, obj->name, obj->name_len);
-	fi.name[obj->name_len] = '\0';
-	fi.name_len = obj->name_len;
+	fi.name_len = obj->name_len < sizeof(fi.name) ? obj->name_len : sizeof(fi.name) - 1;
+	memcpy(fi.name, obj->name, fi.name_len);
+	fi.name[fi.name_len] = '\0';
+
 	fi.access = 0;
 	fi.attr |= FILE_ATTR_WRITE;
 
