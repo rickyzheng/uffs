@@ -96,6 +96,7 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 	struct uffs_FlashOpsSt *ops = dev->ops;
 	struct uffs_TagStoreSt ts;
 	u8 *spare = NULL;
+	uffs_BlockInfo *bc;
 
 	buf = uffs_BufClone(dev, NULL);
 	if (buf == NULL) {
@@ -196,11 +197,17 @@ bad_out:
 	if (bad == U_TRUE)
 		uffs_FlashMarkBadBlock(dev, block);
 ext:
-	if (buf) 
+	if (buf)
 		uffs_BufFreeClone(dev, buf);
 
 	if (spare)
 		uffs_PoolPut(SPOOL(dev), spare);
+
+	bc = uffs_BlockInfoGet(dev, block);
+	if (bc) {
+		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
+		uffs_BlockInfoPut(dev, bc);
+	}
 
 	return;
 }

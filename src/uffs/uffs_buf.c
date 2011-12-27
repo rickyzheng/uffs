@@ -601,11 +601,15 @@ static URET uffs_BufFlush_Exist_With_BlockCover(
 	UBOOL flash_op_err;
 	u16 data_sum = 0xFFFF;
 
+	UBOOL useCloneBuf;
+
 	type = dev->buf.dirtyGroup[slot].dirty->type;
 	parent = dev->buf.dirtyGroup[slot].dirty->parent;
 	serial = dev->buf.dirtyGroup[slot].dirty->serial;
 
 retry:
+	uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
+
 	flash_op_err = UFFS_FLASH_NO_ERR;
 	succRecover = U_FALSE;
 
@@ -624,6 +628,13 @@ retry:
 	}
 
 	//uffs_Perror(UFFS_MSG_NOISY, "flush buffer with block cover to %d", newBlock);
+
+	if (!uffs_Assert(newBc->expired_count == dev->attr->pages_per_block,
+			"We have block cache for erased block ? expired_count = %d, block = %d\n",
+			newBc->expired_count, newBc->block)) {
+		// Hmmm, something is really wrong, this is wrok around.
+		uffs_BlockInfoExpire(dev, newBc, UFFS_ALL_PAGES);
+	}
 
 	uffs_BlockInfoLoad(dev, newBc, UFFS_ALL_PAGES);
 	timeStamp = uffs_GetNextBlockTimeStamp(uffs_GetBlockTimeStamp(dev, bc));
@@ -651,35 +662,53 @@ retry:
 
 			TAG_DATA_LEN(tag) = buf->data_len;
 
-			if (buf->data_len == 0) // this could happen when truncating a file
-				flash_op_err = UFFS_FLASH_NO_ERR;
-			else
-				flash_op_err = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
+			if (buf->data_len == 0 || (buf->ext_mark & UFFS_BUF_EXT_MARK_TRUNC_TAIL)) { // this only happen when truncating a file
 
-			if (flash_op_err == UFFS_FLASH_BAD_BLK) {
-				uffs_Perror(UFFS_MSG_NORMAL,
-							"new bad block %d discovered.", newBlock);
-				break;
-			}
-			else if (flash_op_err == UFFS_FLASH_IO_ERR) {
-				uffs_Perror(UFFS_MSG_NORMAL,
-							"writing to block %d page %d, I/O error ?", 
-							(int)newBlock, (int)i);
-				break;
-			}
-			else if (buf->ext_mark & UFFS_BUF_EXT_MARK_TRUNC_TAIL) {
 				// when truncating a file, the last dirty buf will be
 				// set as UFFS_BUF_EXT_MARK_TAIL. so that we don't do page recovery
 				// for the rest pages in the block. (file is ended at this page)
-				uffs_BlockInfoExpire(dev, newBc, i);
+
+				if (!uffs_Assert((buf->ext_mark & UFFS_BUF_EXT_MARK_TRUNC_TAIL) != 0,
+					"buf->data == 0 but not the last page of truncating ? block = %d, page_id = %d",
+					bc->block, i)) {
+
+					// We can't do more about it for now ...
+				}
+
+				if (buf->data_len > 0) {
+					flash_op_err = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
+				}
+				else {
+					// data_len == 0, no I/O needed.
+					flash_op_err = UFFS_FLASH_NO_ERR;
+				}
 				succRecover = U_TRUE;
 				break;
+			}
+			else
+				flash_op_err = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
+
+			if (flash_op_err != UFFS_FLASH_NO_ERR) {
+				if (flash_op_err == UFFS_FLASH_BAD_BLK) {
+					uffs_Perror(UFFS_MSG_NORMAL,
+								"new bad block %d discovered.", newBlock);
+					break;
+				}
+				else if (flash_op_err == UFFS_FLASH_IO_ERR) {
+					uffs_Perror(UFFS_MSG_NORMAL,
+								"writing to block %d page %d, I/O error ?", 
+								(int)newBlock, (int)i);
+					break;
+				}
+				else {
+					uffs_Perror(UFFS_MSG_SERIOUS, "Unhandled flash op result: %d", flash_op_err);
+					break;
+				}
 			}
 		}
 		else {
 			page = uffs_FindPageInBlockWithPageId(dev, bc, i);
 			if (page == UFFS_INVALID_PAGE) {
-				uffs_BlockInfoExpire(dev, newBc, i);
 				succRecover = U_TRUE;
 				break;  //end of last page, normal break
 			}
@@ -689,45 +718,73 @@ retry:
 				break;
 
 			oldTag = GET_TAG(bc, page);
-			buf = uffs_BufClone(dev, NULL);
-			if (buf == NULL) {
-				uffs_Perror(UFFS_MSG_SERIOUS, "Can't clone a new buf!");
-				break;
-			}
-			x = uffs_BufLoadPhyData(dev, buf, bc->block, page);
-			if (x == U_FAIL) {
-				if (HAVE_BADBLOCK(dev) && dev->bad.block == bc->block) {
-					// the old block is a bad block, we'll process it later.
-					uffs_Perror(UFFS_MSG_SERIOUS,
-								"the old block %d is a bad block, \
-								but ignore it for now.",
-								bc->block);
-				}
-				else {
-					uffs_Perror(UFFS_MSG_SERIOUS, "I/O error ?");
-					uffs_BufFreeClone(dev, buf);
-					flash_op_err = UFFS_FLASH_IO_ERR;
+
+			// First, try to find existing cached buffer.
+			// Note: do not call uffs_BufGetEx() as it may trigger buf flush and result in infinite loop
+			buf = uffs_BufGet(dev, parent, serial, i);
+
+			if (buf == NULL) {  // no cached page buffer, use clone buffer.
+				useCloneBuf = U_TRUE;
+				buf = uffs_BufClone(dev, NULL);
+				if (buf == NULL) {
+					uffs_Perror(UFFS_MSG_SERIOUS, "Can't clone a new buf!");
 					break;
 				}
+				x = uffs_BufLoadPhyData(dev, buf, bc->block, page);
+				if (x == U_FAIL) {
+					if (HAVE_BADBLOCK(dev) && dev->bad.block == bc->block) {
+						// the old block is a bad block, we'll process it later.
+						uffs_Perror(UFFS_MSG_SERIOUS,
+									"the old block %d is a bad block, \
+									but ignore it for now.",
+									bc->block);
+					}
+					else {
+						uffs_Perror(UFFS_MSG_SERIOUS, "I/O error ?");
+						uffs_BufFreeClone(dev, buf);
+						flash_op_err = UFFS_FLASH_IO_ERR;
+						break;
+					}
+				}
+
+				buf->type = type;
+				buf->parent = parent;
+				buf->serial = serial;
+				buf->page_id = TAG_PAGE_ID(oldTag);
+				buf->data_len = TAG_DATA_LEN(oldTag);
+
 			}
-			buf->data_len = TAG_DATA_LEN(oldTag);
+			else {
+				useCloneBuf = U_FALSE;
+
+				uffs_Assert(buf->page_id == TAG_PAGE_ID(oldTag), "buf->page_id = %d, tag page id: %d", buf->page_id, TAG_PAGE_ID(oldTag));
+				uffs_Assert(buf->data_len == TAG_DATA_LEN(oldTag), "buf->data_len = %d, tag data len: %d", buf->data_len, TAG_DATA_LEN(oldTag));
+			}
+
 			if (buf->data_len > dev->com.pg_data_size) {
-				uffs_Perror(UFFS_MSG_NOISY, "data length over flow!!!");
+				uffs_Perror(UFFS_MSG_NOISY, "data length over flow, truncated !");
 				buf->data_len = dev->com.pg_data_size;
 			}
 
-			buf->type = type;
-			buf->parent = parent;
-			buf->serial = serial;
-			buf->data_len = TAG_DATA_LEN(oldTag);
-			buf->page_id = TAG_PAGE_ID(oldTag); 
+			if (!uffs_Assert(buf->data_len != 0, "data_len == 0 ? block %d, page %d, serial %d, parent %d",
+				bc->block, page, buf->serial, buf->parent)) {
+				// this could be some error on flash ? we can't do more about it for now ...
+			}
 
 			TAG_DATA_LEN(tag) = buf->data_len;
+
 			if (i == 0)
 				data_sum = _GetDirOrFileNameSum(dev, buf);
 
 			flash_op_err = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
-			uffs_BufFreeClone(dev, buf);
+
+			if (buf) {
+				if (useCloneBuf)
+					uffs_BufFreeClone(dev, buf);
+				else
+					uffs_BufPut(dev, buf);
+			}
+
 			if (flash_op_err == UFFS_FLASH_BAD_BLK) {
 				uffs_Perror(UFFS_MSG_NORMAL,
 							"new bad block %d discovered.", newBlock);
@@ -742,12 +799,16 @@ retry:
 
 	if (i == dev->attr->pages_per_block)
 		succRecover = U_TRUE;
+	else {
+		// expire last page info cache in case the 'tag' is not written.
+		uffs_BlockInfoExpire(dev, newBc, i);
+	}
 
 	if (flash_op_err == UFFS_FLASH_BAD_BLK) {
 		uffs_BlockInfoExpire(dev, newBc, UFFS_ALL_PAGES);
 		uffs_BlockInfoPut(dev, newBc);
 		if (newNode->u.list.block == dev->bad.block) {
-			// the recovered block is a BAD block (buy me a lotto, please), we need to 
+			// the recovered block is a BAD block (buy me a lotto, please :-), we need to 
 			// deal with it immediately (mark it as 'bad' and put into bad block list).
 			uffs_BadBlockProcess(dev, newNode);
 		}
@@ -814,6 +875,7 @@ retry:
 		}
 	}
 	else {
+		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 		uffs_BlockInfoExpire(dev, newBc, UFFS_ALL_PAGES);
 		uffs_FlashEraseBlock(dev, newBlock);
 		newNode->u.list.block = newBlock;
@@ -829,8 +891,8 @@ retry:
 	}
 
 	uffs_BlockInfoPut(dev, newBc);
+
 ext:
-	uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 	return (succRecover == U_TRUE ? U_SUCC : U_FAIL);
 
 }
@@ -874,6 +936,7 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 		uffs_InsertNodeToTree(dev, type, node);
 	else {
 		uffs_FlashEraseBlock(dev, bc->block);
+		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 		uffs_InsertToErasedListHead(dev, node);
 	}		
 

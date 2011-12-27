@@ -1254,6 +1254,10 @@ int uffs_EndOfFile(uffs_Object *obj)
 	return -1;
 }
 
+//
+// To trancate the file, this is the last block to be trancated.
+// We need to discard one or more pages within this block, hence requires 'block recover'.
+//
 static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj,
 												u16 fdn, u32 remain, RunOptionE run_opt)
 {
@@ -1266,6 +1270,8 @@ static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj,
 	u32 block_start;
 	u16 parent, serial;
 	int slot;
+	uffs_BlockInfo *bc = NULL;
+	int block = -1;
 
 	if (fdn == 0) {
 		node = fnode;
@@ -1274,6 +1280,7 @@ static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj,
 		block_start = 0;
 		parent = node->u.file.parent;
 		serial = node->u.file.serial;
+		block = node->u.file.block;
 	}
 	else {
 		node = uffs_TreeFindDataNode(dev, fnode->u.file.serial, fdn);
@@ -1283,6 +1290,7 @@ static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj,
 						"can't find data node when truncate obj");
 			goto ext;
 		}
+		block = node->u.data.block;
 		type = UFFS_TYPE_DATA;
 		max_page_id = dev->attr->pages_per_block - 1;
 		block_start = obj->head_pages * dev->com.pg_data_size +
@@ -1309,15 +1317,14 @@ static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj,
 		goto ext;
 	}
 	
-	// find the last page after truncate
+	// find the last page *after* truncate
 	for (page_id = (fdn == 0 ? 1 : 0); page_id <= max_page_id; page_id++) {
 		if (block_start + (page_id + 1) * dev->com.pg_data_size >= remain)
 			break;
 	}
 
-	if (page_id > max_page_id) {
+	if (!uffs_Assert(page_id <= max_page_id, "fdn = %d, block_start = %d, remain = %d\n", fdn, block_start, remain)) {
 		obj->err = UEUNKNOWN_ERR;
-		uffs_Perror(UFFS_MSG_SERIOUS, "Overflow");
 		goto ext;
 	}
 
@@ -1338,11 +1345,12 @@ static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj,
 	slot = uffs_BufFindGroupSlot(dev, parent, serial);
 	uffs_BufLockGroup(dev, slot);
 
-	if (remain == 0)
+	if (remain == 0) // remain == 0: means discard all data in this block.
 		buf->data_len = 0;
 	else {
 		remain = (remain % dev->com.pg_data_size);
-		buf->data_len = (remain == 0 ? dev->com.pg_data_size : 0);
+		// remain == 0: means that we need to keep all data in this page.
+		buf->data_len = (remain == 0 ? dev->com.pg_data_size : remain);
 	}
 
 	/* mark this buf as UFFS_BUF_EXT_MARK_TRUNC_TAIL, when flushing
@@ -1366,8 +1374,14 @@ static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj,
 	// unlock the group
 	uffs_BufUnLockGroup(dev, slot);
 
-ext:
+	// Invalidate block info cache for the 'old' block
+	bc = uffs_BlockInfoGet(dev, block);
+	if (bc) {
+		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
+		uffs_BlockInfoPut(dev, bc);
+	}
 
+ext:
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
@@ -1484,13 +1498,11 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 					else
 						uffs_TreeInsertToErasedListTail(dev, node);
 
-					uffs_BlockInfoPut(dev, bc);
 					fnode->u.file.len = block_start;
 				}
-				else {
-					uffs_BlockInfoPut(dev, bc);
-				}
+
 				flen = block_start;
+				uffs_BlockInfoPut(dev, bc);
 			}
 			else {
 				if (do_TruncateInternalWithBlockRecover(obj, fdn,
@@ -1531,6 +1543,7 @@ URET uffs_DeleteObject(const char * name, int *err)
 	u16 block;
 	uffs_Buf *buf;
 	URET ret = U_FAIL;
+	uffs_BlockInfo *bc = NULL;
 
 	obj = uffs_GetObject();
 	if (obj == NULL) {
@@ -1547,6 +1560,7 @@ URET uffs_DeleteObject(const char * name, int *err)
 		}
 	}
 
+	// truncate the file to 0 size before delete it.
 	uffs_TruncateObject(obj, 0);
 
 	uffs_ObjectDevLock(obj);
@@ -1604,6 +1618,12 @@ URET uffs_DeleteObject(const char * name, int *err)
 		uffs_BadBlockProcess(dev, node);
 	else
 		uffs_TreeInsertToErasedListTail(dev, node);
+
+	bc = uffs_BlockInfoGet(dev, block);
+	if (bc) {
+		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
+		uffs_BlockInfoPut(dev, bc);
+	}
 
 	ret = U_SUCC;
 err:

@@ -511,6 +511,7 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 				// page 0 tag is clean but page data is dirty ???
 				// this block should be erased immediately !
 				uffs_FlashEraseBlock(dev, block_lt);
+				uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 			}
 			node->u.list.block = block_lt;
 			if (HAVE_BADBLOCK(dev)) {
@@ -931,6 +932,7 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 
 	TreeNode *cache = NULL;
 	u16 cacheSerial = INVALID_UFFS_SERIAL;
+	uffs_BlockInfo *bc;
 
 
 	tree = &(dev->tree);
@@ -964,6 +966,11 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 				blockSave = work->u.data.block;
 				work->u.list.block = blockSave;
 				uffs_FlashEraseBlock(dev, blockSave);
+				bc = uffs_BlockInfoGet(dev, blockSave);
+				if (bc) {
+					uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
+					uffs_BlockInfoPut(dev, bc);
+				}
 				if (HAVE_BADBLOCK(dev))
 					uffs_BadBlockProcess(dev, work);
 				else

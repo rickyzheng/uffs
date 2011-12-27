@@ -317,6 +317,8 @@ uffs_BlockInfo * uffs_BlockInfoGet(uffs_Device *dev, int block)
 	work->expired_count = dev->attr->pages_per_block;
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		work->spares[i].expired = 1;
+
+		// TODO: init tag
 	}
 
 	work->ref_count = 1;

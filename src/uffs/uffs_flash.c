@@ -892,12 +892,18 @@ UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block)
 URET uffs_FlashEraseBlock(uffs_Device *dev, int block)
 {
 	int ret;
+	uffs_BlockInfo *bc;
 
 	ret = dev->ops->EraseBlock(dev, block);
 
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
 		uffs_BadBlockAdd(dev, block);
 
+	bc = uffs_BlockInfoGet(dev, block);
+	if (bc) {
+		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
+		uffs_BlockInfoPut(dev, bc);
+	}
 	return UFFS_FLASH_HAVE_ERR(ret) ? U_FAIL : U_SUCC;
 }
 
