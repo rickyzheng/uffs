@@ -629,12 +629,14 @@ retry:
 
 	//uffs_Perror(UFFS_MSG_NOISY, "flush buffer with block cover to %d", newBlock);
 
+#if 0
+	// this assert seems not necessary ...
 	if (!uffs_Assert(newBc->expired_count == dev->attr->pages_per_block,
 			"We have block cache for erased block ? expired_count = %d, block = %d\n",
 			newBc->expired_count, newBc->block)) {
-		// Hmmm, something is really wrong, this is wrok around.
 		uffs_BlockInfoExpire(dev, newBc, UFFS_ALL_PAGES);
 	}
+#endif
 
 	uffs_BlockInfoLoad(dev, newBc, UFFS_ALL_PAGES);
 	timeStamp = uffs_GetNextBlockTimeStamp(uffs_GetBlockTimeStamp(dev, bc));
@@ -858,7 +860,6 @@ retry:
 		}
 
 		newNode->u.list.block = bc->block;
-		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 
 		// if the recovered block is a bad block, it's time to process it.
 		if (HAVE_BADBLOCK(dev) && dev->bad.block == newNode->u.list.block) {
@@ -875,8 +876,9 @@ retry:
 		}
 	}
 	else {
-		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
-		uffs_BlockInfoExpire(dev, newBc, UFFS_ALL_PAGES);
+
+		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);  // FIXME: this might not be necessary ...
+
 		uffs_FlashEraseBlock(dev, newBlock);
 		newNode->u.list.block = newBlock;
 		if (HAVE_BADBLOCK(dev))
@@ -936,7 +938,6 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 		uffs_InsertNodeToTree(dev, type, node);
 	else {
 		uffs_FlashEraseBlock(dev, bc->block);
-		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 		uffs_InsertToErasedListHead(dev, node);
 	}		
 

@@ -1489,7 +1489,6 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 				}
 
 				if (run_opt == eREAL_RUN) {
-					uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 					uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, node);
 					uffs_FlashEraseBlock(dev, bc->block);
 					node->u.list.block = bc->block;
@@ -1543,7 +1542,6 @@ URET uffs_DeleteObject(const char * name, int *err)
 	u16 block;
 	uffs_Buf *buf;
 	URET ret = U_FAIL;
-	uffs_BlockInfo *bc = NULL;
 
 	obj = uffs_GetObject();
 	if (obj == NULL) {
@@ -1618,12 +1616,6 @@ URET uffs_DeleteObject(const char * name, int *err)
 		uffs_BadBlockProcess(dev, node);
 	else
 		uffs_TreeInsertToErasedListTail(dev, node);
-
-	bc = uffs_BlockInfoGet(dev, block);
-	if (bc) {
-		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
-		uffs_BlockInfoPut(dev, bc);
-	}
 
 	ret = U_SUCC;
 err:

@@ -102,7 +102,16 @@ URET uffs_GetObjectInfo(uffs_Object *obj, uffs_ObjectInfo *info, int *err)
 	uffs_DeviceLock(dev);
 
 	if (obj && dev && info) {
-		ret = _LoadObjectInfo(dev, obj->node, info, obj->type, err);
+		if (obj->parent == PARENT_OF_ROOT) {
+			// this is ROOT. UFFS does not physically has root, just fake it ...
+			memset(info, 0, sizeof(uffs_ObjectInfo));
+			info->serial = obj->serial;
+			if (err)
+				*err = UENOERR;
+			ret = U_SUCC;
+		}
+		else
+			ret = _LoadObjectInfo(dev, obj->node, info, obj->type, err);
 	}
 	else {
 		if (err)

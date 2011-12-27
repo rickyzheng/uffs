@@ -300,7 +300,6 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 				TAG_BLOCK_TS(GET_TAG(bc_alt, 0))) == U_TRUE) {
 
 			//the node is newer than node_alt, so keep node_alt, and erase node
-			uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 			uffs_FlashEraseBlock(dev, block);
 			node->u.list.block = block;
 			if (HAVE_BADBLOCK(dev))
@@ -317,7 +316,6 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 
 			block_save = _GetBlockFromNode(type, node_alt);
 			uffs_FlashEraseBlock(dev, block_save);
-			uffs_BlockInfoExpire(dev, bc_alt, UFFS_ALL_PAGES);
 			node->u.list.block = block_save;
 			if (HAVE_BADBLOCK(dev))
 				uffs_BadBlockProcess(dev, node);
@@ -391,9 +389,9 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 process_invalid_block:
 	/* erase the invalid block */
 	uffs_FlashEraseBlock(dev, bc->block);
-	uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 
 	node->u.list.block = bc->block;
+
 	if (HAVE_BADBLOCK(dev))
 		uffs_BadBlockProcess(dev, node);
 	else
@@ -511,7 +509,6 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 				// page 0 tag is clean but page data is dirty ???
 				// this block should be erased immediately !
 				uffs_FlashEraseBlock(dev, block_lt);
-				uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
 			}
 			node->u.list.block = block_lt;
 			if (HAVE_BADBLOCK(dev)) {
@@ -932,8 +929,6 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 
 	TreeNode *cache = NULL;
 	u16 cacheSerial = INVALID_UFFS_SERIAL;
-	uffs_BlockInfo *bc;
-
 
 	tree = &(dev->tree);
 	pool = TPOOL(dev);
@@ -966,11 +961,6 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 				blockSave = work->u.data.block;
 				work->u.list.block = blockSave;
 				uffs_FlashEraseBlock(dev, blockSave);
-				bc = uffs_BlockInfoGet(dev, blockSave);
-				if (bc) {
-					uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);
-					uffs_BlockInfoPut(dev, bc);
-				}
 				if (HAVE_BADBLOCK(dev))
 					uffs_BadBlockProcess(dev, work);
 				else
