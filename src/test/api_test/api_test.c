@@ -52,6 +52,7 @@ on this file might be covered by the GNU General Public License.
 #endif
 
 static struct uffs_ApiSrvIoSt *m_io = NULL;
+static int m_api_stat[UFFS_API_CMD_LAST + 1] = {0};
 
 int apisrv_setup_io(struct uffs_ApiSrvIoSt *io)
 {
@@ -623,6 +624,12 @@ static int process_cmd(int sock, struct uffs_ApiSrvMsgSt *msg, struct uffs_ApiSt
         break;
     }
 
+	if (ret == 0) {
+		// we might need a mutex here if we using multi-thread server,
+		// but this probably ok since it just for statistic purpose.
+		m_api_stat[UFFS_API_CMD(header)]++;
+	}
+
 	if (ret == 0)
 		ret = apisrv_send_message(sock, msg);
 
@@ -642,6 +649,16 @@ int apisrv_serve(int fd, struct uffs_ApiSt *api)
 	apisrv_free_message(&msg);
 
     return ret;
+}
+
+void apisrv_print_stat(void)
+{
+	int i;
+	printf("--- API call stat ---\n");
+	for (i = 0; i <= UFFS_API_CMD_LAST; i++) {
+		printf("API %2d: %d\n", i, m_api_stat[i]);
+	}
+	printf("--- END ---\n");
 }
 
 /**

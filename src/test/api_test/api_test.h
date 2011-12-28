@@ -71,6 +71,8 @@
 #define UFFS_API_SPACE_FREE_CMD         25
 #define UFFS_API_SPACE_USED_CMD         26
 
+#define UFFS_API_CMD_LAST				26		// last test command id
+
 #define UFFS_API_CMD(header)            ((header)->cmd & 0xFF)
 #define UFFS_API_ACK_BIT                (1 << 31)
 
@@ -133,6 +135,7 @@ struct uffs_ApiSrvMsgSt {
 
 int apisrv_setup_io(struct uffs_ApiSrvIoSt *io);
 int apisrv_serve(int fd, struct uffs_ApiSt *api);
+void apisrv_print_stat(void);
 struct uffs_ApiSt * apisrv_get_client(void);
 
 /* from api_test_server_{platform}.c */

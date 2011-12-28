@@ -59,7 +59,50 @@
 
 #define PFX NULL
 
-#define BACKLOGS	10
+#define BACKLOGS	100
+
+#define WORKER_THREAD_NUM	10	
+
+#define WORKER_FIFO_SIZE	30
+static pthread_mutex_t m_fifo_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t m_fifo_space_avail = PTHREAD_COND_INITIALIZER;
+static pthread_cond_t m_fifo_fd_avail = PTHREAD_COND_INITIALIZER;
+static int m_fifo[WORKER_FIFO_SIZE];
+static int m_fifo_head = 0;
+static int m_fifo_tail = 0;
+
+static int m_thread_stat[WORKER_THREAD_NUM];
+
+static void push_fifo(int fd)
+{
+	pthread_mutex_lock(&m_fifo_lock);
+	if (((m_fifo_head + 1) % WORKER_FIFO_SIZE) != m_fifo_tail) {
+		m_fifo[m_fifo_head++] = fd;
+		m_fifo_head = m_fifo_head % WORKER_FIFO_SIZE;
+		pthread_cond_signal(&m_fifo_fd_avail);
+	}
+	else {
+		pthread_cond_wait(&m_fifo_space_avail, &m_fifo_lock);
+	}
+	pthread_mutex_unlock(&m_fifo_lock);
+}
+
+static int pop_fifo(void)
+{
+	int fd = -1;
+	pthread_mutex_lock(&m_fifo_lock);
+	if (m_fifo_head == m_fifo_tail) {
+		pthread_cond_wait(&m_fifo_fd_avail, &m_fifo_lock);
+	}
+	else {
+		fd = m_fifo[m_fifo_tail++];
+		m_fifo_tail = m_fifo_tail % WORKER_FIFO_SIZE;
+		pthread_cond_signal(&m_fifo_space_avail);
+	}
+	pthread_mutex_unlock(&m_fifo_lock);
+
+	return fd;
+}
 
 static int _io_read(int fd, void *buf, int len)
 {
@@ -112,6 +155,45 @@ static struct uffs_ApiSt m_api = {
     uffs_space_free,
 };
 
+static void * worker_thread_fn(void *param)
+{
+	int fd;
+	size_t id;
+	
+	id = (size_t)param;
+
+	while (1) {
+		fd = pop_fifo();
+		if (fd >= 0) {
+			apisrv_serve(fd, &m_api);
+			close(fd);
+			m_thread_stat[id]++;
+		}
+	}
+
+	return NULL;
+}
+
+static void create_worker_threads(void)
+{
+	static pthread_t worker_threads[WORKER_THREAD_NUM];
+	int i;
+
+	for (i = 0; i < WORKER_THREAD_NUM; i++) {
+		pthread_create(&worker_threads[i], NULL, worker_thread_fn, (void *)((size_t)i));
+	}
+}
+
+static void print_worker_thread_stat(void)
+{
+	int i;
+	printf("--- thread stat start ---\n");
+	for (i = 0; i < WORKER_THREAD_NUM; i++) {
+		printf("Thread %2d: %d\n", i, m_thread_stat[i]);
+	}
+	printf("--- thread stat end --\n");
+}
+
 static void *api_server_main_thread(void *param)
 {
 	int srv_fd = -1, new_fd = -1;
@@ -156,12 +238,12 @@ static void *api_server_main_thread(void *param)
 
 	apisrv_setup_io(&m_io);
 
+	create_worker_threads();
+
 	do {
 		new_fd = accept(srv_fd, (struct sockaddr *)&peer_addr, &sin_size);
 		if (new_fd >= 0) {
-			ret = apisrv_serve(new_fd, &m_api);
-			if (ret >= 0)
-				close(new_fd);
+			push_fifo(new_fd);
 		}
 	} while (ret >= 0);
 
@@ -184,6 +266,8 @@ int api_server_start(void)
 		ret = pthread_create(&main_thread, NULL, api_server_main_thread, NULL);
 	}
 	else {
+		apisrv_print_stat();
+		print_worker_thread_stat();
 		printf("apisrv already started.\n");
 	}
 
