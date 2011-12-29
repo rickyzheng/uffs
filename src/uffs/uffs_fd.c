@@ -584,9 +584,9 @@ struct uffs_dirent * uffs_readdir(uffs_DIR *dirp)
 	if (uffs_FindObjectNext(&dirp->info, &dirp->f) == U_SUCC) {
 		ent = &dirp->dirent;
 		ent->d_ino = dirp->info.serial;
-		ent->d_namelen = dirp->info.info.name_len;
+		ent->d_namelen = dirp->info.info.name_len < sizeof(ent->d_name) ? dirp->info.info.name_len : sizeof(ent->d_name - 1);
 		memcpy(ent->d_name, dirp->info.info.name, ent->d_namelen);
-		ent->d_name[ent->d_namelen] = 0;
+		ent->d_name[ent->d_namelen] = '\0';
 		ent->d_off = dirp->f.pos;
 		ent->d_reclen = sizeof(struct uffs_dirent);
 		ent->d_type = dirp->info.info.attr;
