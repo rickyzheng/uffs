@@ -290,6 +290,46 @@ struct unixFile {
 #define threadid 0
 #endif
 
+#if defined(UFFS_TEST)
+int os_uffs_init(void);
+int os_open(const char* name, int flags, int mode);
+int os_close(int fd);
+int os_read(int fd, void *buf, int len);
+int os_write(int fd, const void *buf, int len);
+int os_lseek(int fd, long offset, int origin);
+int os_ftruncate(int fd, long length);
+int os_unlink(const char *name);
+
+int os_pread(int fd, void *buf, int count, long offset);
+int os_pwrite(int fd, const void *buf, int count, long offset);
+int os_posix_fallocate(int fd, long offset, long len);
+
+#define os_pread64 os_pread
+#define os_pwrite64 os_pwrite
+
+#if defined(USE_PREAD) || defined(USE_PREAD64)
+#error UFFS_TEST does not support PREAD/PREAD64
+#endif
+
+#else
+
+#error UFFS_TEST NOT DEFINED ???
+
+#define os_open open
+#define os_close close
+#define os_read read
+#define os_write write
+#define os_lseek lseek
+#define os_ftruncate ftruncate
+#define os_unlink unlink
+#define os_pread pread
+#define os_pread64 pread64
+#define os_pwrite pwrite
+#define os_pwrite64 pwrite64
+#define os_posix_fallocate posix_fallocate
+
+#endif  // defined(UFFS_TEST)
+
 /*
 ** Different Unix systems declare open() in different ways.  Same use
 ** open(const char*,int,mode_t).  Others use open(const char*,int,...).
@@ -299,8 +339,9 @@ struct unixFile {
 ** which always has the same well-defined interface.
 */
 static int posixOpen(const char *zFile, int flags, int mode){
-  return open(zFile, flags, mode);
+  return os_open(zFile, flags, mode);
 }
+
 
 /* Forward reference */
 static int openDirectory(const char*, int*);
@@ -319,7 +360,7 @@ static struct unix_syscall {
   { "open",         (sqlite3_syscall_ptr)posixOpen,  0  },
 #define osOpen      ((int(*)(const char*,int,int))aSyscall[0].pCurrent)
 
-  { "close",        (sqlite3_syscall_ptr)close,      0  },
+  { "close",        (sqlite3_syscall_ptr)os_close,      0  },
 #define osClose     ((int(*)(int))aSyscall[1].pCurrent)
 
   { "access",       (sqlite3_syscall_ptr)access,     0  },
@@ -345,34 +386,34 @@ static struct unix_syscall {
 #define osFstat     ((int(*)(int,struct stat*))aSyscall[5].pCurrent)
 #endif
 
-  { "ftruncate",    (sqlite3_syscall_ptr)ftruncate,  0  },
+  { "ftruncate",    (sqlite3_syscall_ptr)os_ftruncate,  0  },
 #define osFtruncate ((int(*)(int,off_t))aSyscall[6].pCurrent)
 
   { "fcntl",        (sqlite3_syscall_ptr)fcntl,      0  },
 #define osFcntl     ((int(*)(int,int,...))aSyscall[7].pCurrent)
 
-  { "read",         (sqlite3_syscall_ptr)read,       0  },
+  { "read",         (sqlite3_syscall_ptr)os_read,       0  },
 #define osRead      ((ssize_t(*)(int,void*,size_t))aSyscall[8].pCurrent)
 
 #if defined(USE_PREAD) || SQLITE_ENABLE_LOCKING_STYLE
-  { "pread",        (sqlite3_syscall_ptr)pread,      0  },
+  { "pread",        (sqlite3_syscall_ptr)os_pread,      0  },
 #else
   { "pread",        (sqlite3_syscall_ptr)0,          0  },
 #endif
 #define osPread     ((ssize_t(*)(int,void*,size_t,off_t))aSyscall[9].pCurrent)
 
 #if defined(USE_PREAD64)
-  { "pread64",      (sqlite3_syscall_ptr)pread64,    0  },
+  { "pread64",      (sqlite3_syscall_ptr)os_pread64,    0  },
 #else
   { "pread64",      (sqlite3_syscall_ptr)0,          0  },
 #endif
 #define osPread64   ((ssize_t(*)(int,void*,size_t,off_t))aSyscall[10].pCurrent)
 
-  { "write",        (sqlite3_syscall_ptr)write,      0  },
+  { "write",        (sqlite3_syscall_ptr)os_write,      0  },
 #define osWrite     ((ssize_t(*)(int,const void*,size_t))aSyscall[11].pCurrent)
 
 #if defined(USE_PREAD) || SQLITE_ENABLE_LOCKING_STYLE
-  { "pwrite",       (sqlite3_syscall_ptr)pwrite,     0  },
+  { "pwrite",       (sqlite3_syscall_ptr)os_pwrite,     0  },
 #else
   { "pwrite",       (sqlite3_syscall_ptr)0,          0  },
 #endif
@@ -380,7 +421,7 @@ static struct unix_syscall {
                     aSyscall[12].pCurrent)
 
 #if defined(USE_PREAD64)
-  { "pwrite64",     (sqlite3_syscall_ptr)pwrite64,   0  },
+  { "pwrite64",     (sqlite3_syscall_ptr)os_pwrite64,   0  },
 #else
   { "pwrite64",     (sqlite3_syscall_ptr)0,          0  },
 #endif
@@ -395,13 +436,14 @@ static struct unix_syscall {
 #define osFchmod    ((int(*)(int,mode_t))aSyscall[14].pCurrent)
 
 #if defined(HAVE_POSIX_FALLOCATE) && HAVE_POSIX_FALLOCATE
-  { "fallocate",    (sqlite3_syscall_ptr)posix_fallocate,  0 },
+//  { "fallocate",    (sqlite3_syscall_ptr)posix_fallocate,  0 },
+  { "fallocate",    (sqlite3_syscall_ptr)os_posix_fallocate,  0 },
 #else
   { "fallocate",    (sqlite3_syscall_ptr)0,                0 },
 #endif
 #define osFallocate ((int(*)(int,off_t,off_t))aSyscall[15].pCurrent)
 
-  { "unlink",       (sqlite3_syscall_ptr)unlink,           0 },
+  { "unlink",       (sqlite3_syscall_ptr)os_unlink,           0 },
 #define osUnlink    ((int(*)(const char*))aSyscall[16].pCurrent)
 
   { "openDirectory",    (sqlite3_syscall_ptr)openDirectory,      0 },
@@ -2955,7 +2997,7 @@ static int seekAndRead(unixFile *id, sqlite3_int64 offset, void *pBuf, int cnt){
   do{ got = osPread64(id->h, pBuf, cnt, offset); }while( got<0 && errno==EINTR);
   SimulateIOError( got = -1 );
 #else
-  newOffset = lseek(id->h, offset, SEEK_SET);
+  newOffset = os_lseek(id->h, offset, SEEK_SET);
   SimulateIOError( newOffset-- );
   if( newOffset!=offset ){
     if( newOffset == -1 ){
@@ -3032,7 +3074,7 @@ static int seekAndWrite(unixFile *id, i64 offset, const void *pBuf, int cnt){
   do{ got = osPwrite64(id->h, pBuf, cnt, offset);}while( got<0 && errno==EINTR);
 #else
   do{
-    newOffset = lseek(id->h, offset, SEEK_SET);
+    newOffset = os_lseek(id->h, offset, SEEK_SET);
     SimulateIOError( newOffset-- );
     if( newOffset!=offset ){
       if( newOffset == -1 ){
@@ -6757,6 +6799,11 @@ int sqlite3_os_init(void){
   for(i=0; i<(sizeof(aVfs)/sizeof(sqlite3_vfs)); i++){
     sqlite3_vfs_register(&aVfs[i], i==0);
   }
+
+#if defined(UFFS_TEST)
+  os_uffs_init();
+#endif
+
   return SQLITE_OK; 
 }
 
@@ -6770,5 +6817,5 @@ int sqlite3_os_init(void){
 int sqlite3_os_end(void){ 
   return SQLITE_OK; 
 }
- 
+
 #endif /* SQLITE_OS_UNIX */
