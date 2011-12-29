@@ -78,15 +78,13 @@ or, under Debian/Ubuntu:
 
 BUILD SIMULATOR ON LINUX
 ------------------------
-1) create a 'build' dir along with uffs source dir, for example:
-/+
- +--build/
- +--uffs-1.2.0/
- |
+1) create a 'build' dir:
+
+mkdir -p ~/build/uffs
 
 2) create Makefiles and build:
-  cd build
-  cmake ../uffs-1.2.0
+  cd ~/build/uffs
+  cmake <path_to_uffs>
   make
 
 5) run simulator (interactive mode):
@@ -97,14 +95,11 @@ BUILD SIMULATOR ON WINDOWS
 --------------------------
 
 1) create a 'build' dir along with uffs source dir,
-/+
- +--build/
- +--uffs-1.2.0/
- |
+ d:\build\uffs
 
 2) Create VC project files:
-  cd build
-  cmake ../uffs-1.2.0
+  cd build\uffs
+  cmake <path_to_uffs>
 
 3) Open uffs.dsw (or uffs.sln for VC > 6 ), compile & run.
 
@@ -208,6 +203,52 @@ LICENCE
 	 
 	  This exception does not invalidate any other reasons why a work based
 	  on this file might be covered by the GNU General Public License.
+
+
+TESTING UFFS WITH SQLITE3 REGRESSION TEST CASES
+-----------------------------------------------
+UFFS can be tested with sqlite3 regression test cases (on Linux).
+
+1) install tcl8.5-dev on host PC:
+	apt-get install tcl8.5 tcl8.5-dev
+
+    # make sure your Linux is using tcl8.5 as the default tclsh:
+		sudo update-alternatives --config tclsh
+		(select "tclsh8.5" from the list.)
+
+2) build uffs:
+	mkdir -p ~/build/uffs
+	cd ~/build/uffs
+	cmake <path_to_uffs>
+
+3) build sqlite3:
+	cd <path_to_uffs>/src/test/sqlite3/sqlite-src-3070900
+	./configure        					 # create some build support files
+	git checkout -f Makefile config.h    # restore modified Makefile and config.h
+	make test                            # start build 'testfixture' program.
+	
+	# now you'll see something like:
+	Connect: Connection refused
+	Assert (uffs_ret == ret && ret == bak_ret) fail at /home/.../src/test/api_test/os_uffs.c:os_unlink:329: unlink("/home/.../src/test/sqlite3/sqlite-src-3070900/./test.db-journal"), unix return 0, uffs return -1, bak return -1
+	make: *** [test] Error 1
+
+4) run test cases:
+	Open two terminals.
+	on termional A:
+		cd ~/build/uffs
+		src/utils/mkuffs -t 1024
+
+		#on uffs simulator command line, enter:
+		apisrv
+
+	on terminal B:
+		cd <path_to_uffs>/src/test/sqlite3/sqlite-src-3070900
+		./test-uffs.sh
+
+	Note: if you want to run mkuffs on another PC, for example, a Windows PC, you need to specify the IP address in test-uffs.sh.
+	
+	The test will take 1~4 hours, depends on how fast your Linux box is.
+
 
 ACKNOWLEDGMENT
 ---------------
