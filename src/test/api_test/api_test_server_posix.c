@@ -202,6 +202,7 @@ static void *api_server_main_thread(void *param)
 	socklen_t sin_size;
 	int yes = 1;
 	int ret = 0;
+	int port = SRV_PORT;
 
 	srv_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (srv_fd < 0) {
@@ -210,9 +211,13 @@ static void *api_server_main_thread(void *param)
 		goto ext;
 	}
 
+	if (getenv("UFFS_TEST_SRV_PORT")) {
+		port = atoi(getenv("UFFS_TEST_SRV_PORT"));
+	}
+
 	memset(&my_addr, 0, sizeof(struct sockaddr_in));
 	my_addr.sin_family = AF_INET; 			/* host byte order */
-	my_addr.sin_port = htons(SRV_PORT); 	/* short, network byte order */
+	my_addr.sin_port = htons(port); 		/* short, network byte order */
 	my_addr.sin_addr.s_addr = INADDR_ANY;	/* 0.0.0.0 */
 
 	/* "Address already in use" error message */

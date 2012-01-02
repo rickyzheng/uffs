@@ -239,6 +239,7 @@ UFFS can be tested with sqlite3 regression test cases (on Linux).
 		src/utils/mkuffs -t 1024
 
 		#on uffs simulator command line, enter:
+		format /
 		apisrv
 
 	on terminal B:

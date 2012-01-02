@@ -65,6 +65,7 @@ static int _io_open(void *addr)
     int sock;
     struct hostent *host;
     struct sockaddr_in server_addr;
+	int port = SRV_PORT;
 
     host = gethostbyname((const char *)addr);
 
@@ -73,8 +74,12 @@ static int _io_open(void *addr)
         return -1;
     }
 
+	if (getenv("UFFS_TEST_SRV_PORT")) {
+		port = atoi(getenv("UFFS_TEST_SRV_PORT"));
+	}
+
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SRV_PORT);
+    server_addr.sin_port = htons(port);
     server_addr.sin_addr = *((struct in_addr *)host->h_addr);
     bzero(&(server_addr.sin_zero),8);
 
