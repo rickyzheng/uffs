@@ -71,7 +71,7 @@ struct my_nand_chip {
 
 
 /* impelent the following functions for your NAND flash */
-#define CHIP_SET_CLE(chip) {}
+#define CHIP_SET_CLE(chip) { chip = chip; }
 #define CHIP_CLR_CLE(chip) {}
 #define CHIP_SET_ALE(chip) {}
 #define CHIP_CLR_ALE(chip) {}
@@ -238,7 +238,7 @@ ext:
 
 static int nand_erase_block(uffs_Device *dev, u32 block)
 {
-	u8 val;
+	u8 val = 0;
 	struct my_nand_chip *chip = (struct my_nand_chip *) dev->attr->_private;
 
 	CHIP_CLR_NCS(chip);
@@ -257,6 +257,8 @@ static int nand_erase_block(uffs_Device *dev, u32 block)
 	READ_DATA(chip, &val, 1);
 
 	CHIP_SET_NCS(chip);
+
+	val = val; // just for eliminating warning
 
 	return PARSE_STATUS(val);
 }
@@ -280,6 +282,8 @@ static int nand_release_flash(uffs_Device *dev)
 {
 	// release your hardware here
 	struct my_nand_chip *chip = (struct my_nand_chip *) dev->attr->_private;
+
+	chip = chip;
 
 	return 0;
 }
@@ -352,6 +356,8 @@ static URET my_InitDevice(uffs_Device *dev)
 	dev->attr = &g_my_flash_storage;			// NAND flash attributes
 	dev->attr->_private = (void *) &g_nand_chip;// hook nand_chip data structure to attr->_private
 	dev->ops = &g_my_nand_ops;					// NAND driver
+
+	init_nand_chip(&g_nand_chip);
     
 	return U_SUCC;
 }

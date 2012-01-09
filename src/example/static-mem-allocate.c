@@ -60,6 +60,7 @@ int main()
 #else
 
 extern struct cli_commandset * get_helper_cmds(void);
+extern struct cli_commandset * get_test_cmds(void);
 
 #define PAGE_DATA_SIZE    512
 #define PAGE_SPARE_SIZE   16
