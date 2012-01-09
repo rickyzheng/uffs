@@ -59,7 +59,7 @@ static URET uffs_InitDeviceConfig(uffs_Device *dev)
 	dev->cfg.bc_caches = MAX_CACHED_BLOCK_INFO;
 	dev->cfg.page_buffers = MAX_PAGE_BUFFERS;
 	dev->cfg.dirty_pages = MAX_DIRTY_PAGES_IN_A_BLOCK;
-	dev->reserved_free_blocks = MINIMUN_ERASED_BLOCK;
+	dev->cfg.reserved_free_blocks = MINIMUN_ERASED_BLOCK;
 #else
 	if (dev->cfg.bc_caches == 0)
 		dev->cfg.bc_caches = MAX_CACHED_BLOCK_INFO;
