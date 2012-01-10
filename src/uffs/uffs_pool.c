@@ -332,7 +332,7 @@ void * uffs_PoolFindNextAllocated(uffs_Pool *pool, void *from)
 	// otherwise move to next entry and search free list again.
 
 	if (pool->free_list) {
-		while (e == NULL && uffs_PoolVerify(pool, p)) {
+		while (uffs_PoolVerify(pool, p)) {
 			e = pool->free_list;
 			while (e) {
 				if (p == (u8 *)e) {
@@ -341,7 +341,9 @@ void * uffs_PoolFindNextAllocated(uffs_Pool *pool, void *from)
 				}
 				e = e->next;
 			}
-		}
+			if (e == NULL)	// not in free_list, gotcha
+				break;
+		}	
 	}
 
 	return uffs_PoolVerify(pool, p) ? p : NULL ;

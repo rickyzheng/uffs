@@ -1537,7 +1537,7 @@ ext:
  */
 URET uffs_DeleteObject(const char * name, int *err)
 {
-	uffs_Object *obj;
+	uffs_Object *obj, *work;
 	TreeNode *node;
 	uffs_Device *dev;
 	u16 block;
@@ -1548,16 +1548,33 @@ URET uffs_DeleteObject(const char * name, int *err)
 	if (obj == NULL) {
 		if (err)
 			*err = UEMFILE;
-		goto err1;
+		goto ext_unlock;
 	}
 
 	if (uffs_OpenObject(obj, name, UO_RDWR|UO_DIR) == U_FAIL) {
 		if (uffs_OpenObject(obj, name, UO_RDWR) == U_FAIL) {
 			if (err)
 				*err = UENOENT;
-			goto err1;
+			goto ext_unlock;
 		}
 	}
+
+	// working throught object pool see if the object is opened ...
+	uffs_ObjectDevLock(obj);
+	work = NULL;
+	while ((work = (uffs_Object *)uffs_PoolFindNextAllocated(&_object_pool, work)) != NULL) {
+		if (work != obj && 
+			work->dev &&
+			work->dev == obj->dev &&
+			work->node &&
+			work->node == obj->node) {
+			// this object is opened, can't delete it.
+			if (err)
+				*err = UEACCES;
+			goto ext_lock;
+		}
+	}
+	uffs_ObjectDevUnLock(obj);
 
 	// truncate the file to 0 size before delete it.
 	uffs_TruncateObject(obj, 0);
@@ -1571,14 +1588,14 @@ URET uffs_DeleteObject(const char * name, int *err)
 		if (node != NULL) {
 			if (err)
 				*err = UEACCES;
-			goto err;  //have sub dirs ?
+			goto ext_lock;  //have sub dirs ?
 		}
 
 		node = uffs_TreeFindFileNodeWithParent(dev, obj->serial);
 		if (node != NULL) {
 			if (err)
 				*err = UEACCES;
-			goto err;  //have sub files ?
+			goto ext_lock;  //have sub files ?
 		}
 	}
 
@@ -1598,13 +1615,11 @@ URET uffs_DeleteObject(const char * name, int *err)
 						"Try to delete object but still have buf referenced.");
 			if (err)
 				*err = UEACCES;
-			goto err;
+			goto ext_lock;
 		}
 
 		buf->mark = UFFS_BUF_EMPTY; //!< make this buffer expired.
 	}
-
-	//TODO: need to take care of other obj->node ?
 
 	block = GET_BLOCK_FROM_NODE(obj);
 	node = obj->node;
@@ -1619,9 +1634,10 @@ URET uffs_DeleteObject(const char * name, int *err)
 		uffs_TreeInsertToErasedListTail(dev, node);
 
 	ret = U_SUCC;
-err:
+
+ext_lock:
 	uffs_ObjectDevUnLock(obj);
-err1:
+ext_unlock:
 	do_ReleaseObjectResource(obj);
 
 	uffs_PutObject(obj);
