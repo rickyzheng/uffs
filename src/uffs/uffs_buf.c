@@ -428,24 +428,24 @@ URET uffs_LoadPhyDataToBufEccUnCare(uffs_Device *dev,
 	}
 }
 
-
 /** 
  * find a buffer in the pool
  * \param[in] dev uffs device
+ * \param[in] start buf to search from
  * \param[in] parent parent serial num
  * \param[in] serial serial num
- * \param[in] page_id page_id
+ * \param[in] page_id page_id (if page_id == UFFS_ALL_PAGES then any page would match)
  * \return return found buffer, return NULL if buffer not found
  */
-uffs_Buf * uffs_BufFind(uffs_Device *dev,
+uffs_Buf * uffs_BufFindFrom(uffs_Device *dev, uffs_Buf *start,
 						u16 parent, u16 serial, u16 page_id)
 {
-	uffs_Buf *p = dev->buf.head;
+	uffs_Buf *p = start;
 
 	while (p) {
 		if(	p->parent == parent &&
 			p->serial == serial &&
-			p->page_id == page_id &&
+			(page_id == UFFS_ALL_PAGES || p->page_id == page_id) &&
 			p->mark != UFFS_BUF_EMPTY) 
 		{
 			//they have match one
@@ -456,6 +456,23 @@ uffs_Buf * uffs_BufFind(uffs_Device *dev,
 
 	return NULL; //buffer not found
 }
+
+/** 
+ * find a buffer in the pool
+ * \param[in] dev uffs device
+ * \param[in] parent parent serial num
+ * \param[in] serial serial num
+ * \param[in] page_id page_id (if page_id == UFFS_ALL_PAGES then any page would match)
+ * \return return found buffer, return NULL if buffer not found
+ */
+uffs_Buf * uffs_BufFind(uffs_Device *dev,
+						u16 parent, u16 serial, u16 page_id)
+{
+	uffs_Buf *p = dev->buf.head;
+
+	return uffs_BufFindFrom(dev, p, parent, serial, page_id);
+}
+
 
 static uffs_Buf * _FindBufInDirtyList(uffs_Buf *dirty, u16 page_id)
 {

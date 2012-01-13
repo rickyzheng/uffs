@@ -61,10 +61,11 @@ struct uffs_NodeTypeNameMapSt {
 	{UFFS_TYPE_INVALID, "INVALID"} \
 }
 
-struct BlockListSt {	/* 10 bytes */
+struct BlockListSt {	/* 12 bytes */
 	struct uffs_TreeNodeSt * next;
 	struct uffs_TreeNodeSt * prev;
 	u16 block;
+	u16 serial;
 };
 
 struct DirhSt {		/* 8 bytes */
@@ -164,6 +165,7 @@ typedef struct uffs_TreeNodeSt {
 struct uffs_TreeSt {
 	TreeNode *erased;					//!< erased block list head
 	TreeNode *erased_tail;				//!< erased block list tail
+	TreeNode *suspend;					//!< suspended block list
 	int erased_count;					//!< erased block counter
 	TreeNode *bad;						//!< bad block list
 	int bad_count;						//!< bad block count
@@ -192,6 +194,10 @@ TreeNode * uffs_TreeFindFileNodeByBlock(uffs_Device *dev, u16 block);
 TreeNode * uffs_TreeFindDataNodeByBlock(uffs_Device *dev, u16 block);
 TreeNode * uffs_TreeFindErasedNodeByBlock(uffs_Device *dev, u16 block);
 TreeNode * uffs_TreeFindBadNodeByBlock(uffs_Device *dev, u16 block);
+
+void uffs_TreeSuspendAdd(uffs_Device *dev, TreeNode *node);
+TreeNode * uffs_TreeFindSuspendNode(uffs_Device *dev, u16 serial);
+void uffs_TreeRemoveSuspendNode(uffs_Device *dev, TreeNode *node);
 
 #define SEARCH_REGION_DIR		1
 #define SEARCH_REGION_FILE		2

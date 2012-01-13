@@ -224,13 +224,26 @@ static void uffs_ObjectDevUnLock(uffs_Object *obj)
  */
 URET uffs_CreateObject(uffs_Object *obj, const char *fullname, int oflag)
 {
+	URET ret = U_FAIL;
+
 	oflag |= UO_CREATE;
 
 	if (uffs_ParseObject(obj, fullname) == U_SUCC)
 		uffs_CreateObjectEx(obj, obj->dev, obj->parent,
 								obj->name, obj->name_len, oflag);
 
-	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
+	if (obj->err == UENOERR) {
+		ret = U_SUCC;
+	}
+	else {
+		if (obj->dev) {
+			uffs_PutDevice(obj->dev);
+			obj->dev = NULL;
+		}
+		ret = U_FAIL;
+	}
+
+	return ret;
 }
 
 
@@ -595,6 +608,7 @@ URET uffs_ParseObject(uffs_Object *obj, const char *name)
 
 		if (obj->err != UENOERR) {
 			uffs_PutDevice(obj->dev);
+			obj->dev = NULL;
 		}
 	}
 	else {
@@ -1527,6 +1541,51 @@ ext:
 }
 
 /**
+ * \brief check if there are anyone holding buf of this obj ...
+ * \return
+ *		0	: no one holding any buf of this obj
+ *		>0	: the ref_count of buf which refer to this obj.
+ */
+int _CheckObjBufRef(uffs_Object *obj)
+{
+	uffs_Device *dev = obj->dev;
+	uffs_Buf *buf;
+	TreeNode *node = obj->node;
+	u16 parent, serial, last_serial;
+
+	// check the DIR or FILE block
+	for (buf = uffs_BufFind(dev, obj->parent, obj->serial, UFFS_ALL_PAGES);
+		 buf && buf->ref_count == 0;
+		 buf = uffs_BufFindFrom(dev, buf->next, obj->parent, obj->serial, UFFS_ALL_PAGES));
+
+	if (buf == NULL || buf->ref_count == 0) {
+		// check the DATA block
+		if (obj->type == UFFS_TYPE_FILE && node->u.file.len > 0) {
+
+			parent = obj->serial;
+			last_serial = GetFdnByOfs(obj, node->u.file.len - 1);
+			for (serial = 1; serial <= last_serial; serial++) {
+
+				for (buf = uffs_BufFind(dev, parent, serial, UFFS_ALL_PAGES);
+					 buf && buf->ref_count == 0;
+					 buf = uffs_BufFindFrom(dev, buf->next, parent, serial, UFFS_ALL_PAGES));
+
+				if (buf && buf->ref_count != 0) {
+					// oops ...
+					uffs_Perror(UFFS_MSG_SERIOUS, "someone still hold buf parent = %d, serial = %d, ref_count",
+						parent, serial, buf->ref_count);
+
+					return buf->ref_count;
+				}
+			}
+		}
+	}
+
+	// ok, no one holding any buf of this obj.
+	return 0;
+}
+
+/**
  * \brief delete uffs object
  *
  * \param[in] name full name of object
@@ -1538,10 +1597,11 @@ ext:
 URET uffs_DeleteObject(const char * name, int *err)
 {
 	uffs_Object *obj, *work;
-	TreeNode *node;
-	uffs_Device *dev;
+	TreeNode *node, *d_node;
+	uffs_Device *dev = NULL;
 	u16 block;
-	uffs_Buf *buf;
+	u16 serial, parent, last_serial;
+	UBOOL bad = U_FALSE;
 	URET ret = U_FAIL;
 
 	obj = uffs_GetObject();
@@ -1559,6 +1619,8 @@ URET uffs_DeleteObject(const char * name, int *err)
 		}
 	}
 
+	dev = obj->dev;
+
 	// working throught object pool see if the object is opened ...
 	uffs_ObjectDevLock(obj);
 	work = NULL;
@@ -1574,13 +1636,6 @@ URET uffs_DeleteObject(const char * name, int *err)
 			goto ext_lock;
 		}
 	}
-	uffs_ObjectDevUnLock(obj);
-
-	// truncate the file to 0 size before delete it.
-	uffs_TruncateObject(obj, 0);
-
-	uffs_ObjectDevLock(obj);
-	dev = obj->dev;
 
 	if (obj->type == UFFS_TYPE_DIR) {
 		// if the dir is not empty, can't delete it.
@@ -1602,34 +1657,62 @@ URET uffs_DeleteObject(const char * name, int *err)
 	// before erase the block, we need to take care of the buffer ...
 	uffs_BufFlushAll(dev);
 
-	if (HAVE_BADBLOCK(dev))
-		uffs_BadBlockRecover(dev);
-
-	buf = uffs_BufFind(dev, obj->parent, obj->serial, 0);
-
-	if (buf) {
-		//need to expire this buffer ...
-		if (buf->ref_count != 0) {
-			//there is other obj for this file still in use ?
-			uffs_Perror(UFFS_MSG_NORMAL,
-						"Try to delete object but still have buf referenced.");
-			if (err)
-				*err = UEACCES;
-			goto ext_lock;
-		}
-
-		buf->mark = UFFS_BUF_EMPTY; //!< make this buffer expired.
+	if (_CheckObjBufRef(obj) > 0) {
+		if (err)
+			*err = UEACCES;
+		goto ext_lock;
 	}
 
-	block = GET_BLOCK_FROM_NODE(obj);
 	node = obj->node;
+
+	// ok, now we are safe to erase DIR/FILE block :-)
+	block = GET_BLOCK_FROM_NODE(obj);
+	parent = obj->serial;
+	last_serial = (obj->type == UFFS_TYPE_FILE && node->u.file.len > 0 ? GetFdnByOfs(obj, node->u.file.len - 1) : 0);
 
 	uffs_BreakFromEntry(dev, obj->type, node);
 	uffs_FlashEraseBlock(dev, block);
 	node->u.list.block = block;
 
-	if (HAVE_BADBLOCK(dev))
-		uffs_BadBlockProcess(dev, node);
+	// From now on, the object is gone physically,
+	// but we need to 'suspend' this node so that no one will re-use
+	// the serial number during deleting the reset part of object.
+
+	if (HAVE_BADBLOCK(dev)) {
+		uffs_BadBlockProcessSuspend(dev, node);
+		bad = U_TRUE;  // will be put into 'bad' list later
+	}
+	else {
+		uffs_TreeSuspendAdd(dev, node);
+		bad = U_FALSE;	// will be put into erased list later
+	}
+
+	// now erase DATA blocks
+	if (obj->type == UFFS_TYPE_FILE && last_serial > 0) {
+		for (serial = 1; serial <= last_serial; serial++) {
+
+			uffs_ObjectDevUnLock(obj);
+			; // yield CPU to improve responsive when deleting large file.
+			uffs_ObjectDevLock(obj);
+
+			d_node = uffs_TreeFindDataNode(dev, parent, serial);
+			if (uffs_Assert(d_node != NULL, "Can't find DATA node parent = %d, serial = %d\n", parent, serial)) {
+				uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, d_node);
+				block = d_node->u.data.block;
+				uffs_FlashEraseBlock(dev, block);
+				d_node->u.list.block = block;
+				if (HAVE_BADBLOCK(dev))
+					uffs_BadBlockProcess(dev, d_node);
+				else
+					uffs_TreeInsertToErasedListTail(dev, d_node);
+			}
+		}
+	}
+	
+	// now process the suspend node
+	uffs_TreeRemoveSuspendNode(dev, node);
+	if (bad)
+		uffs_TreeInsertToBadBlockList(dev, node);
 	else
 		uffs_TreeInsertToErasedListTail(dev, node);
 

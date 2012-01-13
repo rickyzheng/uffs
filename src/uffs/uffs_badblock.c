@@ -73,6 +73,26 @@ void uffs_BadBlockProcess(uffs_Device *dev, TreeNode *node)
 }
 
 /** 
+ * \brief process bad block and put the node in 'suspend' list.
+ * \param[in] dev uffs device
+ * \param[in] node bad block tree node
+ */
+void uffs_BadBlockProcessSuspend(uffs_Device *dev, TreeNode *node)
+{
+	if (HAVE_BADBLOCK(dev)) {
+		// mark the bad block
+		uffs_FlashMarkBadBlock(dev, dev->bad.block);
+
+		// and put it into bad block list
+		if (node != NULL)
+			uffs_TreeSuspendAdd(dev, node);
+
+		//clear bad block mark.
+		dev->bad.block = UFFS_INVALID_BLOCK;
+	}
+}
+
+/** 
  * \brief recover bad block
  * \param[in] dev uffs device
  */

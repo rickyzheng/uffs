@@ -237,6 +237,9 @@ static int cmd_test(int argc, char *argv[])
 	else if (!strcmp(op, "<=")) {
 		tst = (a <= b);
 	}
+	else if (!strcmp(op, "!=")) {
+		tst = (a != b);
+	}
 	else {
 		return CLI_INVALID_ARG;
 	}

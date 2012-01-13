@@ -45,7 +45,7 @@
 
 #define UFFS_FEMU_MAX_BLOCKS	(1024 * 16)		// maximum 16K blocks
 
-//#define UFFS_FEMU_ENABLE_INJECTION		// enable bad block & ecc error injection
+#define UFFS_FEMU_ENABLE_INJECTION		// enable bad block & ecc error injection
 
 extern struct uffs_FlashOpsSt g_femu_ops_ecc_soft;		// for software ECC or no ECC.
 extern struct uffs_FlashOpsSt g_femu_ops_ecc_hw;		// for hardware ECC

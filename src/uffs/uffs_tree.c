@@ -589,6 +589,42 @@ TreeNode * uffs_TreeFindFileNode(uffs_Device *dev, u16 serial)
 	return NULL;
 }
 
+/** add a node into suspend list */
+void uffs_TreeSuspendAdd(uffs_Device *dev, TreeNode *node)
+{
+	node->u.list.next = dev->tree.suspend;
+	node->u.list.prev = NULL;
+
+	if (dev->tree.suspend)
+		dev->tree.suspend->u.list.prev = node;
+	dev->tree.suspend = node;
+}
+
+/** search suspend list */
+TreeNode * uffs_TreeFindSuspendNode(uffs_Device *dev, u16 serial)
+{
+	TreeNode *node = dev->tree.suspend;
+	while (node) {
+		if (node->u.list.serial == serial)
+			break;
+		
+		node = node->u.list.next;
+	}
+
+	return node;
+}
+
+/** remove a node from suspend list */
+void uffs_TreeRemoveSuspendNode(uffs_Device *dev, TreeNode *node)
+{
+	if (node->u.list.prev)
+		node->u.list.prev->u.list.next = node->u.list.next;
+	if (node->u.list.next)
+		node->u.list.next->u.list.prev = node->u.list.prev;
+	if (node == dev->tree.suspend)
+		dev->tree.suspend = NULL;
+}
+
 TreeNode * uffs_TreeFindFileNodeWithParent(uffs_Device *dev, u16 parent)
 {
 	int hash;
@@ -1033,10 +1069,14 @@ u16 uffs_FindFreeFsnSerial(uffs_Device *dev)
 		node = uffs_TreeFindDirNode(dev, i);
 		if (node == NULL) {
 			node = uffs_TreeFindFileNode(dev, i);
-			if (node == NULL)
-				return i;
+			if (node == NULL) {
+				node = uffs_TreeFindSuspendNode(dev, i);
+				if (node == NULL)
+					return i;
+			}
 		}
 	}
+
 	return INVALID_UFFS_SERIAL;
 }
 

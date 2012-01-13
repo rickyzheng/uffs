@@ -95,6 +95,10 @@ uffs_Buf *uffs_BufNew(struct uffs_DeviceSt *dev, u8 type, u16 parent, u16 serial
 /** find the page buffer (not affect the reference counter) */
 uffs_Buf * uffs_BufFind(uffs_Device *dev, u16 parent, u16 serial, u16 page_id);
 
+/** find the page buffer from #start (not affect the reference counter) */
+uffs_Buf * uffs_BufFindFrom(uffs_Device *dev, uffs_Buf *start,
+						u16 parent, u16 serial, u16 page_id);
+
 /** put page buffer back to pool, called in pair with #uffs_Get,#uffs_GetEx or #uffs_BufNew */
 URET uffs_BufPut(uffs_Device *dev, uffs_Buf *buf);
 
