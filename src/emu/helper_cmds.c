@@ -343,7 +343,7 @@ static int cmd_st(int argc, char *argv[])
 	MSG("MaxDirtyPagesPerBlock: %d" TENDSTR, dev->cfg.dirty_pages);
 	MSG("MaxPathLength:         %d" TENDSTR, MAX_PATH_LENGTH);
 	MSG("MaxObjectHandles:      %d" TENDSTR, MAX_OBJECT_HANDLE);
-	MSG("FreeObjectHandles:     %d" TENDSTR, uffs_PoolGetFreeCount(uffs_GetObjectPool()));
+	MSG("FreeObjectHandles:     %d" TENDSTR, uffs_GetFreeObjectHandlers());
 	MSG("MaxDirHandles:         %d" TENDSTR, MAX_DIR_HANDLE);
 	MSG("FreeDirHandles:        %d" TENDSTR, uffs_PoolGetFreeCount(uffs_DirEntryBufGetPool()));
 

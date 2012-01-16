@@ -42,6 +42,7 @@
 #include "uffs/uffs_badblock.h"
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_mtb.h"
+#include "uffs/uffs_utils.h"
 #include <string.h> 
 #include <stdio.h>
 
@@ -107,6 +108,20 @@ URET uffs_InitObjectBuf(void)
 URET uffs_ReleaseObjectBuf(void)
 {
 	return uffs_PoolRelease(&_object_pool);
+}
+
+/**
+ * Get free object handlers
+ */
+int uffs_GetFreeObjectHandlers(void)
+{
+	int count = 0;
+
+	uffs_GlobalFsLockLock();
+	count = uffs_PoolGetFreeCount(&_object_pool);
+	uffs_GlobalFsLockUnlock();
+
+	return count;
 }
 
 /**
