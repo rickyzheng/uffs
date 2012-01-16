@@ -140,6 +140,7 @@ long uffs_space_total(const char *mount_point);
 long uffs_space_used(const char *mount_point);
 long uffs_space_free(const char *mount_point);
 
+void uffs_flush_all(const char *mount_point);
 
 #ifdef __cplusplus
 }

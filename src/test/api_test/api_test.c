@@ -618,6 +618,15 @@ static int process_cmd(int sock, struct uffs_ApiSrvMsgSt *msg, struct uffs_ApiSt
 		}
         break;
 	}
+	case UFFS_API_FLUSH_ALL_CMD:
+	{
+		ret = apisrv_unload_params(msg, -1, 0, name, sizeof(name), NULL);
+		if (ret == 0) {
+			api->uffs_flush_all(name);
+			DBG("uffs_flush_all(mount = \"%s\")\n", name);
+			ret = apisrv_make_message(msg, -1, 0, -1, 0, NULL);
+		}
+	}
     default:
         printf("Unknown command %x\n", header->cmd);
         ret = -1;
@@ -1110,6 +1119,15 @@ static long _uffs_space_free(const char *mount)
 	return ret < 0 ? -1L : (long)r_32bit;
 }
 
+static void _uffs_flush_all(const char *mount)
+{
+	if (mount) {
+		call_remote(UFFS_API_FLUSH_ALL_CMD, -1, 0, 0,
+							mount, strlen(mount) + 1, 0,
+							NULL);
+	}
+}
+
 
 static struct uffs_ApiSt m_client_api = {
 	_uffs_version,
@@ -1139,6 +1157,7 @@ static struct uffs_ApiSt m_client_api = {
 	_uffs_space_total,
 	_uffs_space_used,
 	_uffs_space_free,
+	_uffs_flush_all,
 };
 
 struct uffs_ApiSt * apisrv_get_client(void)

@@ -78,4 +78,4 @@ W(int, uffs_format, (const char *mount), (mount))
 W(long, uffs_space_total, (const char *mount), (mount))
 W(long, uffs_space_used, (const char *mount), (mount))
 W(long, uffs_space_free, (const char *mount), (mount))
-
+VW(uffs_flush_all, (const char *mount), (mount))

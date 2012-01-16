@@ -575,12 +575,19 @@ uffs_Buf * _FindMinimunPageIdFromDirtyList(uffs_Buf *dirtyList)
 	uffs_Buf * work = dirtyList;
 	uffs_Buf * buf = dirtyList;
 
-	work = work->next_dirty;
-	while (work) {
-		if (work->page_id < buf->page_id)
-			buf = work;
+	if (buf) {
 		work = work->next_dirty;
+		while (work) {
+			if (work->page_id < buf->page_id)
+				buf = work;
+			work = work->next_dirty;
+		}
+
+		uffs_Assert(buf->mark == UFFS_BUF_DIRTY, 
+					"buf (serial = %d, parent = %d, page_id = %d, type = %d) in dirty list but mark is 0x%x ?",
+					buf->serial, buf->parent, buf->page_id, buf->type, buf->mark);
 	}
+
 	return buf;
 }
 
@@ -1118,15 +1125,19 @@ URET _BufFlush(struct uffs_DeviceSt *dev,
 			uffs_Perror(UFFS_MSG_SERIOUS, "get block info fail.");
 			return U_FAIL;
 		}
-		uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
-		n = uffs_GetFreePagesCount(dev, bc);
 
-		if (n >= dev->buf.dirtyGroup[slot].count && !force_block_recover) {
-			//The free pages are enough for the dirty pages
-			ret = uffs_BufFlush_Exist_With_Enough_FreePage(dev,	slot, node, bc);
-		}
-		else {
-			ret = uffs_BufFlush_Exist_With_BlockCover(dev, slot, node, bc);
+		ret = uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
+		if (ret == U_SUCC) {
+
+			n = uffs_GetFreePagesCount(dev, bc);
+
+			if (n >= dev->buf.dirtyGroup[slot].count && !force_block_recover) {
+				//The free pages are enough for the dirty pages
+				ret = uffs_BufFlush_Exist_With_Enough_FreePage(dev,	slot, node, bc);
+			}
+			else {
+				ret = uffs_BufFlush_Exist_With_BlockCover(dev, slot, node, bc);
+			}
 		}
 		uffs_BlockInfoPut(dev, bc);
 	}
@@ -1581,8 +1592,8 @@ uffs_Buf * uffs_BufClone(uffs_Device *dev, uffs_Buf *buf)
 	p = _FindFreeBufEx(dev, 1);
 	if (p == NULL) {
 		uffs_Perror(UFFS_MSG_SERIOUS,
-					"no enough free pages for clone! \
-					Please increase Clone Buffer Count threshold.");
+					"no enough free pages for clone! " \
+					"Please increase Clone Buffer Count threshold.");
 	}
 	else {
 		_BreakFromBufList(dev, p);

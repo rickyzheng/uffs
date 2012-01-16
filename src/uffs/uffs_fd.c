@@ -731,3 +731,15 @@ long uffs_space_free(const char *mount_point)
 }
 
 
+void uffs_flush_all(const char *mount_point)
+{
+	uffs_Device *dev = NULL;
+
+	dev = uffs_GetDeviceFromMountPoint(mount_point);
+	if (dev) {
+		uffs_GlobalFsLockLock();
+		uffs_BufFlushAll(dev);
+		uffs_GlobalFsLockUnlock();
+	}
+}
+

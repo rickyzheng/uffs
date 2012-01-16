@@ -70,8 +70,9 @@
 #define UFFS_API_SPACE_TOTAL_CMD        24
 #define UFFS_API_SPACE_FREE_CMD         25
 #define UFFS_API_SPACE_USED_CMD         26
+#define UFFS_API_FLUSH_ALL_CMD          27
 
-#define UFFS_API_CMD_LAST				26		// last test command id
+#define UFFS_API_CMD_LAST				27		// last test command id
 
 #define UFFS_API_CMD(header)            ((header)->cmd & 0xFF)
 #define UFFS_API_ACK_BIT                (1 << 31)
@@ -126,6 +127,7 @@ struct uffs_ApiSt {
 	long (*uffs_space_total)(const char *mount_point);
 	long (*uffs_space_used)(const char *mount_point);
 	long (*uffs_space_free)(const char *mount_point);
+	void (*uffs_flush_all)(const char *mount_point);
 };
 
 struct uffs_ApiSrvMsgSt {
