@@ -739,6 +739,7 @@ void uffs_flush_all(const char *mount_point)
 	if (dev) {
 		uffs_GlobalFsLockLock();
 		uffs_BufFlushAll(dev);
+		uffs_PutDevice(dev);
 		uffs_GlobalFsLockUnlock();
 	}
 }
