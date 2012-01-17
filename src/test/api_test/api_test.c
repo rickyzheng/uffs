@@ -626,6 +626,7 @@ static int process_cmd(int sock, struct uffs_ApiSrvMsgSt *msg, struct uffs_ApiSt
 			DBG("uffs_flush_all(mount = \"%s\")\n", name);
 			ret = apisrv_make_message(msg, -1, 0, -1, 0, NULL);
 		}
+		break;
 	}
     default:
         printf("Unknown command %x\n", header->cmd);

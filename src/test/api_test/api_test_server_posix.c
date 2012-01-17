@@ -153,6 +153,7 @@ static struct uffs_ApiSt m_api = {
     uffs_space_total,
     uffs_space_used,
     uffs_space_free,
+	uffs_flush_all,
 };
 
 static void * worker_thread_fn(void *param)

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "uffs/uffs_fd.h"
 #include "api_test.h"
@@ -11,32 +12,22 @@
 
 int main(int argc, char *argv[])
 {
-	int version;
-	int fd;
-	char buf[4096];
-	long offset = 76800;
-	int len = 1024;
+	int interval = 1000;
 
-	api_client_init(NULL);
-
-	version = uffs_version();
-	printf("Version: %08X\n", version);
-
-	fd = uffs_open("/test.db", UO_RDWR);
-	if (fd < 0) {
-		printf("Can't create /test.db\n");
-		return -1;
+	if (argc > 2) {
+		interval = atoi(argv[2]);
 	}
 
-	if (uffs_seek(fd, offset, USEEK_SET) != offset) {
-		printf("call uffs_seek failed\n");
-	}
-	else if (uffs_read(fd, buf, len) != len) {
-		printf("call uffs_write failed.\n");
-	}
+	printf("Host: %s, Interval: %d\n", argv[1], interval);
 
-	if (uffs_close(fd) < 0) {
-		printf("uffs_close failed.\n");
+	if (api_client_init(argv[1]) == 0) {
+		while(1) {
+			uffs_flush_all("/");
+			usleep(interval * 1000);
+		}
+	}
+	else {
+		printf("init failed.\n");
 	}
 
 	return 0;
