@@ -62,18 +62,18 @@ struct uffs_FileEmuBitFlip {
 };
 
 /* simulate bad blocks */
-#define FILEEMU_STOCK_BAD_BLOCKS	{5, 18}		// bad block come from manufacture
-#define FILEEMU_ERASE_BAD_BLOCKS	{10, 15}	// new bad block discovered when erasing
+#define FILEEMU_STOCK_BAD_BLOCKS	{5, 180}	// bad block come from manufacture
+#define FILEEMU_ERASE_BAD_BLOCKS	{100, 150}	// new bad block discovered when erasing
 
 /* simulating bit flip */
 #define FILEEMU_WRITE_BIT_FLIP \
 	{ \
-		{2, 2, 10, 1 << 4}, /* block 2, page 2, offset 10, bit 4 */	\
-		{2, 4, -3, 1 << 2}, /* block 2, page 4, spare offset 3, bit 2*/ \
-		{6, 1, 5, 1 << 3},	/* block 6, page 1, offset 5, bit 3 */ \
-		{6, 1, 15, 1 << 7},	/* block 6, page 1, offset 300, bit 7 */ \
-		{8, 2, 2, 1 << 1},	/* block 8, page 2, offset 2, bit 1 */ \
-		{8, 2, 100, 1 << 5},/* block 8, page 2, offset 100, bit 5 */ \
+		{20, 2, 10, 1 << 4},	/* block 20, page 2, offset 10, bit 4 */	\
+		{24, 4, -3, 1 << 2},	/* block 24, page 4, spare offset 3, bit 2*/ \
+		{60, 1, 5, 1 << 3},		/* block 60, page 1, offset 5, bit 3 */ \
+		{66, 1, 15, 1 << 7},	/* block 66, page 1, offset 300, bit 7 */ \
+		{80, 2, 2, 1 << 1},		/* block 80, page 2, offset 2, bit 1 */ \
+		{88, 2, 100, 1 << 5},	/* block 88, page 2, offset 100, bit 5 */ \
 	}
 
 

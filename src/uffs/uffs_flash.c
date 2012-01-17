@@ -491,6 +491,9 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBO
 	u8 ecc_buf[UFFS_MAX_ECC_SIZE];
 	u8 ecc_store[UFFS_MAX_ECC_SIZE];
 	UBOOL is_bad = U_FALSE;
+#ifdef CONFIG_ENABLE_PAGE_DATA_CRC
+	UBOOL crc_ok = U_TRUE;
+#endif
 	u8 * spare;
 
 	int ret = UFFS_FLASH_UNKNOWN_ERR;
@@ -519,13 +522,18 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBO
 		goto ext;
 
 #ifdef CONFIG_ENABLE_PAGE_DATA_CRC
-	if (!skip_ecc && HEADER(buf)->crc == uffs_crc16sum(buf->data, size - sizeof(struct uffs_MiniHeaderSt)))
-		goto ext;	// CRC is matched, no need to do ECC correction.
-	else {
-		if (!skip_ecc && (dev->attr->ecc_opt == UFFS_ECC_SOFT || dev->attr->ecc_opt == UFFS_ECC_HW)) {
-			// ECC is not enabled and CRC failed
-			ret = UFFS_FLASH_CRC_ERR;
-			goto ext;
+	if (!skip_ecc) {
+		crc_ok = (HEADER(buf)->crc == uffs_crc16sum(buf->data, size - sizeof(struct uffs_MiniHeaderSt)) ? U_TRUE : U_FALSE);
+
+		if (crc_ok)
+			goto ext;	// CRC is matched, no need to do ECC correction.
+		else {
+			if (dev->attr->ecc_opt == UFFS_ECC_NONE || dev->attr->ecc_opt == UFFS_ECC_HW_AUTO) {
+				// ECC is not enabled or ecc correction already done, error return immediately,
+				// otherwise, we try CRC check again after ecc correction.
+				ret = UFFS_FLASH_CRC_ERR;
+				goto ext;
+			}
 		}
 	}
 #endif
@@ -555,8 +563,8 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBO
 	}
 
 #ifdef CONFIG_ENABLE_PAGE_DATA_CRC
-	if (!skip_ecc && ret == UFFS_FLASH_ECC_OK) {
-		// There are bit flips, do CRC check again.
+	if (!skip_ecc && !UFFS_FLASH_HAVE_ERR(ret)) {
+		// Everything seems ok, do CRC check again.
 		if (HEADER(buf)->crc == uffs_crc16sum(buf->data, size - sizeof(struct uffs_MiniHeaderSt))) {
 			ret = UFFS_FLASH_CRC_ERR;
 			goto ext;

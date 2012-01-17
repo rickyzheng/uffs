@@ -77,9 +77,11 @@ extern "C"{
 #define UFFS_FLASH_HAVE_ERR(e)		((e) < 0)
 
 #if defined(CONFIG_BAD_BLOCK_POLICY_STRICT)
-# define UFFS_FLASH_IS_BAD_BLOCK(e)	((e) == UFFS_FLASH_ECC_FAIL || (e) == UFFS_FLASH_ECC_OK || (e) == UFFS_FLASH_BAD_BLK)
+# define UFFS_FLASH_IS_BAD_BLOCK(e)	\
+	((e) == UFFS_FLASH_ECC_FAIL || (e) == UFFS_FLASH_ECC_OK || (e) == UFFS_FLASH_BAD_BLK || (e) == UFFS_FLASH_CRC_ERR)
 #else
-# define UFFS_FLASH_IS_BAD_BLOCK(e)	((e) == UFFS_FLASH_ECC_FAIL || (e) == UFFS_FLASH_BAD_BLK)
+# define UFFS_FLASH_IS_BAD_BLOCK(e)	\
+	((e) == UFFS_FLASH_ECC_FAIL || (e) == UFFS_FLASH_BAD_BLK || (e) == UFFS_FLASH_CRC_ERR)
 #endif
 
 
