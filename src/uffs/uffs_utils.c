@@ -223,14 +223,14 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 
 	ret = uffs_BufFlushAll(dev);
 
-	if (dev->ref_count > 1 && force != U_TRUE) {
+	if (dev->ref_count > 1 && !force) {
 		uffs_Perror(UFFS_MSG_NORMAL,
 					"can't format when dev->ref_count = %d",
 					dev->ref_count);
 		ret = U_FAIL;
 	}
 
-	if (ret == U_SUCC && force == U_TRUE) {
+	if (ret == U_SUCC && force) {
 		uffs_DirEntryBufPutAll(dev);
 		uffs_PutAllObjectBuf(dev);
 		uffs_FdSignatureIncrease();
@@ -238,16 +238,18 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 
 	if (ret == U_SUCC &&
 		uffs_BufIsAllFree(dev) == U_FALSE &&
-		force == U_TRUE)
+		!force)
 	{
 		uffs_Perror(UFFS_MSG_NORMAL, "some page still in used!");
 		ret = U_FAIL;
 	}
 
-	for (slot = 0; ret == U_SUCC && slot < dev->cfg.dirty_groups; slot++) {
-		if (dev->buf.dirtyGroup[slot].count > 0) {
-			uffs_Perror(UFFS_MSG_SERIOUS, "there still have dirty pages!");
-			ret = U_FAIL;
+	if (!force) {
+		for (slot = 0; ret == U_SUCC && slot < dev->cfg.dirty_groups; slot++) {
+			if (dev->buf.dirtyGroup[slot].count > 0) {
+				uffs_Perror(UFFS_MSG_SERIOUS, "there still have dirty pages!");
+				ret = U_FAIL;
+			}
 		}
 	}
 
@@ -255,7 +257,7 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 		uffs_BufSetAllEmpty(dev);
 
 
-	if (ret == U_SUCC && uffs_BlockInfoIsAllFree(dev) == U_FALSE) {
+	if (ret == U_SUCC && uffs_BlockInfoIsAllFree(dev) == U_FALSE && !force) {
 		uffs_Perror(UFFS_MSG_NORMAL,
 					"there still have block info cache ? fail to format");
 		ret = U_FAIL;
