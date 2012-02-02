@@ -262,9 +262,9 @@ int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type);
 UBOOL uffs_IsPageErased(uffs_Device *dev, uffs_BlockInfo *bc, u16 page);
 int uffs_GetFreePagesCount(uffs_Device *dev, uffs_BlockInfo *bc);
 UBOOL uffs_IsDataBlockReguFull(uffs_Device *dev, uffs_BlockInfo *bc);
+UBOOL uffs_IsThisBlockUsed(uffs_Device *dev, uffs_BlockInfo *bc);
 
 int uffs_GetBlockTimeStamp(uffs_Device *dev, uffs_BlockInfo *bc);
-
 
 int uffs_GetDeviceUsed(uffs_Device *dev);
 int uffs_GetDeviceFree(uffs_Device *dev);

@@ -892,7 +892,9 @@ retry:
 		}
 		else {
 			// erase recovered block, put it back to erased block list.
-			uffs_FlashEraseBlock(dev, bc->block);
+			if (uffs_IsThisBlockUsed(dev, bc)) {
+				uffs_FlashEraseBlock(dev, bc->block);
+			}
 			if (HAVE_BADBLOCK(dev))
 				uffs_BadBlockProcess(dev, newNode);
 			else
