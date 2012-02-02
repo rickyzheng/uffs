@@ -1556,7 +1556,8 @@ ext:
 }
 
 /**
- * \brief check if there are anyone holding buf of this obj ...
+ * \brief check if there are anyone holding buf of this obj.
+ *        If no one holding the buffers, expire the buffer.
  * \return
  *		0	: no one holding any buf of this obj
  *		>0	: the ref_count of buf which refer to this obj.
@@ -1570,8 +1571,20 @@ int _CheckObjBufRef(uffs_Object *obj)
 
 	// check the DIR or FILE block
 	for (buf = uffs_BufFind(dev, obj->parent, obj->serial, UFFS_ALL_PAGES);
-		 buf && buf->ref_count == 0;
-		 buf = uffs_BufFindFrom(dev, buf->next, obj->parent, obj->serial, UFFS_ALL_PAGES));
+		 buf != NULL;
+		 buf = uffs_BufFindFrom(dev, buf->next, obj->parent, obj->serial, UFFS_ALL_PAGES))
+	{
+		if (buf->ref_count > 0) {
+			// oops ...
+			uffs_Perror(UFFS_MSG_SERIOUS, "someone still hold buf parent = %d, serial = %d, ref_count",
+				obj->parent, obj->serial, buf->ref_count);
+
+			return buf->ref_count;
+		}
+		else {
+			buf->mark = UFFS_BUF_EMPTY;
+		}
+	}
 
 	if (buf == NULL || buf->ref_count == 0) {
 		// check the DATA block
@@ -1582,23 +1595,28 @@ int _CheckObjBufRef(uffs_Object *obj)
 			for (serial = 1; serial <= last_serial; serial++) {
 
 				for (buf = uffs_BufFind(dev, parent, serial, UFFS_ALL_PAGES);
-					 buf && buf->ref_count == 0;
-					 buf = uffs_BufFindFrom(dev, buf->next, parent, serial, UFFS_ALL_PAGES));
+					 buf != NULL;
+					 buf = uffs_BufFindFrom(dev, buf->next, parent, serial, UFFS_ALL_PAGES))
+				{
+					if (buf->ref_count != 0) {
+						// oops ...
+						uffs_Perror(UFFS_MSG_SERIOUS, "someone still hold buf parent = %d, serial = %d, ref_count",
+							parent, serial, buf->ref_count);
 
-				if (buf && buf->ref_count != 0) {
-					// oops ...
-					uffs_Perror(UFFS_MSG_SERIOUS, "someone still hold buf parent = %d, serial = %d, ref_count",
-						parent, serial, buf->ref_count);
-
-					return buf->ref_count;
+						return buf->ref_count;
+					}
+					else {
+						buf->mark = UFFS_BUF_EMPTY;
+					}
 				}
 			}
 		}
 	}
 
-	// ok, no one holding any buf of this obj.
 	return 0;
 }
+
+
 
 /**
  * \brief delete uffs object
