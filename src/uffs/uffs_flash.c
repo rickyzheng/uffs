@@ -418,7 +418,7 @@ int uffs_FlashReadPageTag(uffs_Device *dev,
 		if (!TAG_IS_VALID(tag)) {
 			if (dev->attr->ecc_opt != UFFS_ECC_NONE) {
 				/*
-				 * There is a tiny little change if:
+				 * There could be a special case if:
 				 *  a) tag is sealed (so we are here), and
 				 *  b) s.valid == 1 and this bit is a 'bad' bit, and
 				 *  c) after tag ECC (corrected by tag ECC) s.valid == 0.
@@ -682,9 +682,11 @@ int uffs_FlashWritePageCombine(uffs_Device *dev,
 	struct uffs_MiniHeaderSt *header;
 	int ret = UFFS_FLASH_UNKNOWN_ERR;
 	UBOOL is_bad = U_FALSE;
-
 	uffs_Buf *verify_buf;
-
+#ifdef CONFIG_PAGE_WRITE_VERIFY
+	uffs_Tags chk_tag;
+#endif
+	
 	spare = (u8 *) uffs_PoolGet(SPOOL(dev));
 	if (spare == NULL)
 		goto ext;
@@ -747,17 +749,31 @@ int uffs_FlashWritePageCombine(uffs_Device *dev,
 		if (!UFFS_FLASH_HAVE_ERR(ret)) {
 			if (memcmp(buf->header, verify_buf->header, size) != 0) {
 				uffs_Perror(UFFS_MSG_NORMAL,
-							"Page write verify fail (block %d page %d)",
+							"Page write verify failed (block %d page %d)",
 							block, page);
 				ret = UFFS_FLASH_BAD_BLK;
 			}
 		}
 
-		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
-			is_bad = U_TRUE;
-
 		uffs_BufFreeClone(dev, verify_buf);
 	}
+	else {
+		uffs_Perror(UFFS_MSG_SERIOUS, "Insufficient buf, clone buf failed.");
+	}
+
+	ret = uffs_FlashReadPageTag(dev, block, page, &chk_tag);
+	if (UFFS_FLASH_HAVE_ERR(ret))
+		goto ext;
+	
+	if (memcmp(&tag->s, &chk_tag.s, sizeof(uffs_TagStore)) != 0) {
+		uffs_Perror(UFFS_MSG_NORMAL, "Page tag write verify failed (block %d page %d)",
+					block, page);
+		ret = UFFS_FLASH_BAD_BLK;
+	}
+
+	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+		is_bad = U_TRUE;
+	
 #endif
 ext:
 	if (is_bad)
