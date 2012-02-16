@@ -964,7 +964,7 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 		uffs_InsertNodeToTree(dev, type, node);
 	else {
 		uffs_FlashEraseBlock(dev, bc->block);
-		uffs_InsertToErasedListHead(dev, node);
+		uffs_TreeInsertToErasedListTail(dev, node);
 	}		
 
 	uffs_BlockInfoPut(dev, bc);

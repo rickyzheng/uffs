@@ -931,3 +931,102 @@ URET uffs_FlashEraseBlock(uffs_Device *dev, int block)
 	return UFFS_FLASH_HAVE_ERR(ret) ? U_FAIL : U_SUCC;
 }
 
+/**
+ * Check the block by reading all pages.
+ *
+ * \return U_SUCC - all pages are clean,
+ *         U_FAIL - block is not clean
+ */
+URET uffs_FlashCheckErasedBlock(uffs_Device *dev, int block)
+{
+	u8 *spare = NULL;
+	uffs_FlashOps *ops = dev->ops;
+	int ret = U_SUCC;
+	int page;
+	int flash_ret;
+	u8 ecc_store[UFFS_MAX_ECC_SIZE];
+	uffs_TagStore ts;
+	uffs_Buf *buf = NULL;
+	int size = dev->com.pg_size;
+	int i;
+	u8 *p;
+	
+	spare = (u8 *) uffs_PoolGet(SPOOL(dev));
+	
+	if (spare == NULL) {
+		uffs_Perror(UFFS_MSG_SERIOUS, "Can't allocate spare buf.");
+		goto ext;
+	}
+	
+	buf = uffs_BufClone(dev, NULL);
+	
+	if (buf == NULL) {
+		uffs_Perror(UFFS_MSG_SERIOUS, "Can't clone buf.");
+		goto ext;
+	}
+	
+	for (page = 0; page < dev->attr->pages_per_block; page++) {
+		if (ops->ReadPageWithLayout) {
+			
+			flash_ret = ops->ReadPageWithLayout(dev, block, page, buf->header, size, NULL, &ts, ecc_store);
+			
+			if (flash_ret != UFFS_FLASH_IO_ERR) {
+				// check page tag, should be all 0xFF
+				for (i = 0, p = (u8 *)(&ts); i < sizeof(ts); i++, p++) {
+					if (*p != 0xFF) {
+						ret = U_FAIL;
+						goto ext;
+					}
+				}
+				
+				// for hw or soft ecc, check stored ecc, should be all 0xFF
+				if (dev->attr->ecc_opt == UFFS_ECC_HW ||
+					dev->attr->ecc_opt == UFFS_ECC_SOFT)
+				{
+					for (i = 0, p = ecc_store; i < ECC_SIZE(dev); i++, p++) {
+						if (*p != 0xFF) {
+							ret = U_FAIL;
+							goto ext;
+						}
+					}
+				}
+			}
+		}
+		else {
+			
+			flash_ret = ops->ReadPage(dev, block, page, buf->header, size, NULL, spare, dev->attr->spare_size);
+			if (flash_ret != UFFS_FLASH_IO_ERR) {
+				// check spare data, should be all 0xFF
+				for (i = 0, p = spare; i < dev->attr->spare_size; i++, p++) {
+					if (*p != 0xFF) {
+						ret = U_FAIL;
+						goto ext;
+					}
+				}
+			}
+		}
+		
+		if (flash_ret != UFFS_FLASH_IO_ERR) {
+			// check page data, should be all 0xFF
+			for (i = 0, p = buf->header; i < size; i++, p++) {
+				if (*p != 0xFF) {
+					ret = U_FAIL;
+					goto ext;
+				}
+			}
+		}
+		
+	}
+	
+
+ext:
+	if (spare)
+		uffs_PoolPut(SPOOL(dev), spare);
+	
+	if (buf)
+		uffs_BufFreeClone(dev, buf);
+	
+	
+	return ret;
+}
+

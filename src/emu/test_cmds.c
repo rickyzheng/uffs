@@ -569,7 +569,7 @@ ext:
 		if (HAVE_BADBLOCK(dev))
 			uffs_BadBlockProcess(dev, node);
 		else
-			uffs_InsertToErasedListHead(dev, node);
+			uffs_TreeInsertToErasedListTail(dev, node);
 	}
 
 	if (dev)

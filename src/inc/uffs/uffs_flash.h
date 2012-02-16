@@ -282,6 +282,9 @@ int uffs_FlashEraseBlock(uffs_Device *dev, int block);
 /* mark a clean page as 'dirty' (and 'invalid') */
 int uffs_FlashMarkDirtyPage(uffs_Device *dev, uffs_BlockInfo *bc, int page);
 
+/* check if the block pages are all clean */
+URET uffs_FlashCheckErasedBlock(uffs_Device *dev, int block);
+	
 /**
  * get page head info
  *

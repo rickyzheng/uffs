@@ -1706,6 +1706,7 @@ URET uffs_DeleteObject(const char * name, int *err)
 	uffs_BreakFromEntry(dev, obj->type, node);
 	uffs_FlashEraseBlock(dev, block);
 	node->u.list.block = block;
+	node->u.list.serial = obj->serial;
 
 	// From now on, the object is gone physically,
 	// but we need to 'suspend' this node so that no one will re-use

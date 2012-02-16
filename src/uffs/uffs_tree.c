@@ -53,6 +53,9 @@ static void uffs_InsertToFileEntry(uffs_Device *dev, TreeNode *node);
 static void uffs_InsertToDirEntry(uffs_Device *dev, TreeNode *node);
 static void uffs_InsertToDataEntry(uffs_Device *dev, TreeNode *node);
 
+static TreeNode * uffs_TreeGetErasedNodeNoCheck(uffs_Device *dev);
+
+
 struct BlockTypeStatSt {
 	int dir;
 	int file;
@@ -517,7 +520,9 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 				uffs_BadBlockProcess(dev, node);
 			}
 			else {
-				uffs_TreeInsertToErasedListTail(dev, node);
+				// page 0 is clean does not means all pages in this block are clean,
+				// need to check this block later before use it.
+				uffs_TreeInsertToErasedListTailEx(dev, node, 1);
 			}
 		}
 		else {
@@ -556,12 +561,12 @@ static URET _BuildTreeStepTwo(uffs_Device *dev)
 
 	endPoint = uffs_GetCurDateTime() % (dev->tree.erased_count + 1);
 	while (startCount < endPoint) {
-		node = uffs_TreeGetErasedNode(dev);
+		node = uffs_TreeGetErasedNodeNoCheck(dev);
 		if (node == NULL) {
 			uffs_Perror(UFFS_MSG_SERIOUS, "No erased block ?");
 			return U_FAIL;
 		}
-		uffs_TreeInsertToErasedListTail(dev, node);
+		uffs_TreeInsertToErasedListTailEx(dev, node, -1);
 		startCount++;
 	}
 
@@ -1080,7 +1085,7 @@ u16 uffs_FindFreeFsnSerial(uffs_Device *dev)
 	return INVALID_UFFS_SERIAL;
 }
 
-TreeNode * uffs_TreeGetErasedNode(uffs_Device *dev)
+static TreeNode * uffs_TreeGetErasedNodeNoCheck(uffs_Device *dev)
 {
 	TreeNode *node = NULL;
 	if (dev->tree.erased) {
@@ -1092,6 +1097,22 @@ TreeNode * uffs_TreeGetErasedNode(uffs_Device *dev)
 		dev->tree.erased_count--;
 	}
 	
+	return node;
+}
+
+TreeNode * uffs_TreeGetErasedNode(uffs_Device *dev)
+{
+	TreeNode *node = uffs_TreeGetErasedNodeNoCheck(dev);
+	u16 block;
+	
+	if (node && node->u.list.need_check) {
+		block = node->u.list.block;
+		if (uffs_FlashCheckErasedBlock(dev, block) != U_SUCC) {
+			// Hmm, this block is not fully erased ? erase it immediately.
+			uffs_FlashEraseBlock(dev, block);
+			node->u.list.need_check = 0;
+		}
+	}
 	return node;
 }
 
@@ -1188,11 +1209,20 @@ void uffs_InsertToErasedListHead(uffs_Device *dev, TreeNode *node)
 	tree->erased_count++;
 }
 
-void uffs_TreeInsertToErasedListTail(uffs_Device *dev, TreeNode *node)
+/**
+ * insert node to erased list.
+ * \param need_check: 0 - no need to check later
+ *                    1 - need to check later
+ *                  < 0 - keep 'node->u.list.need_check' value
+ */
+void uffs_TreeInsertToErasedListTailEx(uffs_Device *dev, TreeNode *node, int need_check)
 {
 	struct uffs_TreeSt *tree;
 	tree = &(dev->tree);
-
+	
+	if (need_check >= 0)
+		node->u.list.need_check = need_check;
+	
 	node->u.list.next = NULL;
 	node->u.list.prev = tree->erased_tail;
 	if (tree->erased_tail) {
@@ -1204,6 +1234,12 @@ void uffs_TreeInsertToErasedListTail(uffs_Device *dev, TreeNode *node)
 		tree->erased = node;
 	}
 	tree->erased_count++;
+}
+
+void uffs_TreeInsertToErasedListTail(uffs_Device *dev, TreeNode *node)
+{
+	// this function is called after the block is erased, so don't need to check.
+	uffs_TreeInsertToErasedListTailEx(dev, node, 0);
 }
 
 void uffs_TreeInsertToBadBlockList(uffs_Device *dev, TreeNode *node)

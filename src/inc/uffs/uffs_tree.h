@@ -65,7 +65,10 @@ struct BlockListSt {	/* 12 bytes */
 	struct uffs_TreeNodeSt * next;
 	struct uffs_TreeNodeSt * prev;
 	u16 block;
-	u16 serial;
+	union {
+		u16 serial;    /* for suspended block list */
+		u8 need_check; /* for erased block list */
+	};
 };
 
 struct DirhSt {		/* 8 bytes */
@@ -215,6 +218,7 @@ TreeNode * uffs_TreeGetErasedNode(uffs_Device *dev);
 void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node);
 void uffs_InsertToErasedListHead(uffs_Device *dev, TreeNode *node);
 void uffs_TreeInsertToErasedListTail(uffs_Device *dev, TreeNode *node);
+void uffs_TreeInsertToErasedListTailEx(uffs_Device *dev, TreeNode *node, int need_check);
 void uffs_TreeInsertToBadBlockList(uffs_Device *dev, TreeNode *node);
 
 void uffs_BreakFromEntry(uffs_Device *dev, u8 type, TreeNode *node);
