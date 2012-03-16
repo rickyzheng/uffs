@@ -399,10 +399,12 @@ int uffs_FlashReadPageTag(uffs_Device *dev,
 		ret = ops->ReadPage(dev, block, page, NULL, 0, NULL,
 									spare_buf, dev->mem.spare_data_size);
 
-		tag->seal_byte = SEAL_BYTE(dev, spare_buf);
+		if (tag) {
+			tag->seal_byte = SEAL_BYTE(dev, spare_buf);
 
-		if (tag && !UFFS_FLASH_HAVE_ERR(ret))
-			uffs_FlashUnloadSpare(dev, spare_buf, &tag->s, NULL);
+			if (!UFFS_FLASH_HAVE_ERR(ret))
+				uffs_FlashUnloadSpare(dev, spare_buf, &tag->s, NULL);
+		}
 	}
 
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
