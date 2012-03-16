@@ -991,7 +991,10 @@ static int do_WriteObject(uffs_Object *obj, const void *data, int len)
 									data ? (u8 *)data + len - remain : NULL, remain,
 									write_start - GetStartOfDataBlock(obj, fdn));
 #ifdef CONFIG_FLUSH_BUF_AFTER_WRITE
-			uffs_BufFlushGroup(dev, fnode->u.file.serial, fdn);
+			if (fdn == 0)
+				uffs_BufFlushGroup(dev, fnode->u.file.parent, fnode->u.file.serial);
+			else
+				uffs_BufFlushGroup(dev, fnode->u.file.serial, fdn);
 #endif
 			if (size == 0)
 				break;
