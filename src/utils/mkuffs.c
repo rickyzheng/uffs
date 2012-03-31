@@ -138,7 +138,7 @@ static int init_uffs_fs(void)
 		0,			// bc_caches - default
 		0,			// page_buffers - default
 		0,			// dirty_pages - default
-		0,			// dirty_groups - force 1
+		0,			// dirty_groups - default
 		0,			// reserved_free_blocks - default
 	};
 
