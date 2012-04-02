@@ -610,7 +610,7 @@ TreeNode * uffs_TreeFindSuspendNode(uffs_Device *dev, u16 serial)
 {
 	TreeNode *node = dev->tree.suspend;
 	while (node) {
-		if (node->u.list.serial == serial)
+		if (node->u.list.u.serial == serial)
 			break;
 		
 		node = node->u.list.next;
@@ -1105,12 +1105,12 @@ TreeNode * uffs_TreeGetErasedNode(uffs_Device *dev)
 	TreeNode *node = uffs_TreeGetErasedNodeNoCheck(dev);
 	u16 block;
 	
-	if (node && node->u.list.need_check) {
+	if (node && node->u.list.u.need_check) {
 		block = node->u.list.block;
 		if (uffs_FlashCheckErasedBlock(dev, block) != U_SUCC) {
 			// Hmm, this block is not fully erased ? erase it immediately.
 			uffs_FlashEraseBlock(dev, block);
-			node->u.list.need_check = 0;
+			node->u.list.u.need_check = 0;
 		}
 	}
 	return node;
@@ -1221,7 +1221,7 @@ void uffs_TreeInsertToErasedListTailEx(uffs_Device *dev, TreeNode *node, int nee
 	tree = &(dev->tree);
 	
 	if (need_check >= 0)
-		node->u.list.need_check = need_check;
+		node->u.list.u.need_check = need_check;
 	
 	node->u.list.next = NULL;
 	node->u.list.prev = tree->erased_tail;
