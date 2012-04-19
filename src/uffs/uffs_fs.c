@@ -1312,7 +1312,7 @@ static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj,
 	TreeNode *node;
 	uffs_Buf *buf = NULL;
 	u8 type;
-	u32 block_start;
+	u32 block_start, block_offset;
 	u16 parent, serial;
 	int slot;
 	uffs_BlockInfo *bc = NULL;
@@ -1363,10 +1363,10 @@ static URET do_TruncateInternalWithBlockRecover(uffs_Object *obj,
 	}
 	
 	// find the last page *after* truncate
-	for (page_id = (fdn == 0 ? 1 : 0); page_id <= max_page_id; page_id++) {
-		if (block_start + (page_id + 1) * dev->com.pg_data_size >= remain)
-			break;
-	}
+	block_offset = remain - block_start;
+	page_id = block_offset / dev->com.pg_data_size;
+	if (fdn == 0)
+		page_id++;
 
 	if (!uffs_Assert(page_id <= max_page_id, "fdn = %d, block_start = %d, remain = %d\n", fdn, block_start, remain)) {
 		obj->err = UEUNKNOWN_ERR;
