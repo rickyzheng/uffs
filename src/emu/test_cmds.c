@@ -962,7 +962,26 @@ static int cmd_tcheck_seq(int argc, char *argv[])
 	return ret;
 }
 
+static int cmd_truncate(int argc, char *argv[])
+{
+	int fd;
+	int ret = 0;
+	long remain;
 
+	CHK_ARGC(3, 3);
+
+	if (sscanf(argv[1], "%d", &fd) != 1) {
+		return -1;
+	}
+
+	if (sscanf(argv[2], "%ld", &remain) != 1) {
+		return -1;
+	}
+
+	ret = uffs_ftruncate(fd, remain);
+
+	return (ret < 0 ? -1 : 0);
+}
 
 /**
  * write random seq to file
@@ -1166,6 +1185,7 @@ static const struct cli_command test_cmds[] =
 	{ cmd_twrite_seq,			"t_write_seq",	"<fd> <size>",	"write seq file <fd>", },
 	{ cmd_tseek,				"t_seek",		"<fd> <offset> [<origin>]",	"seek <fd> file pointer to <offset> from <origin>", },
 	{ cmd_tclose,				"t_close",		"<fd>",				"close <fd>", },
+	{ cmd_truncate,				"t_truncate",	"<fd> <remain>",	"change <fd> size to <remain>", },
 	{ cmd_dump,					"dump",			"<mount>",			"dump <mount>", },
 
 	{ cmd_apisrv,				"apisrv",		NULL,				"start API test server", },
