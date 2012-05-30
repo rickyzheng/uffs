@@ -172,6 +172,19 @@ UFFS v1.3.4
   - Optional page data CRC.
   - Bug fixes.
   - Other improvements.
+
+UFFS v1.3.5
+  - Code directory structure changed
+  - Improved platform independency
+  - Fixed unclean page tag not expired bug
+  - Added test server/client, reuse sqlite test suite
+  - Allow fine tuning uffs config per device in run-time
+  - Prevent a file in use from being deleted
+  - Deleting file/dir now atomic
+  - Fixed flush issue when CONFIG_FLUSH_BUG_AFTER_WRITE config enabled
+  - Fixed truncating small file bug
+  - Many small improvements
+ 
   
 LICENCE
 -------
