@@ -38,7 +38,7 @@ extern "C"{
 #endif
 
 
-#define UFFS_VERSION		0x01030400	//"01.03.0400"
+#define UFFS_VERSION		0x01030500	//"01.03.0500"
 
 const char * uffs_Version2Str(int ver);
 int uffs_GetVersion(void);
