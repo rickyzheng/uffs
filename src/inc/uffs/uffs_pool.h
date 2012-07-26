@@ -67,7 +67,7 @@ typedef struct uffs_PoolSt {
 	OSSEM sem;					//!< buffer lock
 } uffs_Pool;
 
-URET uffs_PoolInit(uffs_Pool *pool, void *mem, u32 mem_size, u32 buf_size, u32 num_bufs);
+URET uffs_PoolInit(uffs_Pool *pool, void *mem, u32 mem_size, u32 buf_size, u32 num_bufs, UBOOL lock);
 URET uffs_PoolRelease(uffs_Pool *pool);
 
 UBOOL uffs_PoolVerify(uffs_Pool *pool, void *p);

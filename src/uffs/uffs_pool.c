@@ -52,7 +52,7 @@
 	static int pool_mem[NUM_BUFS * BUF_SIZE / sizeof(int)];
 	static uffs_Pool pool;
 
-	uffs_PoolInit(&pool, pool_mem, sizeof(pool_mem), BUF_SIZE, NUM_BUFS);
+	uffs_PoolInit(&pool, pool_mem, sizeof(pool_mem), BUF_SIZE, NUM_BUFS, lock);
 
 	void * p;
 	p = uffs_PoolGet(&pool);
@@ -74,10 +74,11 @@
  * \param[in] mem_size size of pool memory
  * \param[in] buf_size size of a single buffer
  * \param[in] num_bufs number of buffers
+ * \param[in] lock create semaphore for locking the memory pool
  * \return Returns U_SUCC if successful.
  */
 URET uffs_PoolInit(uffs_Pool *pool,
-				   void *mem, u32 mem_size, u32 buf_size, u32 num_bufs)
+				   void *mem, u32 mem_size, u32 buf_size, u32 num_bufs, UBOOL lock)
 {
 	unsigned int i;
 	uffs_PoolEntry *e1, *e2;
@@ -97,8 +98,11 @@ URET uffs_PoolInit(uffs_Pool *pool,
 	pool->buf_size = buf_size;
 	pool->num_bufs = num_bufs;
 
-	uffs_SemCreate(&pool->sem);	
-	uffs_SemWait(pool->sem);
+	pool->sem = OSSEM_NOT_INITED;
+	if (lock) {
+		uffs_SemCreate(&pool->sem);
+		uffs_SemWait(pool->sem);
+	}
 
 	// Initialize the free_list
 	e1 = e2 = pool->free_list = (uffs_PoolEntry *) pool->mem;
@@ -109,7 +113,8 @@ URET uffs_PoolInit(uffs_Pool *pool,
 	}
 	e2->next = NULL;
 	
-	uffs_SemSignal(pool->sem);
+	if (lock)
+		uffs_SemSignal(pool->sem);
 
 	return U_SUCC;
 }
@@ -136,7 +141,10 @@ URET uffs_PoolRelease(uffs_Pool *pool)
 	if (!uffs_Assert(pool != NULL, "pool missing"))
 		return U_FAIL;
 	
-	uffs_SemDelete(&pool->sem);
+	if (pool->sem != OSSEM_NOT_INITED) {
+		uffs_SemDelete(&pool->sem);
+		pool->sem = OSSEM_NOT_INITED;
+	}
 
 	return U_SUCC;
 }
@@ -174,10 +182,15 @@ void *uffs_PoolGetLocked(uffs_Pool *pool)
 	if (!uffs_Assert(pool != NULL, "pool missing"))
 		return NULL;
 
+	if (!uffs_Assert(pool->sem != OSSEM_NOT_INITED, "pool semaphore not initialized"))
+		return NULL;
+
 	uffs_SemWait(pool->sem);
+
 	e = pool->free_list;
 	if (e)
 		pool->free_list = e->next;
+
 	uffs_SemSignal(pool->sem);
 
 	return e;
@@ -218,6 +231,9 @@ int uffs_PoolPutLocked(uffs_Pool *pool, void *p)
 	uffs_PoolEntry *e = (uffs_PoolEntry *)p;
 
 	if (!uffs_Assert(pool != NULL, "pool missing"))
+		return -1;
+
+	if (!uffs_Assert(pool->sem != OSSEM_NOT_INITED, "pool semaphore not initialized"))
 		return -1;
 
 	if (e) {

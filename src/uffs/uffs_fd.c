@@ -164,7 +164,7 @@ URET uffs_DirEntryBufInit(void)
 {
 	return uffs_PoolInit(&_dir_pool, _dir_pool_data,
 							sizeof(_dir_pool_data),
-							sizeof(uffs_DIR), MAX_DIR_HANDLE);
+							sizeof(uffs_DIR), MAX_DIR_HANDLE, U_FALSE);
 }
 
 /**

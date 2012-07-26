@@ -99,7 +99,7 @@ uffs_Pool * uffs_GetObjectPool(void)
 URET uffs_InitObjectBuf(void)
 {
 	return uffs_PoolInit(&_object_pool, _object_data, sizeof(_object_data),
-			sizeof(uffs_Object), MAX_OBJECT_HANDLE);
+			sizeof(uffs_Object), MAX_OBJECT_HANDLE, U_FALSE);
 }
 
 /**

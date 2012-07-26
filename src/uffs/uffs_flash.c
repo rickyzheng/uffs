@@ -216,7 +216,7 @@ URET uffs_FlashInterfaceInit(uffs_Device *dev)
 					UFFS_SPARE_BUFFER_SIZE);
 	uffs_PoolInit(pool, dev->mem.spare_pool_buf,
 					dev->mem.spare_pool_size,
-					UFFS_MAX_SPARE_SIZE, MAX_SPARE_BUFFERS);
+					UFFS_MAX_SPARE_SIZE, MAX_SPARE_BUFFERS, U_FALSE);
 
 	// init flash driver
 	if (dev->ops->InitFlash) {

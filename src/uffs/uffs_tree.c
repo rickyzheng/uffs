@@ -95,7 +95,7 @@ URET uffs_TreeInit(uffs_Device *dev)
 	uffs_Perror(UFFS_MSG_NOISY, "alloc tree nodes %d bytes.", size * num);
 	
 	uffs_PoolInit(pool, dev->mem.tree_nodes_pool_buf,
-					dev->mem.tree_nodes_pool_size, size, num);
+					dev->mem.tree_nodes_pool_size, size, num, U_FALSE);
 
 	dev->tree.erased = NULL;
 	dev->tree.erased_tail = NULL;
