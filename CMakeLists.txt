@@ -10,8 +10,8 @@ SET(CMAKE_EXE_LINKER_FLAGS_GCOV "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs -ftest
 
 IF (CMAKE_COMPILER_IS_GNUCC)
 IF (APPLE)
-        SET(CMAKE_CXX_FLAGS "-fPIC -Wall -Werror -g -rdynamic")
-        SET(CMAKE_C_FLAGS "-fPIC -Wall -Werror -g -rdynamic")
+        SET(CMAKE_CXX_FLAGS "-fPIC -Wall -Werror -g -rdynamic -DOS_APPLE")
+        SET(CMAKE_C_FLAGS "-fPIC -Wall -Werror -g -rdynamic -DOS_APPLE")
 ELSE ()
 	SET(CMAKE_CXX_FLAGS "-fPIC -Wall -Werror -Wclobbered -Wempty-body -Wignored-qualifiers -Wmissing-parameter-type -Woverride-init -Wtype-limits -Wuninitialized -g -rdynamic")
 	SET(CMAKE_C_FLAGS "-fPIC -Wall -Werror -Wclobbered -Wempty-body -Wignored-qualifiers -Wmissing-parameter-type -Woverride-init -Wtype-limits -Wuninitialized -g -rdynamic")

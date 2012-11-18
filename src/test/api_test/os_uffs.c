@@ -51,6 +51,7 @@ on this file might be covered by the GNU General Public License.
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "api_test.h"
 
@@ -501,9 +502,13 @@ int os_ftruncate(int fd, long length)
 
 int os_posix_fallocate(int fd, long offset, long len)
 {
-	assert(0);
 	DBG("posix_fallocate(fd = %d, offset = %ld, len = %ld)\n", fd, offset, len);
+	assert(0);
+#ifndef OS_APPLE
 	return posix_fallocate(fd, offset, len);
+#else
+	return 0;
+#endif
 }
 
 int os_uffs_init(void)
