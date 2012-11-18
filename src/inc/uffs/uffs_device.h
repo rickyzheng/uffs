@@ -102,8 +102,9 @@ struct uffs_DirtyGroupSt {
  * \brief uffs page buffers descriptor
  */
 struct uffs_PageBufDescSt {
-	uffs_Buf *head;			//!< head of buffers
-	uffs_Buf *tail;			//!< tail of buffers
+	uffs_Buf *head;			//!< head of buffers (double linked list)
+	uffs_Buf *tail;			//!< tail of buffers (double linked list)
+	uffs_Buf *clone;		//!< head of clone buffers (single linked list)
 	struct uffs_DirtyGroupSt dirtyGroup[MAX_DIRTY_BUF_GROUPS];	//!< dirty buffer groups
 	int buf_max;			//!< maximum buffers
 	int dirty_buf_max;		//!< maximum dirty buffer allowed

@@ -79,6 +79,120 @@ void uffs_BufInspect(uffs_Device *dev)
 }
 
 /**
+ * \brief break a buf from buffer pool list
+ * \param[in] dev uffs device
+ * \param[in] buf buffer to be broke
+ */
+static void _BreakFromBufList(uffs_Device *dev, uffs_Buf *buf)
+{
+	if(buf->next)
+		buf->next->prev = buf->prev;
+
+	if(buf->prev)
+		buf->prev->next = buf->next;
+
+	if(dev->buf.head == buf)
+		dev->buf.head = buf->next;
+
+	if(dev->buf.tail == buf)
+		dev->buf.tail = buf->prev;
+
+}
+
+/**
+ * \brief put a buf in buffer pool list head
+ * \param[in] dev uffs device
+ * \param[in] buf buffer to be put
+ */
+static void _LinkToBufListHead(uffs_Device *dev, uffs_Buf *buf)
+{
+	if (buf == dev->buf.head)
+		return;
+
+	buf->prev = NULL;
+	buf->next = dev->buf.head;
+
+	if (dev->buf.head)
+		dev->buf.head->prev = buf;
+
+	if (dev->buf.tail == NULL)
+		dev->buf.tail = buf;
+
+	dev->buf.head = buf;
+}
+
+#if 0
+/**
+ * \brief put a buf in buffer pool list tail
+ * \param[in] dev uffs device
+ * \param[in] buf buffer to be put
+ */
+static void _LinkToBufListTail(uffs_Device *dev, uffs_Buf *buf)
+{
+	if (dev->buf.tail == buf)
+		return;
+
+	buf->prev = dev->buf.tail;
+	buf->next = NULL;
+
+	if (dev->buf.tail)
+		dev->buf.tail->next = buf;
+
+	if (dev->buf.head == NULL)
+		dev->buf.head = buf;
+
+	dev->buf.tail = buf;
+}
+#endif
+
+/**
+ * \brief move a buf up to the head of buffer pool list
+ * \param[in] dev uffs device
+ * \param[in] p buffer to be moved
+ */
+static void _MoveNodeToHead(uffs_Device *dev, uffs_Buf *p)
+{
+	if (p == dev->buf.head)
+		return;
+
+	//break from list
+	_BreakFromBufList(dev, p);
+
+	//link to head
+	_LinkToBufListHead(dev, p);
+}
+
+
+/**
+ * \brief put the buffer in clone buffers list
+ * \param[in] dev uffs device
+ * \param[in] buf buffer to be put in clone list
+ */
+static void _InsertToCloneBufList(uffs_Device *dev, uffs_Buf *buf)
+{
+	struct uffs_PageBufDescSt *pb = &dev->buf;
+
+	buf->next = pb->clone;
+	pb->clone = buf;
+}
+
+/**
+ * \brief get a buf from clone buffer list
+ * \param[in] dev uffs device
+ * \return NULL if there is no free clone buffer available, otherwise return buf.
+ */
+static uffs_Buf * _GetFreeCloneBuf(uffs_Device *dev)
+{
+	struct uffs_PageBufDescSt *pb = &dev->buf;
+	uffs_Buf *buf = pb->clone;
+
+	if (pb->clone)
+		pb->clone = pb->clone->next;
+	
+	return buf;
+}
+
+/**
  * \brief initialize page buffers for device
  * in UFFS, each device has one buffer pool
  * \param[in] dev uffs device
@@ -161,6 +275,15 @@ URET uffs_BufInit(uffs_Device *dev, int buf_max, int dirty_buf_max)
 		dev->buf.dirtyGroup[slot].dirty = NULL;
 		dev->buf.dirtyGroup[slot].count = 0;
 	}
+
+	// prepare clone buffers
+	dev->buf.clone = NULL;
+	for (i = 0; i < CLONE_BUFFERS_THRESHOLD; i++) {
+		buf = dev->buf.head;
+		_BreakFromBufList(dev, buf);
+		_InsertToCloneBufList(dev, buf);
+	}
+
 	return U_SUCC;
 }
 
@@ -223,70 +346,6 @@ URET uffs_BufReleaseAll(uffs_Device *dev)
 	return U_SUCC;
 }
 
-
-static void _BreakFromBufList(uffs_Device *dev, uffs_Buf *buf)
-{
-	if(buf->next)
-		buf->next->prev = buf->prev;
-
-	if(buf->prev)
-		buf->prev->next = buf->next;
-
-	if(dev->buf.head == buf)
-		dev->buf.head = buf->next;
-
-	if(dev->buf.tail == buf)
-		dev->buf.tail = buf->prev;
-
-}
-
-static void _LinkToBufListHead(uffs_Device *dev, uffs_Buf *buf)
-{
-	if (buf == dev->buf.head)
-		return;
-
-	buf->prev = NULL;
-	buf->next = dev->buf.head;
-
-	if (dev->buf.head)
-		dev->buf.head->prev = buf;
-
-	if (dev->buf.tail == NULL)
-		dev->buf.tail = buf;
-
-	dev->buf.head = buf;
-}
-
-static void _LinkToBufListTail(uffs_Device *dev, uffs_Buf *buf)
-{
-	if (dev->buf.tail == buf)
-		return;
-
-	buf->prev = dev->buf.tail;
-	buf->next = NULL;
-
-	if (dev->buf.tail)
-		dev->buf.tail->next = buf;
-
-	if (dev->buf.head == NULL)
-		dev->buf.head = buf;
-
-	dev->buf.tail = buf;
-}
-
-//move a node which linked in the list to the head of list
-static void _MoveNodeToHead(uffs_Device *dev, uffs_Buf *p)
-{
-	if (p == dev->buf.head)
-		return;
-
-	//break from list
-	_BreakFromBufList(dev, p);
-
-	//link to head
-	_LinkToBufListHead(dev, p);
-}
-
 // check if the buf is already in dirty list
 static UBOOL _IsBufInInDirtyList(uffs_Device *dev, int slot, uffs_Buf *buf)
 {
@@ -321,30 +380,9 @@ static void _LinkToDirtyList(uffs_Device *dev, int slot, uffs_Buf *buf)
 	dev->buf.dirtyGroup[slot].count++;
 }
 
-static int CountFreeBuf(uffs_Device *dev)
-{
-	int count = 0;
-
-	uffs_Buf *buf = dev->buf.head;
-
-	while (buf) {
-
-		if (buf->ref_count == 0 && 
-			buf->mark != UFFS_BUF_DIRTY)
-			count++;
-
-		buf = buf->next;
-	}
-
-	return count;
-}
-
-static uffs_Buf * _FindFreeBufEx(uffs_Device *dev, int clone)
+static uffs_Buf * _FindFreeBuf(uffs_Device *dev)
 {
 	uffs_Buf *buf;
-
-	if (!clone && CountFreeBuf(dev) <= CLONE_BUFFERS_THRESHOLD)
-		return NULL;
 
 #if 0
 	buf = dev->buf.head;
@@ -370,12 +408,6 @@ static uffs_Buf * _FindFreeBufEx(uffs_Device *dev, int clone)
 
 	return buf;
 }
-
-static uffs_Buf * _FindFreeBuf(uffs_Device *dev)
-{
-	return _FindFreeBufEx(dev, 0);
-}
-
 
 /** 
  * load psychical page data into buf and do ecc check 
@@ -1593,15 +1625,13 @@ uffs_Buf * uffs_BufClone(uffs_Device *dev, uffs_Buf *buf)
 {
 	uffs_Buf *p;
 
-	p = _FindFreeBufEx(dev, 1);
+	p = _GetFreeCloneBuf(dev);
 	if (p == NULL) {
 		uffs_Perror(UFFS_MSG_SERIOUS,
 					"no enough free pages for clone! " \
 					"Please increase Clone Buffer Count threshold.");
 	}
 	else {
-		_BreakFromBufList(dev, p);
-
 		if (buf) {
 			p->parent = buf->parent;
 			p->type = buf->type;
@@ -1642,7 +1672,7 @@ URET uffs_BufFreeClone(uffs_Device *dev, uffs_Buf *buf)
 
 	buf->ref_count = 0;
 	buf->mark = UFFS_BUF_EMPTY;
-	_LinkToBufListTail(dev, buf);
+	_InsertToCloneBufList(dev, buf);
 
 	return U_SUCC;
 }

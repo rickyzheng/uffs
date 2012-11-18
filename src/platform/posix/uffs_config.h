@@ -73,7 +73,7 @@
 
 /** 
  * \def CLONE_BUFFER_THRESHOLD
- * \note reserve buffers for clone. 1 or 2 should be enough.
+ * \note reserve buffers for clone. should be 2 or more.
  */
 #define CLONE_BUFFERS_THRESHOLD	2
 
