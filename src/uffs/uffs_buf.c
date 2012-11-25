@@ -60,11 +60,13 @@ void uffs_BufInspect(uffs_Device *dev)
 {
 	struct uffs_PageBufDescSt *pb = &dev->buf;
 	uffs_Buf *buf;
+	int count = 0, empty_count = 0;
 
 	uffs_PerrorRaw(UFFS_MSG_NORMAL,
 					"------------- page buffer inspect ---------" TENDSTR);
 	uffs_PerrorRaw(UFFS_MSG_NORMAL, "all buffers: " TENDSTR);
 	for (buf = pb->head; buf; buf = buf->next) {
+		count++;
 		if (buf->mark != 0) {
 			uffs_PerrorRaw(UFFS_MSG_NORMAL,
 				"\tF:%04x S:%04x P:%02d R:%02d D:%03d M:%c EM:%d" TENDSTR,
@@ -73,7 +75,11 @@ void uffs_BufInspect(uffs_Device *dev)
 				buf->data_len, buf->mark == UFFS_BUF_VALID ? 'V' : 'D',
 				buf->ext_mark);
 		}
+		else {
+			empty_count++;
+		}
 	}
+	uffs_PerrorRaw(UFFS_MSG_NORMAL, "\ttotal: %d, empty: %d" TENDSTR, count, empty_count);
 	uffs_PerrorRaw(UFFS_MSG_NORMAL,
 					"--------------------------------------------"  TENDSTR);
 }
