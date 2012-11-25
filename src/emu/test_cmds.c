@@ -458,6 +458,172 @@ fail:
 	return -1;
 }
 
+/*
+ * This verify the bug fixed by commit dede97b1.
+ * The bug caused a clone buf failure and UFFS complain something like "no enough free pages for clone!".
+ */
+static int cmd_t_dede97b1(int argc, char *argv[])
+{
+	// assume:
+	//	total page buf: 40
+	//	page size: 512
+	//  pages per block: 32
+	//  spare size: 16
+	
+#define LEN_A (508 * 30) // 30 pages
+#define LEN_B (508 * 10) // 10 pages
+
+	int fd = -1;
+	URET ret = -1;
+	const int START_A = 508 * 31;			// the second block
+	const int START_B = START_A + 508 * 32; // the third block
+	const char *name;
+	char buf_a[LEN_A];
+	char buf_b[LEN_B];
+
+	uffs_Device *dev;
+	const char *mount = "/";
+
+	if (argc < 2) {
+		return CLI_INVALID_ARG;
+	}
+
+	name = argv[1];
+
+	fd = uffs_open(name, UO_RDWR);
+	if (fd < 0) {
+		MSGLN("Can't open %s", name);
+		goto ext;
+	}
+
+	///
+	/// READ A
+	///
+
+	ret = uffs_seek(fd, START_A, USEEK_SET);
+	if (ret != START_A) {
+		MSGLN("lseek return %d\n", ret);
+		goto ext;
+	}
+
+	sprintf(buf_a, "start test, read %d bytes...", LEN_A);
+	ret = uffs_read(fd, buf_a, LEN_A);
+	if (ret != LEN_A) {
+		MSGLN("read file failed, ret = %d", ret);
+		ret = -1;
+		goto ext;
+	}
+	else {
+		MSGLN("read %d bytes succ.", ret);
+	}
+
+	MSGLN("now print buf status:");
+	dev = uffs_GetDeviceFromMountPoint(mount);
+	if (dev == NULL) {
+		MSGLN("Can't get device from mount point %s", mount);
+		ret = -1;
+		goto ext;
+	}
+	uffs_BufInspect(dev);
+	uffs_PutDevice(dev);
+
+	///
+	/// READ B
+	///
+
+	ret = uffs_seek(fd, START_B, USEEK_SET);
+	if (ret != START_B) {
+		MSGLN("lseek return %d\n", ret);
+		goto ext;
+	}
+
+	sprintf(buf_b, "start test, read %d bytes...", LEN_B);
+	ret = uffs_read(fd, buf_b, LEN_B);
+	if (ret != LEN_B) {
+		MSGLN("read file failed, ret = %d", ret);
+		ret = -1;
+		goto ext;
+	}
+	else {
+		MSGLN("read %d bytes succ.", ret);
+	}
+
+	MSGLN("now print buf status:");
+	dev = uffs_GetDeviceFromMountPoint(mount);
+	if (dev == NULL) {
+		MSGLN("Can't get device from mount point %s", mount);
+		ret = -1;
+		goto ext;
+	}
+	uffs_BufInspect(dev);
+	uffs_PutDevice(dev);
+
+
+	///
+	/// WRITE A
+	///
+
+	ret = uffs_seek(fd, START_A, USEEK_SET);
+	if (ret != START_A) {
+		MSGLN("lseek return %d\n", ret);
+		goto ext;
+	}
+
+	MSGLN("now try write %d bytes...", LEN_A);
+	ret = uffs_write(fd, buf_a, LEN_A);
+	if (ret != LEN_A) {
+		MSGLN("write %d bytes failed, return %d\n", LEN_A, ret);
+		ret = -1;
+		goto ext;
+	}
+
+	MSGLN("now print buf status again:");
+	dev = uffs_GetDeviceFromMountPoint(mount);
+	if (dev == NULL) {
+		MSGLN("Can't get device from mount point %s", mount);
+		ret = -1;
+		goto ext;
+	}
+	uffs_BufInspect(dev);
+	uffs_PutDevice(dev);
+
+	///
+	/// WRITE B
+	///
+
+	ret = uffs_seek(fd, START_B, USEEK_SET);
+	if (ret != START_B) {
+		MSGLN("lseek return %d\n", ret);
+		goto ext;
+	}
+
+	MSGLN("now try write %d bytes...", LEN_B);
+	ret = uffs_write(fd, buf_b, LEN_B);
+	if (ret != LEN_B) {
+		MSGLN("write %d bytes failed, return %d\n", LEN_B, ret);
+		ret = -1;
+		goto ext;
+	}
+
+	MSGLN("now print buf status again:");
+	dev = uffs_GetDeviceFromMountPoint(mount);
+	if (dev == NULL) {
+		MSGLN("Can't get device from mount point %s", mount);
+		ret = -1;
+		goto ext;
+	}
+	uffs_BufInspect(dev);
+	uffs_PutDevice(dev);
+
+	ret = 0;
+	MSGLN("test completed.");
+
+ext:
+	if (fd >= 0)
+		uffs_close(fd);
+
+	return ret;
+}
 
 /* usage: t_pgrw
  *
@@ -1189,6 +1355,8 @@ static const struct cli_command test_cmds[] =
 	{ cmd_dump,					"dump",			"<mount>",			"dump <mount>", },
 
 	{ cmd_apisrv,				"apisrv",		NULL,				"start API test server", },
+
+	{ cmd_t_dede97b1,           "t_dede97b1",	NULL,				"verify bug fixed by commit dede97b1", },
 
     { NULL, NULL, NULL, NULL }
 };
