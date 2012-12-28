@@ -241,14 +241,14 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 {
 	uffs_Tags *tag;
 	TreeNode *node_alt;
-	u16 block, parent, serial, block_alt, block_save;
+	u16 block, parent, serial, block_alt;
 	uffs_BlockInfo *bc_alt;
 	u8 type;
 	int page;
-	UBOOL needToInsertToTree = U_FALSE;
 	uffs_Buf *buf = NULL;
 	uffs_FileInfo *info;
 	u16 data_sum = 0;
+	int ret;
 
 	// check the first page on the block ...
 	uffs_BlockInfoLoad(dev, bc, 0);
@@ -303,39 +303,42 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 				TAG_BLOCK_TS(GET_TAG(bc_alt, 0))) == U_TRUE) {
 
 			//the node is newer than node_alt, so keep node_alt, and erase node
-			uffs_FlashEraseBlock(dev, block);
 			node->u.list.block = block;
-			if (HAVE_BADBLOCK(dev))
-				uffs_BadBlockProcess(dev, node);
-			else
+			ret = uffs_FlashEraseBlock(dev, block);
+			if (UFFS_FLASH_IS_BAD_BLOCK(ret)) {
+				uffs_BadBlockProcessNode(dev, node);	// mark bad block and put in bad block list
+			}
+			else {
 				uffs_TreeInsertToErasedListTail(dev, node);
+			}
 
 			uffs_BlockInfoPut(dev, bc_alt);  //put back bc_alt before we return.
 			return U_SUCC;
 		}
 		else {
 			//the node is older than node_alt, so keep node, and erase node_alt
-			//we use node as erased node to insert to erased list
+			//then re-point node to node_alt.
 
-			block_save = _GetBlockFromNode(type, node_alt);
-			uffs_FlashEraseBlock(dev, block_save);
-			node->u.list.block = block_save;
-			if (HAVE_BADBLOCK(dev))
-				uffs_BadBlockProcess(dev, node);
-			else
+			node->u.list.block = block_alt;
+			ret = uffs_FlashEraseBlock(dev, block_alt);
+
+			if (UFFS_FLASH_IS_BAD_BLOCK(ret)) {
+				uffs_BadBlockProcessNode(dev, node);	// mark bad block and put in bad block list
+			}
+			else {
 				uffs_TreeInsertToErasedListTail(dev, node);
+			}
 
 			//put back bc_alt because we don't need it anymore.
 			uffs_BlockInfoPut(dev, bc_alt);
-			
-			//use node_alt to store new informations in following
+
+			// break from entry list
+			uffs_BreakFromEntry(dev, type, node);
+
+			//now point node to node_alt just reuse the data structure
 			node = node_alt;
 
-			needToInsertToTree = U_FALSE;
 		}
-	}
-	else {
-		needToInsertToTree = U_TRUE;
 	}
 
 	if (type == UFFS_TYPE_DIR || type == UFFS_TYPE_FILE) {
@@ -352,7 +355,15 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 			goto process_invalid_block;
 		}
 		page = uffs_FindBestPageInBlock(dev, bc, page);
-		uffs_FlashReadPage(dev, block, page, buf, U_FALSE);
+		ret = uffs_FlashReadPage(dev, block, page, buf, U_FALSE);
+#ifdef CONFIG_UFFS_REFRESH_BLOCK
+		if (ret == UFFS_FLASH_ECC_OK)
+			uffs_BadBlockAdd(dev, block, UFFS_PENDING_BLK_REFRESH);
+		else
+#endif
+		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+			uffs_BadBlockAdd(dev, block, UFFS_PENDING_BLK_RECOVER);
+
 		info = (uffs_FileInfo *) (buf->data);
 		data_sum = uffs_MakeSum16(info->name, info->name_len);
 		uffs_BufFreeClone(dev, buf);
@@ -383,20 +394,18 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 		break;
 	}
 
-	if (needToInsertToTree == U_TRUE) {
-		uffs_InsertNodeToTree(dev, type, node);
-	}
+	uffs_InsertNodeToTree(dev, type, node);
 
 	return U_SUCC;
 
 process_invalid_block:
 	/* erase the invalid block */
-	uffs_FlashEraseBlock(dev, bc->block);
+	ret = uffs_FlashEraseBlock(dev, bc->block);
 
 	node->u.list.block = bc->block;
 
-	if (HAVE_BADBLOCK(dev))
-		uffs_BadBlockProcess(dev, node);
+	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+		uffs_BadBlockProcessNode(dev, node);
 	else
 		uffs_TreeInsertToErasedListTail(dev, node);
 
@@ -456,7 +465,7 @@ static URET _ScanAndFixUnCleanPage(uffs_Device *dev, uffs_BlockInfo *bc)
 
 static URET _BuildTreeStepOne(uffs_Device *dev)
 {
-	int block_lt;
+	int block;
 	uffs_BlockInfo *bc = NULL;
 	TreeNode *node;
 	struct uffs_TreeSt *tree;
@@ -464,6 +473,7 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 	struct uffs_MiniHeaderSt header;
 	URET ret = U_SUCC;
 	struct BlockTypeStatSt st = {0, 0, 0};
+	int flash_ret;
 	
 	tree = &(dev->tree);
 	pool = TPOOL(dev);
@@ -477,8 +487,8 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 	uffs_Perror(UFFS_MSG_NOISY, "build tree step one");
 
 //	printf("s:%d e:%d\n", dev->par.start, dev->par.end);
-	for (block_lt = dev->par.start; block_lt <= dev->par.end; block_lt++) {
-		bc = uffs_BlockInfoGet(dev, block_lt);
+	for (block = dev->par.start; block <= dev->par.end; block++) {
+		bc = uffs_BlockInfoGet(dev, block);
 		if (bc == NULL) {
 			uffs_Perror(UFFS_MSG_SERIOUS, "step one:fail to get block info");
 			ret = U_FAIL;
@@ -492,32 +502,33 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 		}
 
 		// Need to check bad block at first !
-		if (uffs_FlashIsBadBlock(dev, block_lt) == U_TRUE) {
-			node->u.list.block = block_lt;
+		if (uffs_FlashIsBadBlock(dev, block) == U_TRUE) {
+			node->u.list.block = block;
 			uffs_TreeInsertToBadBlockList(dev, node);
-			uffs_Perror(UFFS_MSG_NORMAL, "found bad block %d", block_lt);
+			uffs_Perror(UFFS_MSG_NORMAL, "found bad block %d", block);
 		}
 		else if (uffs_IsPageErased(dev, bc, 0) == U_TRUE) { //@ read one spare: 0
 			// page 0 tag shows it's an erased block, we need to check the mini header status to make sure it is clean.
-			if (uffs_LoadMiniHeader(dev, block_lt, 0, &header) == U_FAIL) {
+			if (uffs_LoadMiniHeader(dev, block, 0, &header) == U_FAIL) {
 				uffs_Perror(UFFS_MSG_SERIOUS,
 							"I/O error when reading mini header !"
 							"block %d page %d",
-							block_lt, 0);
+							block, 0);
 				ret = U_FAIL;
 				break;
 			}
 
+			flash_ret = UFFS_FLASH_NO_ERR;
 			if (header.status != 0xFF) {
 				// page 0 tag is clean but page data is dirty ???
 				// this block should be erased immediately !
-				uffs_FlashEraseBlock(dev, block_lt);
+				flash_ret = uffs_FlashEraseBlock(dev, block);
 			}
-			node->u.list.block = block_lt;
-			if (HAVE_BADBLOCK(dev)) {
+			node->u.list.block = block;
+			if (UFFS_FLASH_IS_BAD_BLOCK(flash_ret)) {
 				uffs_Perror(UFFS_MSG_NORMAL,
-							"New bad block (%d) discovered.", block_lt);
-				uffs_BadBlockProcess(dev, node);
+							"New bad block (%d) discovered.", block);
+				uffs_BadBlockProcessNode(dev, node);
 			}
 			else {
 				// page 0 is clean does not means all pages in this block are clean,
@@ -967,6 +978,7 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 	struct uffs_TreeSt *tree;
 	uffs_Pool *pool;
 	u16 blockSave;
+	int ret;
 
 	TreeNode *cache = NULL;
 	u16 cacheSerial = INVALID_UFFS_SERIAL;
@@ -1001,9 +1013,9 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 				uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, work);
 				blockSave = work->u.data.block;
 				work->u.list.block = blockSave;
-				uffs_FlashEraseBlock(dev, blockSave);
-				if (HAVE_BADBLOCK(dev))
-					uffs_BadBlockProcess(dev, work);
+				ret = uffs_FlashEraseBlock(dev, blockSave);
+				if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+					uffs_BadBlockProcessNode(dev, work);
 				else
 					uffs_TreeInsertToErasedListTail(dev, work);
 			}
@@ -1054,6 +1066,10 @@ URET uffs_BuildTree(uffs_Device *dev)
 		return ret;
 	}
 	
+	/* process pending bad block */
+	if (HAVE_BADBLOCK(dev))
+		uffs_BadBlockRecover(dev);
+
 	return U_SUCC;
 }
 
@@ -1109,11 +1125,51 @@ TreeNode * uffs_TreeGetErasedNode(uffs_Device *dev)
 		block = node->u.list.block;
 		if (uffs_FlashCheckErasedBlock(dev, block) != U_SUCC) {
 			// Hmm, this block is not fully erased ? erase it immediately.
-			uffs_FlashEraseBlock(dev, block);
+			uffs_TreeEraseNode(dev, node);
 			node->u.list.u.need_check = 0;
 		}
 	}
 	return node;
+}
+
+/**
+ * Erase a flash block and check the bad block.
+ * If the block is 'bad', then swap it with a good block and put the bad block into bad block list.
+ * \return U_SUCC if success, U_FAIL if no good block available or other error.
+ */
+URET uffs_TreeEraseNode(uffs_Device *dev, TreeNode *node)
+{
+	int ret;
+	TreeNode *newNode;
+	int block;
+
+	block = node->u.list.block;
+	node->u.list.u.need_check = 0;   // we are going to erase the block anyway ...
+
+	// this block is about to be erased, so remove it from pending list if it's added before
+	uffs_BadBlockPendingRemove(dev, block);
+
+	ret = uffs_FlashEraseBlock(dev, block);
+
+	if (UFFS_FLASH_IS_BAD_BLOCK(ret)) {
+		newNode = uffs_TreeGetErasedNode(dev);
+		if (newNode) {
+			// now swap the newNode(good) and node(bad)
+			block = newNode->u.list.block;
+			newNode->u.list.block = node->u.list.block;
+			node->u.list.block = block;
+			node->u.list.u.need_check = 0;
+
+			// insert newNode(with old block number) into bad block list
+			uffs_TreeInsertToBadBlockList(dev, newNode);
+		}
+
+		return newNode ? U_SUCC : U_FAIL;
+	}
+	else {
+		// other errors ?
+		return UFFS_FLASH_HAVE_ERR(ret) ? U_FAIL : U_SUCC;
+	}
 }
 
 static void _InsertToEntry(uffs_Device *dev, u16 *entry,

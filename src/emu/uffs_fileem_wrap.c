@@ -68,12 +68,13 @@ struct uffs_FileEmuBitFlip {
 /* simulating bit flip */
 #define FILEEMU_WRITE_BIT_FLIP \
 	{ \
-		{20, 2, 10, 1 << 4},	/* block 20, page 2, offset 10, bit 4 */	\
-		{24, 4, -3, 1 << 2},	/* block 24, page 4, spare offset 3, bit 2*/ \
-		{60, 1, 5, 1 << 3},		/* block 60, page 1, offset 5, bit 3 */ \
-		{66, 1, 15, 1 << 7},	/* block 66, page 1, offset 300, bit 7 */ \
-		{80, 2, 2, 1 << 1},		/* block 80, page 2, offset 2, bit 1 */ \
-		{88, 2, 100, 1 << 5},	/* block 88, page 2, offset 100, bit 5 */ \
+		{20, 2, 10, 1 << 4},		/* block 20, page 2, offset 10, bit 4 */	\
+		{24, 4, -3, 1 << 2},		/* block 24, page 4, spare offset 3, bit 2 */ \
+		{60, 1, 5, 1 << 3 | 1 << 5 },/* block 60, page 1, offset 5, bit 3,5 */ \
+		{66, 1, 15, 1 << 7},		/* block 66, page 1, offset 300, bit 7 */ \
+		{70, 3, -4, 1 << 2 | 1 << 6 },/* block 70, page 3, spare offset 4, bit 2,6 */ \
+		{80, 2, 2, 1 << 1 | 1 << 7 },/* block 80, page 2, offset 2, bit 1,7 */ \
+		{88, 2, 100, 1 << 5},		/* block 88, page 2, offset 100, bit 5 */ \
 	}
 
 
@@ -220,7 +221,7 @@ static void InjectBitFlip(uffs_Device *dev, u32 block, u32 page)
 				printf(" --- Inject spare bit flip at block%d, page%d, offset%d, mask%d --- \n", block, page, -x->offset, x->mask);
 				p = (u8 *)(spare - x->offset);
 			}
-			*p = (*p & ~x->mask) | (~(*p & x->mask) & x->mask);
+			*p ^= x->mask;
 		}
 	}
 

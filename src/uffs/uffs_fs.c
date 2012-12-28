@@ -1535,12 +1535,10 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 
 				if (run_opt == eREAL_RUN) {
 					uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, node);
-					uffs_FlashEraseBlock(dev, bc->block);
+
 					node->u.list.block = bc->block;
-					if (HAVE_BADBLOCK(dev))
-						uffs_BadBlockProcess(dev, node);
-					else
-						uffs_TreeInsertToErasedListTail(dev, node);
+					uffs_TreeEraseNode(dev, node);
+					uffs_TreeInsertToErasedListTail(dev, node);
 
 					fnode->u.file.len = block_start;
 				}
@@ -1719,22 +1717,14 @@ URET uffs_DeleteObject(const char * name, int *err)
 	last_serial = (obj->type == UFFS_TYPE_FILE && node->u.file.len > 0 ? GetFdnByOfs(obj, node->u.file.len - 1) : 0);
 
 	uffs_BreakFromEntry(dev, obj->type, node);
-	uffs_FlashEraseBlock(dev, block);
 	node->u.list.block = block;
-	node->u.list.u.serial = obj->serial;
+	uffs_TreeEraseNode(dev, node);
 
 	// From now on, the object is gone physically,
 	// but we need to 'suspend' this node so that no one will re-use
-	// the serial number during deleting the reset part of object.
-
-	if (HAVE_BADBLOCK(dev)) {
-		uffs_BadBlockProcessSuspend(dev, node);
-		bad = U_TRUE;  // will be put into 'bad' list later
-	}
-	else {
-		uffs_TreeSuspendAdd(dev, node);
-		bad = U_FALSE;	// will be put into erased list later
-	}
+	// the serial number during deleting the rest part of object.
+	node->u.list.u.serial = obj->serial;
+	uffs_TreeSuspendAdd(dev, node);
 
 	// now erase DATA blocks
 	if (obj->type == UFFS_TYPE_FILE && last_serial > 0) {
@@ -1748,22 +1738,16 @@ URET uffs_DeleteObject(const char * name, int *err)
 			if (uffs_Assert(d_node != NULL, "Can't find DATA node parent = %d, serial = %d\n", parent, serial)) {
 				uffs_BreakFromEntry(dev, UFFS_TYPE_DATA, d_node);
 				block = d_node->u.data.block;
-				uffs_FlashEraseBlock(dev, block);
 				d_node->u.list.block = block;
-				if (HAVE_BADBLOCK(dev))
-					uffs_BadBlockProcess(dev, d_node);
-				else
-					uffs_TreeInsertToErasedListTail(dev, d_node);
+				uffs_TreeEraseNode(dev, d_node);
+				uffs_TreeInsertToErasedListTail(dev, d_node);
 			}
 		}
 	}
 	
 	// now process the suspend node
 	uffs_TreeRemoveSuspendNode(dev, node);
-	if (bad)
-		uffs_TreeInsertToBadBlockList(dev, node);
-	else
-		uffs_TreeInsertToErasedListTail(dev, node);
+	uffs_TreeInsertToErasedListTail(dev, node);
 
 	ret = U_SUCC;
 

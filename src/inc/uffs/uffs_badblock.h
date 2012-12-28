@@ -47,25 +47,26 @@ extern "C"{
 #endif
 
 
-#define HAVE_BADBLOCK(dev) (dev->bad.block != UFFS_INVALID_BLOCK)
+#define HAVE_BADBLOCK(dev) (dev->pending.count > 0)
 
 /** initialize bad block management data structures for uffs device */
 void uffs_BadBlockInit(uffs_Device *dev);
 
 /** processing bad block: erase bad block,
 	mark it as 'bad' and put it to bad block list */
-void uffs_BadBlockProcess(uffs_Device *dev, TreeNode *node);
-
-/** processing bad block: erase bad block,
-	mark it as 'bad' and put it to suspend block list */
-void uffs_BadBlockProcessSuspend(uffs_Device *dev, TreeNode *node);
+void uffs_BadBlockProcessNode(uffs_Device *dev, TreeNode *node);
 
 /** try to recover data from a new discovered bad block */
 void uffs_BadBlockRecover(uffs_Device *dev);
 
 /** put a new block to the bad block waiting list */
-void uffs_BadBlockAdd(uffs_Device *dev, int block);
+void uffs_BadBlockAdd(uffs_Device *dev, int block, u8 mark);
 
+/** Check if a block is in bad block pending list */
+UBOOL uffs_BadBlockPendingCheck(uffs_Device *dev, int block);
+
+/** Remove block from pending list */
+URET uffs_BadBlockPendingRemove(uffs_Device *dev, int block);
 
 #ifdef __cplusplus
 }

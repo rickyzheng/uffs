@@ -161,12 +161,6 @@ uffs_Buf * uffs_BufClone(struct uffs_DeviceSt *dev, uffs_Buf *buf);
 /** release a cloned page buffer, call in pair with #uffs_BufClone */
 URET uffs_BufFreeClone(uffs_Device *dev, uffs_Buf *buf);
 
-/** load physical storage data to page buffer */
-URET uffs_BufLoadPhyData(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page);
-
-/** load physical storage data to page buffer withouth checking ECC */
-URET uffs_LoadPhyDataToBufEccUnCare(uffs_Device *dev, uffs_Buf *buf, u32 block, u32 page);
-
 /** showing page buffers info, for debug only */
 void uffs_BufInspect(uffs_Device *dev);
 

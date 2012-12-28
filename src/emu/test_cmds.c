@@ -46,6 +46,7 @@
 #include "uffs/uffs_mtb.h"
 #include "uffs/uffs_find.h"
 #include "uffs/uffs_badblock.h"
+#include "uffs/uffs_tree.h"
 #include "cmdline.h"
 #include "api_test.h"
 
@@ -731,11 +732,8 @@ static int cmd_TestPageReadWrite(int argc, char *argv[])
 
 ext:
 	if (node) {
-		uffs_FlashEraseBlock(dev, node->u.list.block);
-		if (HAVE_BADBLOCK(dev))
-			uffs_BadBlockProcess(dev, node);
-		else
-			uffs_TreeInsertToErasedListTail(dev, node);
+		uffs_TreeEraseNode(dev, node);
+		uffs_TreeInsertToErasedListTail(dev, node);
 	}
 
 	if (dev)

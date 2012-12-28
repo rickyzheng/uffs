@@ -60,6 +60,12 @@ extern "C"{
 #endif
 
 /** 
+ * \def CONFIG_UFFS_DBG_SHOW_LINE_NUM
+ * \brief show function and line number in debug message
+ */
+#define CONFIG_UFFS_DBG_SHOW_LINE_NUM
+
+/** 
  * \def MAX_FILENAME_LENGTH 
  * \note Be careful: it's part of the physical format (see: uffs_FileInfoSt.name)
  *    !!DO NOT CHANGE IT AFTER FILE SYSTEM IS FORMATED!!
@@ -188,7 +194,7 @@ struct uffs_DebugMsgOutputSt;
 URET uffs_InitDebugMessageOutput(struct uffs_DebugMsgOutputSt *ops, int msg_level);
 void uffs_DebugSetMessageLevel(int msg_level);
 
-void uffs_DebugMessage(int level, const char *prefix, const char *suffix, const char *errFmt, ...);
+void uffs_DebugMessage(int level, const char *prefix, const char *suffix, int line, const char *errFmt, ...);
 void uffs_AssertCall(const char *file, int line, const char *msg, ...);
 
 #ifdef _COMPILER_DO_NOT_SUPPORT_MACRO_VALIST_REPLACE_
@@ -199,10 +205,10 @@ UBOOL uffs_Assert(UBOOL expr, const char *fmt, ...);
 #else
 
 #define uffs_Perror(level, fmt, ... ) \
-	uffs_DebugMessage(level, PFX, TENDSTR, fmt, ## __VA_ARGS__)
+	uffs_DebugMessage(level, PFX, TENDSTR, __LINE__, fmt, ## __VA_ARGS__)
 
 #define uffs_PerrorRaw(level, fmt, ... ) \
-	uffs_DebugMessage(level, NULL, NULL, fmt, ## __VA_ARGS__)
+	uffs_DebugMessage(level, NULL, NULL, -1, fmt, ## __VA_ARGS__)
 
 #define uffs_Assert(expr, msg, ...) \
 	((expr) ? U_TRUE : (uffs_AssertCall(__FILE__, __LINE__, msg, ## __VA_ARGS__), U_FALSE))

@@ -43,6 +43,7 @@
 #include "uffs/uffs_fd.h"
 #include "uffs/uffs_utils.h"
 #include "uffs/uffs_fs.h"
+#include "uffs/uffs_badblock.h"
 #include <string.h>
 
 #define PFX "mtb : "
@@ -233,6 +234,9 @@ int uffs_UnMount(const char *mount)
 		uffs_Perror(UFFS_MSG_NOISY,	"'%s' already unmounted ?", mount);
 		return -1;  // already unmounted ?
 	}
+
+	if (HAVE_BADBLOCK(mtb->dev))
+		uffs_BadBlockRecover(mtb->dev);
 
 	if (mtb->dev->ref_count != 0) {
 		uffs_Perror(UFFS_MSG_NORMAL, "Can't unmount '%s' - busy", mount);

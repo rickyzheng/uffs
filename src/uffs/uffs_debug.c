@@ -92,14 +92,23 @@ void uffs_DebugSetMessageLevel(int msg_level)
  * \brief The main debug message output function
  */
 void uffs_DebugMessage(int level, const char *prefix,
-					   const char *suffix, const char *errFmt, ...)
+					   const char *suffix, int line, const char *errFmt, ...)
 {
 	va_list arg;
+#ifdef CONFIG_UFFS_DBG_SHOW_LINE_NUM
+	char buf[16];
+#endif
 
 	if (m_ops && level >= m_msg_level) {
 		if (prefix)
 			m_ops->output(prefix);
 
+#ifdef CONFIG_UFFS_DBG_SHOW_LINE_NUM
+		if (line > 0) {
+			sprintf(buf, "@%d - ", line);
+			m_ops->output(buf);
+		}
+#endif
 		va_start(arg, errFmt);
 		m_ops->vprintf(errFmt, arg);
 		va_end(arg);

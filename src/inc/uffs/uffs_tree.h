@@ -66,14 +66,14 @@ struct BlockListSt {	/* 12 bytes */
 	struct uffs_TreeNodeSt * prev;
 	u16 block;
 	union {
-		u16 serial;    /* for suspended block list */
-		u8 need_check; /* for erased block list */
+		u16 serial;			/* for suspended block list */
+		u8 need_check;		/* for erased block list */
 	} u;
 };
 
 struct DirhSt {		/* 8 bytes */
-	u16 checksum;	/* check sum of dir name */
 	u16 block;
+	u16 checksum;	/* check sum of dir name */
 	u16 parent;
 	u16 serial;
 };
@@ -168,10 +168,13 @@ typedef struct uffs_TreeNodeSt {
 struct uffs_TreeSt {
 	TreeNode *erased;					//!< erased block list head
 	TreeNode *erased_tail;				//!< erased block list tail
-	TreeNode *suspend;					//!< suspended block list
 	int erased_count;					//!< erased block counter
+
+	TreeNode *suspend;					//!< suspended block list, this is just a staging zone
+										//   that prevent the serial number of the block be re-used.
 	TreeNode *bad;						//!< bad block list
-	int bad_count;						//!< bad block count
+	int bad_count;						//!< bad block counter
+
 	u16 dir_entry[DIR_NODE_ENTRY_LEN];
 	u16 file_entry[FILE_NODE_ENTRY_LEN];
 	u16 data_entry[DATA_NODE_ENTRY_LEN];
@@ -214,6 +217,7 @@ TreeNode * uffs_TreeFindNodeByBlock(uffs_Device *dev, u16 block, int *region);
 UBOOL uffs_TreeCompareFileName(uffs_Device *dev, const char *name, u32 len, u16 sum, TreeNode *node, int type);
 
 TreeNode * uffs_TreeGetErasedNode(uffs_Device *dev);
+URET uffs_TreeEraseNode(uffs_Device *dev, TreeNode *node);
 
 void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node);
 void uffs_InsertToErasedListHead(uffs_Device *dev, TreeNode *node);

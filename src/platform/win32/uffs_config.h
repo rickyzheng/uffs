@@ -86,6 +86,16 @@
 
 
 /**
+ * \def CONFIG_MAX_PENDING_BLOCKS
+ * \note When a new bad block or ECC error is discovered during reading flash,
+ *       the block will be put in a 'pending' list and will be processed later.
+ *       This config the maximum pending blocks before being processed, 4 should
+ *       be enough.
+ */
+#define CONFIG_MAX_PENDING_BLOCKS	4
+
+
+/**
  * \def MAX_DIRTY_PAGES_IN_A_BLOCK 
  * \note this value should be between '2' and the lesser of
  *		 'max pages per block' and (MAX_PAGE_BUFFERS - CLONE_BUFFERS_THRESHOLD - 1).
@@ -142,7 +152,7 @@
  *       each 'write' call if you enable this option.
  *       (which means lesser data lost when power failure but
  *		 poorer writing performance).
- *		 It's not recommended to open this define for normal applications.
+ *		 It's not recommended to enable this for normal applications.
  */
 //#define CONFIG_FLUSH_BUF_AFTER_WRITE
 
@@ -179,46 +189,60 @@
 /**
  * \def CONFIG_CHANGE_MODIFY_TIME
  * \note If defined, closing a file which is opened for writing/appending will
- *       update the file's modify time as well. Disable this feature will save a
- *       lot of writing activities if you frequently open files for write and close it.
+ *       update the file's modify time as well.
+ *       It's not recommended to enable this for most application.
  */
 //#define CONFIG_CHANGE_MODIFY_TIME
 
 
 /**
  * \def CONFIG_ENABLE_BAD_BLOCK_VERIFY
- * \note allow erase and verify block marked as 'bad' when format UFFS partition.
- *		it's not recommended for most NAND flash.
+ * \note Allow erase and verify block marked as 'bad' when format UFFS partition.
+ *		It's not recommended for most NAND flash.
  */
-#define CONFIG_ENABLE_BAD_BLOCK_VERIFY
+//#define CONFIG_ENABLE_BAD_BLOCK_VERIFY
 
 /**
  * \def CONFIG_ERASE_BLOCK_BEFORE_MARK_BAD
- * \note erase block again before mark bad block
+ * \note Erase block before mark bad block.
+ *       This is required if a dedicated 'MarkBadBlock' not provided by flash driver.
  */
-//#define CONFIG_ERASE_BLOCK_BEFORE_MARK_BAD
+#define CONFIG_ERASE_BLOCK_BEFORE_MARK_BAD
 
 /**
  * \def CONFIG_PAGE_WRITE_VERIFY
  * \note verify page data after write, for extra safe data storage.
+ *      It's recommented to enable if you are using MLC NAND or low quality NAND flash chip.
  */
 #define CONFIG_PAGE_WRITE_VERIFY
 
 /**
  * \def CONFIG_BAD_BLOCK_POLICY_STRICT
- * \note If this is enabled, UFFS will report the block as 'bad' if any bit-flips found;
+ * \note If this config is enabled, UFFS will report the block as 'bad' if any bit-flips found;
  *       otherwise, UFFS report bad block only when ECC failed or reported
  *		 by low level flash driver.
  *
  * \note Enable this will ensure your data always be stored on completely good blocks.
+ *       Probably should not enable this for most NAND flash.
  */
-#define CONFIG_BAD_BLOCK_POLICY_STRICT
+//#define CONFIG_BAD_BLOCK_POLICY_STRICT
+
+
+/**
+ * \def CONFIG_UFFS_REFRESH_BLOCK
+ * \note If this config is enabled, when bit flip(s) detected and corrected by ECC, UFFS will copy block data
+ *       to a new flash block and erase the old block (not mark it as 'bad').
+ *
+ * \note CONFIG_BAD_BLOCK_POLICY_STRICT should be disabled if this config is choosen.
+ */
+#define CONFIG_UFFS_REFRESH_BLOCK
 
 
 /**
  * \def CONFIG_ENABLE_PAGE_DATA_CRC
  * \note If this is enabled, UFFS save page data CRC16 sum in mini header,
  *       it provides extra protection for data integrity.
+ *		 Enable this if your CPU has enough processing power.
  */
 //#define CONFIG_ENABLE_PAGE_DATA_CRC
 
@@ -304,6 +328,15 @@
 #if (MAX_OBJECT_HANDLE > (1 << FD_SIGNATURE_SHIFT))
 #error "Please increase FD_SIGNATURE_SHIFT !"
 #endif
+
+#if CONFIG_MAX_PENDING_BLOCKS < 2
+#error "Please increase CONFIG_MAX_PENDING_BLOCKS, normally 4"
+#endif
+
+#if defined(CONFIG_BAD_BLOCK_POLICY_STRICT) && defined(CONFIG_UFFS_REFRESH_BLOCK)
+#error "CONFIG_UFFS_REFRESH_BLOCK conflict with CONFIG_BAD_BLOCK_POLICY_STRICT !"
+#endif
+
 
 #ifdef WIN32
 # pragma warning(disable : 4996)

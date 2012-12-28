@@ -193,8 +193,9 @@ static void _ForceFormatAndCheckBlock(uffs_Device *dev, int block)
 	bad = U_FALSE;
 
 bad_out:
-	if (bad == U_TRUE)
+	if (bad == U_TRUE) {
 		uffs_FlashMarkBadBlock(dev, block);
+	}
 ext:
 	if (buf)
 		uffs_BufFreeClone(dev, buf);
@@ -270,7 +271,7 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 		if (uffs_FlashIsBadBlock(dev, i) == U_FALSE) {
 			uffs_FlashEraseBlock(dev, i);
 			if (HAVE_BADBLOCK(dev))
-				uffs_BadBlockProcess(dev, NULL);
+				uffs_BadBlockProcessNode(dev, NULL);
 		}
 		else {
 #ifdef CONFIG_ENABLE_BAD_BLOCK_VERIFY
