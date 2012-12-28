@@ -46,6 +46,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
+#include "uffs_config.h"
 #include "uffs/uffs_os.h"
 #include "uffs/uffs_public.h"
 #include "uffs/uffs_fs.h"

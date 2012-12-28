@@ -39,6 +39,7 @@
 #ifndef UFFS_DEVICE_H
 #define UFFS_DEVICE_H
 
+#include "uffs_config.h"
 #include "uffs/uffs_types.h"
 #include "uffs/uffs_buf.h"
 #include "uffs/uffs_blockinfo.h"

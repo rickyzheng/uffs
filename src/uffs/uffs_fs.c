@@ -1647,7 +1647,6 @@ URET uffs_DeleteObject(const char * name, int *err)
 	uffs_Device *dev = NULL;
 	u16 block;
 	u16 serial, parent, last_serial;
-	UBOOL bad = U_FALSE;
 	URET ret = U_FAIL;
 
 	obj = uffs_GetObject();

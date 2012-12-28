@@ -26,6 +26,14 @@ SET (libapitest_sqlite3_SRCS
 		os_uffs.h
 	)
 
+IF (UNIX)
+INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/platform/posix)
+ENDIF()
+
+IF (WIN32)
+INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/platform/win32)
+ENDIF()
+
 INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/inc)
 ADD_LIBRARY(apitest_server STATIC ${libapitest_server_SRCS})
 ADD_LIBRARY(apitest_client STATIC ${libapitest_client_SRCS})
