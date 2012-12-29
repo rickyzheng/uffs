@@ -1146,9 +1146,6 @@ URET uffs_TreeEraseNode(uffs_Device *dev, TreeNode *node)
 	block = node->u.list.block;
 	node->u.list.u.need_check = 0;   // we are going to erase the block anyway ...
 
-	// this block is about to be erased, so remove it from pending list if it's added before
-	uffs_BadBlockPendingRemove(dev, block);
-
 	ret = uffs_FlashEraseBlock(dev, block);
 
 	if (UFFS_FLASH_IS_BAD_BLOCK(ret)) {

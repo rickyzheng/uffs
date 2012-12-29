@@ -829,6 +829,9 @@ URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block)
 
 	uffs_Perror(UFFS_MSG_NORMAL, "Mark bad block: %d", block);
 
+	// Remove it from pending list if it's in there
+	uffs_BadBlockPendingRemove(dev, block);
+
 	bc = uffs_BlockInfoGet(dev, block);
 	if (bc) {
 		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);	// expire this block, just in case it's been cached before
@@ -900,6 +903,9 @@ int uffs_FlashEraseBlock(uffs_Device *dev, int block)
 {
 	int ret;
 	uffs_BlockInfo *bc;
+
+	// this block is about to be erased, so remove it from pending list if it's added before
+	uffs_BadBlockPendingRemove(dev, block);
 
 	ret = dev->ops->EraseBlock(dev, block);
 
