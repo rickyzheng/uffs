@@ -333,7 +333,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 			uffs_BlockInfoPut(dev, bc_alt);
 
 			// break from entry list
-			uffs_BreakFromEntry(dev, type, node);
+			uffs_BreakFromEntry(dev, type, node_alt);
 
 			//now point node to node_alt just reuse the data structure
 			node = node_alt;
