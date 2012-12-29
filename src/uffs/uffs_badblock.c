@@ -61,9 +61,6 @@ void uffs_BadBlockProcessNode(uffs_Device *dev, TreeNode *node)
 	// mark the bad block
 	if (node) {
 
-		// Remove it from pending list if it's in there
-		uffs_BadBlockPendingRemove(dev, node->u.list.block);
-
 		// mark bad block.
 		uffs_FlashMarkBadBlock(dev, node->u.list.block);
 
@@ -99,7 +96,7 @@ static void process_pending_recover(uffs_Device *dev, uffs_PendingBlock *s)
 	bad = uffs_TreeFindNodeByBlock(dev, s->block, &region);
 	if (bad == NULL) {
 		uffs_Perror(UFFS_MSG_SERIOUS,
-					"can't find the reported bad block(%d) in the tree???",
+					"can't find the reported bad block(%d) in the tree ? probably already been processed.",
 					s->block);
 		uffs_BlockInfoPut(dev, bc);
 		return;
@@ -271,7 +268,10 @@ void uffs_BadBlockAdd(uffs_Device *dev, int block, u8 mark)
 	// check if the block already in pending list
 	for (i = 0; i < dev->pending.count; i++) {
 		s = &dev->pending.list[i];
-		if (s->block == block) {
+		if (s->block == block &&
+			s->mark != mark &&
+			mark == UFFS_PENDING_BLK_RECOVER)	// RECOVER would overwrite REFRESH, but not vice versa.
+		{	
 			s->mark = mark;
 			uffs_Perror(UFFS_MSG_NOISY, "Change pending block %d - %s",
 							block, mark == UFFS_PENDING_BLK_RECOVER ? "Recover" : "Refresh");
