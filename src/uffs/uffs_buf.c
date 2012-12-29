@@ -606,10 +606,10 @@ static URET uffs_BufFlush_Exist_With_BlockRecover(
 	uffs_BlockInfo *newBc;
 	uffs_Tags *tag, *oldTag;
 	u16 newBlock;
-	UBOOL succRecover;			//U_TRUE: recover successful, erase old block,
-								//U_FALSE: fail to recover, erase new block
-	int flash_op_new;
-	int flash_op_old;
+	UBOOL succRecover;			// U_TRUE: recover successful, erase old block,
+								// U_FALSE: fail to recover, erase new block
+	int flash_op_new;			// flash operation (write) result for new block
+	int flash_op_old;			// flash operation (read) result for old block
 	u16 data_sum = 0xFFFF;
 
 	UBOOL useCloneBuf;
@@ -702,10 +702,6 @@ retry:
 			else {
 				flash_op_new = uffs_FlashWritePageCombine(dev, newBlock, i, buf, tag);
 			}
-
-			// stop if have error or a bad block
-			if (UFFS_FLASH_HAVE_ERR(flash_op_new) || UFFS_FLASH_IS_BAD_BLOCK(flash_op_new))
-				break;
 		}
 		else {
 			page = uffs_FindPageInBlockWithPageId(dev, bc, i);
@@ -789,11 +785,19 @@ retry:
 				else
 					uffs_BufPut(dev, buf);
 			}
-
-			// stop if have error or a bad block
-			if (UFFS_FLASH_HAVE_ERR(flash_op_new) || UFFS_FLASH_IS_BAD_BLOCK(flash_op_new))
-				break;
 		}
+
+		// stop if new block write op has error or bad block
+		if (UFFS_FLASH_HAVE_ERR(flash_op_new) || UFFS_FLASH_IS_BAD_BLOCK(flash_op_new))
+			break;
+
+#ifdef CONFIG_UFFS_REFRESH_BLOCK
+		if (flash_op_new == UFFS_FLASH_ECC_OK) {
+			// new block has bit flip and corrected by ECC ? break now (will retry)
+			break;
+		}
+#endif
+
 	} //end of for
 
 	if (i == dev->attr->pages_per_block)
@@ -830,7 +834,7 @@ retry:
 
 #ifdef CONFIG_UFFS_REFRESH_BLOCK
 	if (flash_op_new == UFFS_FLASH_ECC_OK) {
-		// need refresh ? erase and retry.
+		// need refresh ? there is no valid data at this point so just erase and retry.
 		uffs_TreeEraseNode(dev, newNode);				// erase the block
 		uffs_TreeInsertToErasedListTail(dev, newNode);	// and put it to erased list
 		uffs_BlockInfoPut(dev, newBc);
