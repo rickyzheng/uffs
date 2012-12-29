@@ -386,6 +386,7 @@ int uffs_FlashReadPageTag(uffs_Device *dev,
 	uffs_FlashOps *ops = dev->ops;
 	u8 * spare_buf;
 	int ret = UFFS_FLASH_UNKNOWN_ERR;
+	int ret_tmp;
 
 	spare_buf = (u8 *) uffs_PoolGet(SPOOL(dev));
 	if (spare_buf == NULL)
@@ -418,47 +419,33 @@ int uffs_FlashReadPageTag(uffs_Device *dev,
 		if (!TAG_IS_SEALED(tag))	// not sealed ? don't try tag ECC correction
 			goto ext;
 
-		if (!TAG_IS_VALID(tag)) {
-			if (dev->attr->ecc_opt != UFFS_ECC_NONE) {
-				/*
-				 * There could be a special case if:
-				 *  a) tag is sealed (so we are here), and
-				 *  b) s.valid == 1 and this bit is a 'bad' bit, and
-				 *  c) after tag ECC (corrected by tag ECC) s.valid == 0.
-				 *
-				 * So we need to try tag ECC (don't treat it as bad block if ECC failed)
-				 */
-
-				struct uffs_TagStoreSt s;
-
-				memcpy(&s, &tag->s, sizeof(s));
-				ret = TagEccCorrect(&s);
-				ret = (ret < 0 ? UFFS_FLASH_ECC_FAIL :
-					(ret > 0 ? UFFS_FLASH_ECC_OK : UFFS_FLASH_NO_ERR));
-
-				if (ret == UFFS_FLASH_ECC_FAIL || !TAG_IS_VALID(tag))	{ // can not corrected by ECC or tag still not valid
-					goto ext;
-				}
-			}
-			else {
-				goto ext;
-			}				
-		}
-
 		// do tag ecc correction
 		if (dev->attr->ecc_opt != UFFS_ECC_NONE) {
-			ret = TagEccCorrect(&tag->s);
-			ret = (ret < 0 ? UFFS_FLASH_ECC_FAIL :
-					(ret > 0 ? UFFS_FLASH_ECC_OK : UFFS_FLASH_NO_ERR));
+			ret_tmp = TagEccCorrect(&tag->s);
+			ret_tmp = (ret_tmp < 0 ? UFFS_FLASH_ECC_FAIL :
+					(ret_tmp > 0 ? UFFS_FLASH_ECC_OK : UFFS_FLASH_NO_ERR));
 
-			if (UFFS_FLASH_HAVE_ERR(ret))
-				goto ext;
+			if (UFFS_FLASH_HAVE_ERR(ret_tmp) || ret_tmp == UFFS_FLASH_ECC_OK) {
+				// overwrite ret with ret_tmp only when tag ECC failed or corrected bit flip(s),
+				// so that if flash driver has the capability of ECC, the result will propagete to upper level.
+				ret = ret_tmp;
+			}
 		}
 	}
 
 ext:
 	if (spare_buf)
 		uffs_PoolPut(SPOOL(dev), spare_buf);
+
+	if (UFFS_FLASH_IS_BAD_BLOCK(ret)) {
+		uffs_Perror(UFFS_MSG_NORMAL, "new bad block %d found while reading page %d tag", block, page);
+	}
+	else if (ret == UFFS_FLASH_ECC_OK) {
+		uffs_Perror(UFFS_MSG_NOISY, "block %d page %d tag has bit flip and corrected by ECC", block, page);
+	}
+	else if (UFFS_FLASH_HAVE_ERR(ret)) {
+		uffs_Perror(UFFS_MSG_NORMAL, "read block %d page %d tag failed, error = %d", block, page, ret);
+	}
 
 	return ret;
 }
