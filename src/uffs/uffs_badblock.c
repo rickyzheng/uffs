@@ -112,6 +112,9 @@ retry:
 	goodBlockIsDirty = U_FALSE;
 	succRecov = U_TRUE;
 
+	// check if the new block block info cache being loaded before ...
+	newBc = uffs_BlockInfoFindInCache(dev, good->u.list.block);
+
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		page = uffs_FindPageInBlockWithPageId(dev, bc, i);
 		if (page == UFFS_INVALID_PAGE) {
@@ -164,25 +167,24 @@ retry:
 		buf->page_id = TAG_PAGE_ID(tag);
 		
 		// if good block info already been loaded then use it, otherwise use local tag
-		newBc = uffs_BlockInfoFindInCache(dev, good->u.list.block);
 		if (newBc) {
 			newTag = GET_TAG(newBc, i);
 		}
 		else {
 			newTag = &local_tag;
 		}
-		
+
 		// new tag copied from old tag, and increase time-stamp.
 		*newTag = *tag;
 		TAG_BLOCK_TS(newTag) = uffs_GetNextBlockTimeStamp(TAG_BLOCK_TS(tag));
 
 		ret = uffs_FlashWritePageCombine(dev, good->u.list.block, i, buf, newTag);
 
-		// put back block info cache
-		if (newBc)
-			uffs_BlockInfoPut(dev, newBc);
-
 		if (UFFS_FLASH_IS_BAD_BLOCK(ret)) {
+			// put back block info cache before retry
+			if (newBc)
+				uffs_BlockInfoPut(dev, newBc);
+
 			// we have a new bad block ? mark it and retry.
 			uffs_Perror(UFFS_MSG_NOISY, "A new bad block is discovered during bad block recover ...");
 			uffs_BadBlockProcessNode(dev, good);
@@ -198,6 +200,10 @@ retry:
 			break;
 		}
 	}
+
+	// put back block info cache
+	if (newBc)
+		uffs_BlockInfoPut(dev, newBc);
 
 	if (succRecov == U_TRUE) {
 		// successful recover bad block, so need to mark bad block,
