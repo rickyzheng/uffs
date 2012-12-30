@@ -58,9 +58,7 @@ void uffs_BadBlockInit(uffs_Device *dev)
  */
 void uffs_BadBlockProcessNode(uffs_Device *dev, TreeNode *node)
 {
-	// mark the bad block
 	if (node) {
-
 		// mark bad block.
 		uffs_FlashMarkBadBlock(dev, node->u.list.block);
 
@@ -76,9 +74,9 @@ static void process_pending_recover(uffs_Device *dev, uffs_PendingBlock *s)
 	uffs_Buf *buf;
 	u16 i;
 	u16 page;
-	uffs_BlockInfo *bc = NULL;
-	uffs_Tags *tag;
-	uffs_Tags newTag;
+	uffs_BlockInfo *bc = NULL, *newBc = NULL;
+	uffs_Tags *tag, *newTag;
+	uffs_Tags local_tag;
 	UBOOL succRecov;
 	UBOOL goodBlockIsDirty;
 	int ret;
@@ -133,11 +131,12 @@ retry:
 			break;
 		}
 
-		//NOTE: Since we are trying to recover data from a 'bad' block, we can't guarantee the data is ECC ok.
-		//		If data is corrupted we can't do anything about it ...
 		ret = uffs_FlashReadPage(dev, bc->block, page, buf, U_FALSE);
+
 		if (UFFS_FLASH_HAVE_ERR(ret)) {
 			if (UFFS_FLASH_IS_BAD_BLOCK(ret)) {
+				//NOTE: Since we are trying to recover data from a 'bad' block, we can't guarantee the data is ECC ok.
+				//		If data is corrupted we can't do anything about it ...
 				uffs_Perror(UFFS_MSG_NORMAL,
 							"Read block %d page %d, return bad block or ECC failure, data corrupted!",
 							bc->block, page);
@@ -164,11 +163,25 @@ retry:
 		buf->type = TAG_TYPE(tag);
 		buf->page_id = TAG_PAGE_ID(tag);
 		
+		// if good block info already been loaded then use it, otherwise use local tag
+		newBc = uffs_BlockInfoFindInCache(dev, good->u.list.block);
+		if (newBc) {
+			newTag = GET_TAG(newBc, i);
+		}
+		else {
+			newTag = &local_tag;
+		}
+		
 		// new tag copied from old tag, and increase time-stamp.
-		newTag = *tag;
-		TAG_BLOCK_TS(&newTag) = uffs_GetNextBlockTimeStamp(TAG_BLOCK_TS(tag));
+		*newTag = *tag;
+		TAG_BLOCK_TS(newTag) = uffs_GetNextBlockTimeStamp(TAG_BLOCK_TS(tag));
 
-		ret = uffs_FlashWritePageCombine(dev, good->u.list.block, i, buf, &newTag);
+		ret = uffs_FlashWritePageCombine(dev, good->u.list.block, i, buf, newTag);
+
+		// put back block info cache
+		if (newBc)
+			uffs_BlockInfoPut(dev, newBc);
+
 		if (UFFS_FLASH_IS_BAD_BLOCK(ret)) {
 			// we have a new bad block ? mark it and retry.
 			uffs_Perror(UFFS_MSG_NOISY, "A new bad block is discovered during bad block recover ...");
