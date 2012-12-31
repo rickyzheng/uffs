@@ -1,0 +1,12 @@
+language: c
+install: sudo apt-get install cmake -qq
+before_script: 
+  - mkdir ../build
+  - cd ../build
+  - cmake ../uffs
+script: make
+branch:
+  only:
+    - master
+notifications:
+  email: false
