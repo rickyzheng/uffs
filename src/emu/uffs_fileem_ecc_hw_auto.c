@@ -286,7 +286,6 @@ static URET femu_hw_auto_ReadPageWithLayout(uffs_Device *dev, u32 block, u32 pag
 									uffs_TagStore *ts, u8 *ecc_store)
 {
 	uffs_FileEmu *emu;
-	int abs_page;
 	struct uffs_StorageAttrSt *attr = dev->attr;
 	unsigned char status;
 	u8 spare[PAGE_SPARE_SIZE];
@@ -297,8 +296,6 @@ static URET femu_hw_auto_ReadPageWithLayout(uffs_Device *dev, u32 block, u32 pag
 	if (!emu || !(emu->fp)) {
 		goto ext;
 	}
-
-	abs_page = attr->pages_per_block * block + page;
 
 	// now load full page to serial data buffer
 	ret = load_sdata(dev, block, page);

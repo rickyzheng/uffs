@@ -181,18 +181,16 @@ int femu_EraseBlock(uffs_Device *dev, u32 blockNumber)
 
 	int i;
 	u8 * pg = g_page_buf;
-	int pg_size, pgd_size, sp_size, blks, blk_pgs, blk_size;
+	int pgd_size, sp_size, blks, blk_pgs;
 	uffs_FileEmu *emu;
 	emu = (uffs_FileEmu *)(dev->attr->_private);
 	if (!emu || !(emu->fp))
 		goto err;
 
-	pg_size = dev->attr->page_data_size + dev->attr->spare_size;
 	pgd_size = dev->attr->page_data_size;
 	sp_size = dev->attr->spare_size;
 	blk_pgs = dev->attr->pages_per_block;
 	blks = dev->attr->total_blocks;
-	blk_size = dev->attr->page_data_size * dev->attr->pages_per_block;
 	
 	printf("femu: erase block %d\n", blockNumber);
 

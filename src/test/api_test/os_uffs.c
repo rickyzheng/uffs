@@ -339,7 +339,6 @@ int os_close(int fd)
 {
     int uffs_fd = -1, bak_fd = -1;
     int ret = -1;
-	int x = -1;
 
     if (fd >= 0) {
         unix2uffs(fd, &uffs_fd, &bak_fd);
@@ -349,7 +348,7 @@ int os_close(int fd)
 		if (bak_fd >= 0)
 			close(bak_fd);
 
-		x = remove_fd(fd);
+		remove_fd(fd);
         //ASSERT(!x, "remove_fd(%d) failed.\n", fd);
         ret = close(fd);
     }
