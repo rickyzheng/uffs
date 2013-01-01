@@ -405,7 +405,7 @@ static void print_params(void)
 	MSGLN("");
 }
 
-#ifdef UNIX
+#if defined(UNIX) && !defined(__CYGWIN32__)
 #include <execinfo.h>
 #include <signal.h>
 void crash_handler(int sig)
@@ -427,7 +427,7 @@ int main(int argc, char *argv[])
 {
 	int ret;
 
-#ifdef UNIX
+#if defined(UNIX) && !defined(__CYGWIN32__)
 	signal(SIGSEGV, crash_handler);
 #endif
 
