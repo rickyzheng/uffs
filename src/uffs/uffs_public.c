@@ -297,20 +297,16 @@ int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type)
 	uffs_BlockInfoLoad(dev, bc, lastPage);
 	tag = GET_TAG(bc, lastPage);
 
-	if (TAG_IS_GOOD(tag)) {
+	if (TAG_IS_GOOD(tag) && TAG_PAGE_ID(tag) == lastPage) {
 		// First try the last page.
 		// if it's the full loaded file/data block, then we have a quick path.
 		if (type == UFFS_TYPE_FILE) {
-			if (TAG_PAGE_ID(tag) == (lastPage - 1)) {
-				size = dev->com.pg_data_size * (dev->attr->pages_per_block - 2) + TAG_DATA_LEN(tag);
-				return size;
-			}
+			size = dev->com.pg_data_size * (dev->attr->pages_per_block - 2) + TAG_DATA_LEN(tag);
+			return size;
 		}
 		if (type == UFFS_TYPE_DATA) {
-			if (TAG_PAGE_ID(tag) == lastPage) {
-				size = dev->com.pg_data_size * (dev->attr->pages_per_block - 1) + TAG_DATA_LEN(tag);
-				return size;
-			}
+			size = dev->com.pg_data_size * (dev->attr->pages_per_block - 1) + TAG_DATA_LEN(tag);
+			return size;
 		}
 	}
 
