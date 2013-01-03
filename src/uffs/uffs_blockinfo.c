@@ -430,3 +430,18 @@ void uffs_BlockInfoExpireAll(uffs_Device *dev)
 	}
 	return;
 }
+
+/** This will init block info cache for an erased block - all '0xFF' */
+void uffs_BlockInfoInitErased(uffs_Device *dev, uffs_BlockInfo *p)
+{
+	uffs_PageSpare *spare;
+	int i;
+
+	for (i = 0; i < dev->attr->pages_per_block; i++) {
+		spare = &(p->spares[i]);
+		spare->expired = 0;
+		memset(&(spare->tag), 0xFF, sizeof(struct uffs_TagsSt));
+	}
+	p->expired_count = 0;
+}
+

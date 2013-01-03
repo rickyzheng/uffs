@@ -1120,13 +1120,24 @@ TreeNode * uffs_TreeGetErasedNode(uffs_Device *dev)
 {
 	TreeNode *node = uffs_TreeGetErasedNodeNoCheck(dev);
 	u16 block;
+	uffs_BlockInfo *bc;
 	
-	if (node && node->u.list.u.need_check) {
-		block = node->u.list.block;
-		if (uffs_FlashCheckErasedBlock(dev, block) != U_SUCC) {
-			// Hmm, this block is not fully erased ? erase it immediately.
-			uffs_TreeEraseNode(dev, node);
-			node->u.list.u.need_check = 0;
+	if (node) {
+		if (node->u.list.u.need_check) {
+			block = node->u.list.block;
+			if (uffs_FlashCheckErasedBlock(dev, block) != U_SUCC) {
+				// Hmm, this block is not fully erased ? erase it immediately.
+				if (uffs_TreeEraseNode(dev, node) != U_SUCC)
+					return NULL;
+
+				node->u.list.u.need_check = 0;
+			}
+		}
+		// prepare block info cache for erased block - we don't need to load tag from flash for erased block
+		bc = uffs_BlockInfoGet(dev, node->u.list.block);
+		if (bc) {
+			uffs_BlockInfoInitErased(dev, bc);
+			uffs_BlockInfoPut(dev, bc);
 		}
 	}
 	return node;

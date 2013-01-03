@@ -99,6 +99,9 @@ UBOOL uffs_BlockInfoIsAllFree(uffs_Device *dev);
 /** explicitly expire all block info caches */
 void uffs_BlockInfoExpireAll(uffs_Device *dev);
 
+/** This will init block info cache for an erased block - all '0xFF' */
+void uffs_BlockInfoInitErased(uffs_Device *dev, uffs_BlockInfo *p);
+
 #ifdef __cplusplus
 }
 #endif
