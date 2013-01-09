@@ -262,7 +262,7 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 		return U_FAIL;
 	}
 
-	if (!TAG_IS_VALID(tag)) {
+	if (!TAG_IS_GOOD(tag)) {
 		//first page is invalid ? should be erased now!
 		uffs_Perror(UFFS_MSG_NORMAL,
 					"first page in block %d is invalid, will be erased now!",
@@ -418,6 +418,9 @@ static URET _ScanAndFixUnCleanPage(uffs_Device *dev, uffs_BlockInfo *bc)
 	int page;
 	uffs_Tags *tag;
 	struct uffs_MiniHeaderSt header;
+	URET loadStatus;
+	UBOOL needRecovery = U_FALSE;
+	UBOOL needCleanup = U_FALSE;
 
 	/* in most case, the valid block contents fewer free page,
 		so it's better scan from the last page ... to page 1.
@@ -427,21 +430,21 @@ static URET _ScanAndFixUnCleanPage(uffs_Device *dev, uffs_BlockInfo *bc)
 		most case: read one spare.
 	*/
 	for (page = dev->attr->pages_per_block - 1; page > 0; page--) {
-		uffs_BlockInfoLoad(dev, bc, page);
+		loadStatus = uffs_BlockInfoLoad(dev, bc, page);
 		tag = GET_TAG(bc, page);
 
-		if (TAG_IS_SEALED(tag))
-			break;	// tag sealed, no unclean page in this block.
+		if (TAG_IS_SEALED(tag)) {
+			// tag sealed, now check the block info load status
+			if (loadStatus != U_SUCC)
+				needRecovery = U_TRUE; // most likely a bad block, schedule block recovery
+			break;	
+		}
 
-		if (TAG_IS_DIRTY(tag) || TAG_IS_VALID(tag)) {  // tag not sealed but dirty/valid ?
-			uffs_Perror(UFFS_MSG_NORMAL,
-					"unclean page found, block %d page %d",
-					bc->block, page);
-
+		if (loadStatus == U_FAIL || TAG_IS_DIRTY(tag) || TAG_IS_VALID(tag)) {  // tag not sealed but dirty/valid ?
 			// ok, an unclean page found.
 			// This unclean page can be identified by tag.
-			// We can leave it as it is, but performing a block recover would be good ?
-			// There won't be another unclean page in this block ... stop here.
+			// Schedule block for cleanup and stop - there won't be another unclean page in this block
+			needCleanup = U_TRUE;	
 			break;
 		}
 
@@ -450,13 +453,24 @@ static URET _ScanAndFixUnCleanPage(uffs_Device *dev, uffs_BlockInfo *bc)
 			return U_FAIL;
 
 		if (header.status != 0xFF) {
-			// page data is dirty? this is an unclean page and we should explicitly mark tag as 'dirty and invalid'.
-			// This writing does not violate "no partial program" claim, because we are writing to a clean page spare.
-			uffs_Perror(UFFS_MSG_NORMAL,
-						"unclean page found, block %d page %d, mark it.",
-						bc->block, page);
-			uffs_FlashMarkDirtyPage(dev, bc, page);
+			// page data is dirty
+			// Schedule block for cleanup and stop - there won't be another unclean page in this block
+			needCleanup = U_TRUE;	
+			break;
 		}
+	}
+
+	if (needCleanup == U_TRUE) {
+		uffs_Perror(UFFS_MSG_NORMAL,
+					"unclean page found, block %d page %d",
+					bc->block, page);
+		uffs_BadBlockAdd(dev, bc->block, UFFS_PENDING_BLK_CLEANUP);
+	}
+	else if (needRecovery == U_TRUE) {
+		uffs_Perror(UFFS_MSG_NORMAL,
+					"bad page found, block %d page %d",
+					bc->block, page);
+		uffs_BadBlockAdd(dev, bc->block, UFFS_PENDING_BLK_RECOVER);
 	}
 
 	return U_SUCC;
@@ -522,6 +536,8 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 			if (header.status != 0xFF) {
 				// page 0 tag is clean but page data is dirty ???
 				// this block should be erased immediately !
+				uffs_Perror(UFFS_MSG_NORMAL,
+							"first page in block %d is unclean, will be erased now!", bc->block);
 				flash_ret = uffs_FlashEraseBlock(dev, block);
 			}
 			node->u.list.block = block;
@@ -1048,6 +1064,10 @@ URET uffs_BuildTree(uffs_Device *dev)
 		uffs_Perror(UFFS_MSG_SERIOUS, "build tree step one fail!");
 		return ret;
 	}
+	
+	/* process pending bad blocks/uncompleted blocks */
+	if (HAVE_BADBLOCK(dev))
+		uffs_BadBlockRecover(dev);
 
 	/***** step two: randomize the erased blocks, for ware-leveling purpose *****/
 	/* this step is very fast :) */
@@ -1168,8 +1188,8 @@ URET uffs_TreeEraseNode(uffs_Device *dev, TreeNode *node)
 			node->u.list.block = block;
 			node->u.list.u.need_check = 0;
 
-			// insert newNode(with old block number) into bad block list
-			uffs_TreeInsertToBadBlockList(dev, newNode);
+			// process bad block newNode(with old block number)
+			uffs_BadBlockProcessNode(dev, newNode);
 		}
 
 		return newNode ? U_SUCC : U_FAIL;

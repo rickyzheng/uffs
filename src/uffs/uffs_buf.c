@@ -595,7 +595,8 @@ static URET uffs_BufFlush_Exist_With_BlockRecover(
 			uffs_Device *dev,
 			int slot,			//!< dirty group slot
 			TreeNode *node,		//!< old data node on tree
-			uffs_BlockInfo *bc	//!< old data block info
+			uffs_BlockInfo *bc,	//!< old data block info
+			UBOOL badBlock      //!< old data block is a bad block
 			)
 {
 	u16 i;
@@ -884,15 +885,25 @@ retry:
 
 		newNode->u.list.block = bc->block;
 
-		// Only erase the 'to be recovered block' when it's not empty.
-		// When flush buffers to a new created block, we passe an empty 'node' and we don't need to erase it in that case.
-		if (uffs_IsThisBlockUsed(dev, bc)) {
-			// erase recovered block
-			uffs_TreeEraseNode(dev, newNode);
+		if (badBlock) {
+			// Old block was a bad block, process it.
+			uffs_BadBlockProcessNode(dev, newNode);
 		}
-		uffs_TreeInsertToErasedListTail(dev, newNode);
+		else {
+			// Only erase the 'to be recovered block' when it's not empty.
+			// When flush buffers to a new created block, we passe an empty 'node' and we don't need to erase it in that case.
+			if (uffs_IsThisBlockUsed(dev, bc)) {
+				// erase recovered block
+				uffs_TreeEraseNode(dev, newNode);
+			}
+			uffs_TreeInsertToErasedListTail(dev, newNode);
+		}
 	}
 	else {
+		if (badBlock) {
+			// Old block was a bad block, don't process it since recovery failed. 
+			uffs_BadBlockPendingRemove(dev, bc->block);
+		}
 
 		uffs_BlockInfoExpire(dev, bc, UFFS_ALL_PAGES);  // FIXME: this might not be necessary ...
 
@@ -946,7 +957,7 @@ static URET _BufFlush_NewBlock(uffs_Device *dev, int slot)
 
 	type = dev->buf.dirtyGroup[slot].dirty->type;
 	
-	ret = uffs_BufFlush_Exist_With_BlockRecover(dev, slot, node, bc);
+	ret = uffs_BufFlush_Exist_With_BlockRecover(dev, slot, node, bc, U_FALSE);
 
 	if (ret == U_SUCC)
 		uffs_InsertNodeToTree(dev, type, node);  // if blockcover success, the node now has valid data
@@ -1029,10 +1040,7 @@ URET
 		else if (x == UFFS_FLASH_BAD_BLK) {
 			uffs_Perror(UFFS_MSG_NORMAL, "Bad blcok found, start block recover ...");
 
-			// remove it if it's been added to pending list because we are about to do block recover immediately
-			uffs_BadBlockPendingRemove(dev, bc->block);
-
-			ret = uffs_BufFlush_Exist_With_BlockRecover(dev, slot, node, bc);
+			ret = uffs_BufFlush_Exist_With_BlockRecover(dev, slot, node, bc, U_TRUE);
 			goto ext;
 		}
 		else {
@@ -1132,7 +1140,7 @@ URET _BufFlush(struct uffs_DeviceSt *dev,
 				ret = uffs_BufFlush_Exist_With_Enough_FreePage(dev,	slot, node, bc);
 			}
 			else {
-				ret = uffs_BufFlush_Exist_With_BlockRecover(dev, slot, node, bc);
+				ret = uffs_BufFlush_Exist_With_BlockRecover(dev, slot, node, bc, U_FALSE);
 			}
 		}
 		uffs_BlockInfoPut(dev, bc);

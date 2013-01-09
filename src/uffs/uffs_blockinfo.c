@@ -216,15 +216,16 @@ static void _MoveBcToTail(uffs_Device *dev, uffs_BlockInfo *bc)
  */
 URET uffs_BlockInfoLoad(uffs_Device *dev, uffs_BlockInfo *work, int page)
 {
-	int i, ret;
+	int i, ret, nfailed;
 	uffs_PageSpare *spare;
 
 	if (page == UFFS_ALL_PAGES) {
+		nfailed = 0;
 		for (i = 0; i < dev->attr->pages_per_block; i++) {
 			spare = &(work->spares[i]);
 			if (spare->expired == 0)
 				continue;
-			
+
 			ret = uffs_FlashReadPageTag(dev, work->block, i,
 											&(spare->tag));
 				
@@ -240,12 +241,15 @@ URET uffs_BlockInfoLoad(uffs_Device *dev, uffs_BlockInfo *work, int page)
 				uffs_Perror(UFFS_MSG_SERIOUS,
 							"load block %d page %d spare fail.",
 							work->block, i);
-				return U_FAIL;
+				TAG_VALID_BIT(&(spare->tag)) = TAG_INVALID;	
+				nfailed++;	
 			}
 
 			spare->expired = 0;
 			work->expired_count--;
 		}
+		if (nfailed > 0)
+			return U_FAIL;
 	}
 	else {
 		if (page < 0 || page >= dev->attr->pages_per_block) {
