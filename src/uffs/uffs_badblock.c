@@ -194,6 +194,8 @@ retry:
 
 		ret = uffs_FlashWritePageCombine(dev, good->u.list.block, i, buf, newTag);
 
+		uffs_BufFreeClone(dev, buf);
+
 		if (UFFS_FLASH_IS_BAD_BLOCK(ret)) {
 			// put back block info cache before retry
 			if (newBc)
@@ -201,13 +203,11 @@ retry:
 		
 			// we have a new bad block ? mark it and retry.
 			uffs_Perror(UFFS_MSG_NOISY, "A new bad block is discovered during bad block recover ...");
-			uffs_BufFreeClone(dev, buf);
 			uffs_BadBlockProcessNode(dev, good);
 			goto retry;
 		}
 
 		goodBlockIsDirty = U_TRUE;
-		uffs_BufFreeClone(dev, buf);
 
 		if (ret == UFFS_FLASH_IO_ERR) {
 			uffs_Perror(UFFS_MSG_NORMAL, "I/O error ? abort.");
