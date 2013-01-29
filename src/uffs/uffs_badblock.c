@@ -43,9 +43,20 @@
 
 #define PFX "bbl : "
 
+static const char *uffs_BadBlockPendingTypeName(int mark)
+{
+	switch (mark) {
+	case UFFS_PENDING_BLK_RECOVER: 	return "Recover";
+	case UFFS_PENDING_BLK_REFRESH: 	return "Refresh";
+	case UFFS_PENDING_BLK_CLEANUP: 	return "Cleanup";
+	default: 						return "Unknown";
+	}
+}
+
 void uffs_BadBlockInit(uffs_Device *dev)
 {
 	dev->pending.count = 0;
+	dev->pending.block_in_recovery = UFFS_INVALID_BLOCK;
 }
 
 
@@ -115,6 +126,9 @@ retry:
 	// check if the new block block info cache being loaded before ...
 	newBc = uffs_BlockInfoFindInCache(dev, good->u.list.block);
 
+	// read all spares of old block
+	uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
+
 	for (i = 0; i < dev->attr->pages_per_block; i++) {
 		page = uffs_FindPageInBlockWithPageId(dev, bc, i);
 		if (page == UFFS_INVALID_PAGE) {
@@ -180,11 +194,13 @@ retry:
 
 		ret = uffs_FlashWritePageCombine(dev, good->u.list.block, i, buf, newTag);
 
+		uffs_BufFreeClone(dev, buf);
+
 		if (UFFS_FLASH_IS_BAD_BLOCK(ret)) {
 			// put back block info cache before retry
 			if (newBc)
 				uffs_BlockInfoPut(dev, newBc);
-
+		
 			// we have a new bad block ? mark it and retry.
 			uffs_Perror(UFFS_MSG_NOISY, "A new bad block is discovered during bad block recover ...");
 			uffs_BadBlockProcessNode(dev, good);
@@ -192,7 +208,6 @@ retry:
 		}
 
 		goodBlockIsDirty = U_TRUE;
-		uffs_BufFreeClone(dev, buf);
 
 		if (ret == UFFS_FLASH_IO_ERR) {
 			uffs_Perror(UFFS_MSG_NORMAL, "I/O error ? abort.");
@@ -235,7 +250,8 @@ retry:
 		if (s->mark == UFFS_PENDING_BLK_RECOVER) {
 			uffs_BadBlockProcessNode(dev, good);
 		}
-		else if (s->mark == UFFS_PENDING_BLK_REFRESH) {
+		else if (s->mark == UFFS_PENDING_BLK_REFRESH ||
+				 s->mark == UFFS_PENDING_BLK_CLEANUP) {
 			uffs_TreeEraseNode(dev, good);
 			uffs_TreeInsertToErasedListTail(dev, good); //put back to erased list
 		}
@@ -266,9 +282,11 @@ void uffs_BadBlockRecover(uffs_Device *dev)
 		dev->pending.count--;
 		s = &dev->pending.list[dev->pending.count];
 		uffs_Perror(UFFS_MSG_NOISY, "Process pending block %d - %s", 
-						s->block, s->mark == UFFS_PENDING_BLK_RECOVER ? "Recover" : "Refresh");
+						s->block, uffs_BadBlockPendingTypeName(s->mark));
+		dev->pending.block_in_recovery = s->block;
 		process_pending_recover(dev, s);
 	}
+	dev->pending.block_in_recovery = UFFS_INVALID_BLOCK;
 }
 
 
@@ -278,34 +296,39 @@ void uffs_BadBlockAdd(uffs_Device *dev, int block, u8 mark)
 	uffs_PendingBlock *s;
 	int i;
 
+	// check if the block is being processed right now 
+	if (dev->pending.block_in_recovery == block)
+		return;
+
+	// check if the block already in pending list
+	for (i = 0; i < dev->pending.count; i++) {
+		s = &dev->pending.list[i];
+		if (s->block == block) {
+			if (s->mark != mark &&
+				s->mark == UFFS_PENDING_BLK_REFRESH &&
+				mark == UFFS_PENDING_BLK_RECOVER)	// RECOVER would overwrite REFRESH, but not vice versa.
+			{	
+				s->mark = mark;
+				uffs_Perror(UFFS_MSG_NOISY, "Change pending block %d - %s",
+								block, uffs_BadBlockPendingTypeName(s->mark));
+			}
+			return;
+		}
+	}
+
+	// check if there is space in pending list		
 	if (dev->pending.count >= CONFIG_MAX_PENDING_BLOCKS) {
 		uffs_Perror(UFFS_MSG_SERIOUS, 
 					"Too many pending bad blocks, please increase CONFIG_MAX_PENDING_BLOCKS !");
 		return;
 	}
 
-	// check if the block already in pending list
-	for (i = 0; i < dev->pending.count; i++) {
-		s = &dev->pending.list[i];
-		if (s->block == block &&
-			s->mark != mark &&
-			mark == UFFS_PENDING_BLK_RECOVER)	// RECOVER would overwrite REFRESH, but not vice versa.
-		{	
-			s->mark = mark;
-			uffs_Perror(UFFS_MSG_NOISY, "Change pending block %d - %s",
-							block, mark == UFFS_PENDING_BLK_RECOVER ? "Recover" : "Refresh");
-			break;
-		}
-	}
-
-	// add new pending block if it's not already in the list
-	if (i == dev->pending.count) {
-		s = &dev->pending.list[dev->pending.count++];
-		s->block = block;
-		s->mark = mark;
-		uffs_Perror(UFFS_MSG_NOISY, "Add pending block %d - %s",
-						block, mark == UFFS_PENDING_BLK_RECOVER ? "Recover" : "Refresh");
-	}
+	// add new pending block
+	s = &dev->pending.list[dev->pending.count++];
+	s->block = block;
+	s->mark = mark;
+	uffs_Perror(UFFS_MSG_NOISY, "Add pending block %d - %s",
+					block, uffs_BadBlockPendingTypeName(mark));
 }
 
 /**

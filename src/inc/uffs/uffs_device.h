@@ -159,6 +159,7 @@ typedef struct uffs_ConfigSt {
 /** pending block mark definitions */
 #define UFFS_PENDING_BLK_RECOVER	0		/* require block recovery and mark bad block */
 #define UFFS_PENDING_BLK_REFRESH	1		/* require refresh the block (erase and re-use it) */
+#define UFFS_PENDING_BLK_CLEANUP	2		/* require block cleanup (due to interrupted write, erase and re-use it) */
 
 /**
  * \struct uffs_PendingBlockSt
@@ -177,6 +178,7 @@ typedef struct uffs_PendingBlockSt {
 struct uffs_PendingListSt {
 	int count;											//!< pending block counter
 	uffs_PendingBlock list[CONFIG_MAX_PENDING_BLOCKS];	//!< pending block list
+	u16 block_in_recovery;                              //!< pending block being recovered
 };
 
 /** 

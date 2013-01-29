@@ -95,6 +95,7 @@ u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 {
 	int i;
 	uffs_Tags *tag, *tag_old;
+	u16 lastPage = dev->attr->pages_per_block - 1;
 
 	if (!uffs_Assert(page != UFFS_INVALID_PAGE, "invalid param !"))
 		return page;	// just in case ...
@@ -105,10 +106,21 @@ u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 	if (!uffs_Assert(TAG_IS_GOOD(tag_old), "try to find a invalid page ?"))
 		return UFFS_INVALID_PAGE;
 
-	if (page == dev->attr->pages_per_block - 1)	// already the last page ?
+	if (page == lastPage)	// already the last page ?
 		return page;
 
-	for (i = dev->attr->pages_per_block - 1; i > page; i--) {
+	// check for fully loaded block, in which case the given
+	// page id is the best page id
+
+	uffs_BlockInfoLoad(dev, bc, lastPage);
+	tag = GET_TAG(bc, lastPage);
+
+	if (TAG_IS_GOOD(tag) && TAG_PAGE_ID(tag) == lastPage)
+		return page;
+
+	// block not fully loaded, search from bottom to top
+
+	for (i = lastPage; i > page; i--) {
 		uffs_BlockInfoLoad(dev, bc, i);
 		tag = GET_TAG(bc, i);
 		if (TAG_IS_GOOD(tag) &&

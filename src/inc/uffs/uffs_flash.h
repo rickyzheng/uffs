@@ -253,6 +253,15 @@ struct uffs_FlashOpsSt {
 	 *			#UFFS_FLASH_BAD_BLK: a bad block detected.
 	 */
 	int (*EraseBlock)(uffs_Device *dev, u32 block);
+
+	/**
+	 * Check if the block pages are all clean.
+	 *
+	 * \note if this function is not implemented, UFFS will read all pages and verify that all bits are set to 1'
+	 *
+	 * \return 0 if all pages are clean, otherwise return -1.
+	 */
+	int (*CheckErasedBlock)(uffs_Device *dev, u32 block);
 };
 
 /** make spare from tag store and ecc */
@@ -278,9 +287,6 @@ UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block);
 
 /** Erase flash block */
 int uffs_FlashEraseBlock(uffs_Device *dev, int block);
-
-/* mark a clean page as 'dirty' (and 'invalid') */
-int uffs_FlashMarkDirtyPage(uffs_Device *dev, uffs_BlockInfo *bc, int page);
 
 /* check if the block pages are all clean */
 URET uffs_FlashCheckErasedBlock(uffs_Device *dev, int block);

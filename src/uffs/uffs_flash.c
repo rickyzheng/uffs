@@ -769,58 +769,6 @@ ext:
 	return ret;
 }
 
-/**
- * mark a clean page tag as 'dirty' and 'invalid'.
- *
- * \param[in] dev uffs device
- * \param[in] bc block info
- * \param[in] page
- *
- * \return	#UFFS_FLASH_NO_ERR: success.
- *			#UFFS_FLASH_IO_ERR: I/O error, expect retry ?
- *			#UFFS_FLASH_BAD_BLK: a new bad block detected.
- */
-int uffs_FlashMarkDirtyPage(uffs_Device *dev, uffs_BlockInfo *bc, int page)
-{
-	u8 *spare;
-	uffs_FlashOps *ops = dev->ops;
-	UBOOL is_bad = U_FALSE;
-	int ret = UFFS_FLASH_UNKNOWN_ERR;
-	int block = bc->block;
-	uffs_Tags *tag = GET_TAG(bc, page);
-	struct uffs_TagStoreSt *ts = &tag->s;
-
-	spare = (u8 *) uffs_PoolGet(SPOOL(dev));
-	if (spare == NULL)
-		goto ext;
-
-	memset(ts, 0xFF, sizeof(struct uffs_TagStoreSt));
-	ts->dirty = TAG_DIRTY;  // set only 'dirty' bit, leave 'valid' bit to 1 (invalid).
-	
-	if (dev->attr->ecc_opt != UFFS_ECC_NONE)
-		TagMakeEcc(ts);
-
-	if (ops->WritePageWithLayout) {
-		ret = ops->WritePageWithLayout(dev, block, page, NULL, 0, NULL, ts);
-	}
-	else {
-		uffs_FlashMakeSpare(dev, ts, NULL, spare);
-		ret = ops->WritePage(dev, block, page, NULL, 0, spare, dev->mem.spare_data_size);
-	}
-
-	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
-		is_bad = U_TRUE;
-
-ext:
-	if (is_bad)
-		ret = UFFS_FLASH_BAD_BLK;
-
-	if (spare)
-		uffs_PoolPut(SPOOL(dev), spare);
-
-	return ret;
-}
-
 /** Mark this block as bad block */
 URET uffs_FlashMarkBadBlock(uffs_Device *dev, int block)
 {
@@ -937,6 +885,9 @@ URET uffs_FlashCheckErasedBlock(uffs_Device *dev, int block)
 	int size = dev->com.pg_size;
 	int i;
 	u8 *p;
+	
+	if (dev->ops->CheckErasedBlock)
+		return dev->ops->CheckErasedBlock(dev, block) == 0 ? U_SUCC : U_FAIL;
 	
 	spare = (u8 *) uffs_PoolGet(SPOOL(dev));
 	
