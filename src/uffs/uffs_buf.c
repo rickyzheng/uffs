@@ -513,7 +513,6 @@ static u16 _GetDirOrFileNameSum(uffs_Device *dev, uffs_Buf *buf)
 	u16 data_sum = 0; //default: 0
 	uffs_FileInfo *fi;
 	
-	dev = dev;
 	//FIXME: We use the same schema for both dir and file.
 	if (buf->type == UFFS_TYPE_FILE || buf->type == UFFS_TYPE_DIR) {
 		if (buf->page_id == 0) {
@@ -1559,7 +1558,6 @@ URET uffs_BufPut(uffs_Device *dev, uffs_Buf *buf)
 {
 	URET ret = U_FAIL;
 
-	dev = dev;
 	if (buf == NULL) {
 		uffs_Perror(UFFS_MSG_NORMAL,  "Can't put an NULL buffer!");
 	}
@@ -1629,7 +1627,6 @@ uffs_Buf * uffs_BufClone(uffs_Device *dev, uffs_Buf *buf)
  */
 URET uffs_BufFreeClone(uffs_Device *dev, uffs_Buf *buf)
 {
-	dev = dev; //make compiler happy
 	if (!buf)
 		return U_FAIL;
 

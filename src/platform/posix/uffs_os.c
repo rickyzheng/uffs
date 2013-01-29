@@ -110,14 +110,12 @@ unsigned int uffs_GetCurDateTime(void)
 #if CONFIG_USE_SYSTEM_MEMORY_ALLOCATOR > 0
 static void * sys_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 {
-	dev = dev;
 	uffs_Perror(UFFS_MSG_NORMAL, "system memory alloc %d bytes", size);
 	return malloc(size);
 }
 
 static URET sys_free(struct uffs_DeviceSt *dev, void *p)
 {
-	dev = dev;
 	free(p);
 	return U_SUCC;
 }

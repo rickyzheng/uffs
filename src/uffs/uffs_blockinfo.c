@@ -356,7 +356,6 @@ uffs_BlockInfo * uffs_BlockInfoGet(uffs_Device *dev, int block)
  */
 void uffs_BlockInfoPut(uffs_Device *dev, uffs_BlockInfo *p)
 {
-	dev = dev;
 	if (p)
 	{
 		if (p->ref_count == 0) {
