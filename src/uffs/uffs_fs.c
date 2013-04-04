@@ -1478,10 +1478,6 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 		goto ext;
 	}
 
-	if (remain >= fnode->u.file.len) {
-		goto ext;	//!< nothing to do ... 
-	}
-
 	flen = fnode->u.file.len;
 
 	if (flen < remain) {
