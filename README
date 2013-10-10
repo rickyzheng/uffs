@@ -187,6 +187,17 @@ UFFS v1.3.5
   - Fixed flush issue when CONFIG_FLUSH_BUG_AFTER_WRITE config enabled
   - Fixed truncating small file bug
   - Many small improvements
+
+UFFS v1.3.6
+  - Removed unnecessary semaphore creations
+  - Use a seperated list for clone buffers
+  - Improved bad block handling
+  - Fixed bugs:
+    * tree node broken when mounting uffs and there are unclean nodes
+    * flash op result (UFFS_FLASH_ECC_OK) could be overwritten by following page
+    * uffs_ftrancate() not able to expand file bug
+  - Many other small improvements
+
  
   
 LICENCE
