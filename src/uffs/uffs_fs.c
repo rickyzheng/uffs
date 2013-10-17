@@ -206,7 +206,7 @@ uffs_Object * uffs_GetObjectByIndex(int idx)
 	return (uffs_Object *) uffs_PoolGetBufByIndex(&_object_pool, idx);
 }
 
-#ifdef CONFIG_PER_DEVICE_LOCK
+#ifdef CONFIG_USE_PER_DEVICE_LOCK
 static void uffs_ObjectDevLock(uffs_Object *obj)
 {
 	if (obj) {
