@@ -826,11 +826,11 @@ UBOOL uffs_FlashIsBadBlock(uffs_Device *dev, int block)
 		if (ret == U_FALSE) {
 			/* check the second page */
 			if (ops->ReadPageWithLayout) {
-				ret = (ops->ReadPageWithLayout(dev, block, 0, NULL, 0, NULL, NULL, NULL) 
+				ret = (ops->ReadPageWithLayout(dev, block, 1, NULL, 0, NULL, NULL, NULL) 
 													== UFFS_FLASH_BAD_BLK ? U_TRUE : U_FALSE);
 			}
 			else {
-				ret = (ops->ReadPage(dev, block, 0, NULL, 0, NULL, NULL, 0)
+				ret = (ops->ReadPage(dev, block, 1, NULL, 0, NULL, NULL, 0)
 													== UFFS_FLASH_BAD_BLK ? U_TRUE : U_FALSE);
 			}
 		}
