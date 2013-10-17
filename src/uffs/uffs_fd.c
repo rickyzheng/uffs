@@ -678,7 +678,7 @@ int uffs_format(const char *mount_point)
 	uffs_GlobalFsLockLock();
 	dev = uffs_GetDeviceFromMountPoint(mount_point);
 	if (dev) {
-		ret = uffs_FormatDevice(dev, U_TRUE);
+		ret = uffs_FormatDeviceEx(dev, U_TRUE, U_FALSE);
 		uffs_PutDevice(dev);
 	}
 	uffs_GlobalFsLockUnlock();

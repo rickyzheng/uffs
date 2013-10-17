@@ -51,7 +51,7 @@ void uffs_GlobalFsLockLock(void);
 void uffs_GlobalFsLockUnlock(void);
 
 URET uffs_FormatDevice(uffs_Device *dev, UBOOL force);
-
+URET uffs_FormatDeviceEx(uffs_Device *dev, UBOOL force, UBOOL lock);
 #ifdef __cplusplus
 }
 #endif

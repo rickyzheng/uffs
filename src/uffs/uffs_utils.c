@@ -209,7 +209,7 @@ ext:
 
 
 
-URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
+URET uffs_FormatDeviceEx(uffs_Device *dev, UBOOL force, UBOOL lock)
 {
 	u16 i, slot;
 	URET ret = U_SUCC;
@@ -220,7 +220,9 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 	if (dev->ops == NULL) 
 		return U_FAIL;
 
-	uffs_GlobalFsLockLock();
+	if (lock) {
+		uffs_GlobalFsLockLock();
+	}
 
 	ret = uffs_BufFlushAll(dev);
 
@@ -292,9 +294,16 @@ URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
 		ret = U_FAIL;
 	}
 
-	uffs_GlobalFsLockUnlock();
+	if (lock) {
+		uffs_GlobalFsLockUnlock();
+	}
 
 	return ret;
+}
+
+URET uffs_FormatDevice(uffs_Device *dev, UBOOL force)
+{
+	return uffs_FormatDeviceEx(dev, force, U_TRUE);
 }
 
 static const char * GetTagName(struct uffs_TagStoreSt *s)
