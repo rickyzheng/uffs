@@ -251,7 +251,18 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 	int ret;
 
 	// check the first page on the block ...
-	uffs_BlockInfoLoad(dev, bc, 0);
+	if (uffs_BlockInfoLoad(dev, bc, 0) == U_FAIL) {
+		if (uffs_BadBlockPendingCheck(dev, bc->block)) {
+			// it's a new dscovered bad block, process it immediately.
+			node->u.list.block = bc->block;
+			uffs_BadBlockProcessNode(dev, node);
+			return U_SUCC;
+		}
+		else {
+			// load block info failed and it's not a new bad block ? don't go any further.
+			return U_FAIL;
+		}
+	}
 
 	tag = GET_TAG(bc, 0);  //get first page's tag
 
@@ -345,7 +356,19 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 		buf = uffs_BufClone(dev, NULL);
 		if (buf == NULL)
 			return U_FAIL;
-		uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES);
+		if (uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES) == U_FAIL) {
+			// load block info failed ? check if it's due to new bad block ...
+			if (uffs_BadBlockPendingCheck(dev, bc->block)) {
+				// yes it's new bad block, process it immediatly
+				node->u.list.block = block;
+				uffs_BadBlockProcessNode(dev, node);
+				return U_SUCC;
+			}
+			else {
+				// not because of bad block ? refuse to continue.
+				return U_FAIL;
+			}
+		}
 		page = uffs_FindPageInBlockWithPageId(dev, bc, 0);
 		if (page == UFFS_INVALID_PAGE) {
 			uffs_BufFreeClone(dev, buf);
@@ -515,7 +538,7 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 			break;
 		}
 
-		// Need to check bad block at first !
+		// First, need to check bad block mark (known bad block)
 		if (uffs_FlashIsBadBlock(dev, block) == U_TRUE) {
 			node->u.list.block = block;
 			uffs_TreeInsertToBadBlockList(dev, node);
@@ -553,17 +576,33 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 			}
 		}
 		else {
-			
-			// this block have valid data page(s).
+			// if we have discovered a new bad block, need to process it immediatly
+			if (uffs_BadBlockPendingCheck(dev, block)) {
+				node->u.list.block = block;
+				uffs_Perror(UFFS_MSG_NORMAL,
+							"New bad block (%d) discovered.", block);
+				uffs_BadBlockProcessNode(dev, node);
+			}
+			else {
 
-			ret = _ScanAndFixUnCleanPage(dev, bc);
-			if (ret == U_FAIL)
-				break;
+				// this block have valid data page(s).
+				ret = _ScanAndFixUnCleanPage(dev, bc);
+				if (ret == U_FAIL)
+					break;
 
-			ret = _BuildValidTreeNode(dev, node, bc, &st);
-			if (ret == U_FAIL)
-				break;
-
+				// in case we discovered a new bad block during _ScanAndFixUnCleanPage()
+				if (uffs_BadBlockPendingCheck(dev, block)) {
+					node->u.list.block = block;
+					uffs_Perror(UFFS_MSG_NORMAL,
+								"New bad block (%d) discovered.", block);
+					uffs_BadBlockProcessNode(dev, node);
+				}
+				else {
+					ret = _BuildValidTreeNode(dev, node, bc, &st);
+					if (ret == U_FAIL)
+						break;
+				}
+			}
 		}
 		uffs_BlockInfoPut(dev, bc);
 	} //end of for

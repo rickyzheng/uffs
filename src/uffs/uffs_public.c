@@ -387,16 +387,17 @@ int uffs_GetFreePagesCount(uffs_Device *dev, uffs_BlockInfo *bc)
 UBOOL uffs_IsPageErased(uffs_Device *dev, uffs_BlockInfo *bc, u16 page)
 {
 	uffs_Tags *tag;
+	URET ret;
 
-	uffs_BlockInfoLoad(dev, bc, page);
-	tag = GET_TAG(bc, page);
-
-	if (!TAG_IS_SEALED(tag) &&
-		!TAG_IS_DIRTY(tag) &&
-		!TAG_IS_VALID(tag)) {
-		return U_TRUE;
+	ret = uffs_BlockInfoLoad(dev, bc, page);
+	if (ret == U_SUCC) {
+		tag = GET_TAG(bc, page);
+		if (!TAG_IS_SEALED(tag) &&
+			!TAG_IS_DIRTY(tag) &&
+			!TAG_IS_VALID(tag)) {
+			return U_TRUE;
+		}
 	}
-
 	return U_FALSE;
 }
 

@@ -257,7 +257,7 @@ URET uffs_BlockInfoLoad(uffs_Device *dev, uffs_BlockInfo *work, int page)
 			return U_FAIL;
 		}
 		spare = &(work->spares[page]);
-		if (spare->expired != 0) {
+		if (spare->expired) {
 			ret = uffs_FlashReadPageTag(dev, work->block, page,
 											&(spare->tag));
 #ifdef CONFIG_UFFS_REFRESH_BLOCK
