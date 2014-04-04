@@ -664,8 +664,7 @@ retry:
 		TAG_PARENT(tag) = parent;
 		TAG_SERIAL(tag) = serial;
 		TAG_TYPE(tag) = type;
-		TAG_PAGE_ID(tag) = (u8)(i & 0xFF);	// now, page_id = page.
-									// FIX ME!! if more than 256 pages in a block
+		TAG_PAGE_ID(tag) = i;	// now, page_id = page.
 
 		SEAL_TAG(tag);
 		
@@ -1027,7 +1026,7 @@ URET
 		TAG_TYPE(tag) = buf->type;
 		TAG_PARENT(tag) = buf->parent;
 		TAG_SERIAL(tag) = buf->serial;
-		TAG_PAGE_ID(tag) = (u8)(buf->page_id);
+		TAG_PAGE_ID(tag) = buf->page_id;
 
 		SEAL_TAG(tag);
 

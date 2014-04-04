@@ -82,6 +82,12 @@ URET uffs_InitDevice(uffs_Device *dev)
 {
 	URET ret;
 
+    // check pages_per_block is within valid range
+    if (dev->attr->pages_per_block > UFFS_MAX_PAGES_PER_BLOCK) {
+        uffs_Perror(UFFS_MSG_DEAD, "page_per_block should not exceed %d !", UFFS_MAX_PAGES_PER_BLOCK);
+        return U_FAIL;
+    }
+
 	ret = uffs_InitDeviceConfig(dev);
 	if (ret != U_SUCC)
 		return U_FAIL;

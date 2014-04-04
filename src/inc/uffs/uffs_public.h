@@ -104,6 +104,25 @@ typedef struct uffs_ObjectInfoSt {
 
 
 /**
+ * \def UFFS_TAG_PAGE_ID_SIZE_BITS
+ * \brief define number of bits used for page_id in tag,
+ *        this defines the maximum pages per block you can have.
+ *        e.g. '9' ==> maximum 512 pages per block
+ **/
+#define UFFS_TAG_PAGE_ID_SIZE_BITS  6
+
+#if UFFS_TAG_RESERVED_BITS > 10
+#error "UFFS_TAG_PAGE_ID_SIZE_BITS can not bigger than 10 !"
+#endif
+
+/**
+ * \def UFFS_TAG_RESERVED_BITS
+ * \brief the number of bits left to be used for the furture (UFFS2).
+ **/
+#define UFFS_TAG_RESERVED_BITS (10 - UFFS_TAG_PAGE_ID_SIZE_BITS)
+
+
+/**
  * \struct uffs_TagStoreSt
  * \brief uffs tag, 8 bytes, will be store in page spare area.
  */
@@ -116,8 +135,10 @@ struct uffs_TagStoreSt {
 	u32 serial:14;		//!< serial number
 
 	u32 parent:10;		//!< parent's serial number
-	u32 page_id:6;		//!< page id
-	u32 reserved:4;		//!< reserved, for UFFS2
+	u32 page_id:UFFS_TAG_PAGE_ID_SIZE_BITS;		//!< page id
+#if UFFS_TAG_RESERVED_BITS != 0
+	u32 reserved:UFFS_TAG_RESERVED_BITS;		//!< reserved, for UFFS2
+#endif
 	u32 tag_ecc:12;		//!< tag ECC
 };
 
@@ -240,6 +261,12 @@ UBOOL uffs_IsBlockBad(uffs_Device *dev, uffs_BlockInfo *bc);
  * \brief macro for invalid page number
  */
 #define UFFS_INVALID_PAGE	(0xfffe)
+
+/**
+ * \def UFFS_MAX_PAGES_PER_BLOCK
+ * \brief maximum allowed pages per block
+ **/
+#define UFFS_MAX_PAGES_PER_BLOCK    (1 << UFFS_TAG_PAGE_ID_SIZE_BITS)
 
 /** 
  * \def UFFS_INVALID_BLOCK
