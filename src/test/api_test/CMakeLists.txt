@@ -26,15 +26,12 @@ SET (libapitest_sqlite3_SRCS
 		os_uffs.h
 	)
 
-IF (UNIX)
-INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/platform/posix)
-ENDIF()
+set (srcs)
+foreach (file ${libapitest_server_SRCS})
+	set (srcs ${srcs} ${CMAKE_CURRENT_SOURCE_DIR}/${file})
+endforeach(file)
+set (lib_SRCS ${lib_SRCS} ${srcs} PARENT_SCOPE)
 
-IF (WIN32)
-INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/platform/win32)
-ENDIF()
-
-INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/inc)
 ADD_LIBRARY(apitest_server STATIC ${libapitest_server_SRCS})
 ADD_LIBRARY(apitest_client STATIC ${libapitest_client_SRCS})
 IF (UNIX)

@@ -8,6 +8,13 @@ IF (WIN32)
 	INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/platform/win32)
 ENDIF()
 
+set (srcs)
+foreach(file ${libplatform_SRCS})
+	set(srcs ${srcs} ${CMAKE_CURRENT_SOURCE_DIR}/${file})
+endforeach(file)
+
+SET (lib_SRCS ${lib_SRCS} ${srcs} PARENT_SCOPE)
+
 INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/inc)
-ADD_LIBRARY(platform STATIC ${libplatform_SRCS} )
+ADD_LIBRARY(platform STATIC ${libplatform_SRCS})
 

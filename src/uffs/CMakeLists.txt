@@ -1,4 +1,4 @@
-SET (libuffs_SRCS 
+SET (flist 
 		uffs_badblock.c 
 		uffs_blockinfo.c 
 		uffs_buf.c 
@@ -19,41 +19,45 @@ SET (libuffs_SRCS
 		uffs_version.c
 		uffs_crc.c
 	 )
+	 
+set (srcs)
+foreach(file ${flist})
+	set(srcs ${srcs} ${CMAKE_CURRENT_SOURCE_DIR}/${file})
+endforeach(file)
 
-SET (HDR ${uffs_SOURCE_DIR}/src/inc/uffs)
+SET (lib_SRCS ${lib_SRCS} ${srcs} PARENT_SCOPE)
 
-SET (libuffs_HEADS 
-		${HDR}/uffs.h
-		${HDR}/uffs_badblock.h
-		${HDR}/uffs_blockinfo.h
-		${HDR}/uffs_buf.h 
-		${HDR}/uffs_core.h 
-		${HDR}/uffs_device.h
-		${HDR}/uffs_ecc.h
-		${HDR}/uffs_fd.h
-		${HDR}/uffs_fs.h
-		${HDR}/uffs_mem.h
-        ${HDR}/uffs_os.h
-        ${HDR}/uffs_pool.h
-        ${HDR}/uffs_public.h
-		${HDR}/uffs_tree.h
-		${HDR}/uffs_types.h
-		${HDR}/uffs_utils.h
-		${HDR}/uffs_mtb.h
-		${HDR}/uffs_find.h
-		${HDR}/uffs_flash.h
-		${HDR}/uffs_version.h
-		${HDR}/uffs_crc.h
-   )
+SET (flist 
+		uffs.h
+		uffs_badblock.h
+		uffs_blockinfo.h
+		uffs_buf.h 
+		uffs_core.h 
+		uffs_device.h
+		uffs_ecc.h
+		uffs_fd.h
+		uffs_fs.h
+		uffs_mem.h
+        uffs_os.h
+        uffs_pool.h
+        uffs_public.h
+		uffs_tree.h
+		uffs_types.h
+		uffs_utils.h
+		uffs_mtb.h
+		uffs_find.h
+		uffs_flash.h
+		uffs_version.h
+		uffs_crc.h
+     )
+	 
+set (hdrs)
+foreach(file ${hdrs})
+	set(hdrs ${hdrs} ${CMAKE_CURRENT_SOURCE_DIR}/../inc/${file})
+endforeach(file)
 
-IF (UNIX)
-INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/platform/posix)
-ENDIF()
 
-IF (WIN32)
-INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/platform/win32)
-ENDIF()
+SET (libuffs_HEADS ${libuffs_HEADS} PARENT_SCOPE)
 
-INCLUDE_DIRECTORIES(${uffs_SOURCE_DIR}/src/inc)
 
-ADD_LIBRARY( uffs STATIC ${libuffs_SRCS} ${libuffs_HEADS} )
+ADD_LIBRARY( uffs STATIC ${srcs} ${hdrs} )
