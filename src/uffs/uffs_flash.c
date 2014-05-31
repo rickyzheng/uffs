@@ -552,7 +552,7 @@ int uffs_FlashReadPage(uffs_Device *dev, int block, int page, uffs_Buf *buf, UBO
 #ifdef CONFIG_ENABLE_PAGE_DATA_CRC
 	if (!skip_ecc && !UFFS_FLASH_HAVE_ERR(ret)) {
 		// Everything seems ok, do CRC check again.
-		if (HEADER(buf)->crc == uffs_crc16sum(buf->data, size - sizeof(struct uffs_MiniHeaderSt))) {
+		if (HEADER(buf)->crc != uffs_crc16sum(buf->data, size - sizeof(struct uffs_MiniHeaderSt))) {
 			ret = UFFS_FLASH_CRC_ERR;
 			goto ext;
 		}
