@@ -84,6 +84,9 @@ extern "C"{
 	((e) == UFFS_FLASH_ECC_FAIL || (e) == UFFS_FLASH_BAD_BLK || (e) == UFFS_FLASH_CRC_ERR)
 #endif
 
+#define UFFS_FLASH_IS_NON_RECOVER_BAD_BLOCK(e) \
+    ((e) == UFFS_FLASH_ECC_FAIL || (e) == UFFS_FLASH_CRC_ERR)
+
 
 /** defines for page info (data length and data sum) */
 #define UFFS_PAGE_INFO_CLEAN	0xFFFFFFFF

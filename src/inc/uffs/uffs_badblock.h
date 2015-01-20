@@ -46,7 +46,6 @@
 extern "C"{
 #endif
 
-
 #define HAVE_BADBLOCK(dev) (dev->pending.count > 0)
 
 /** initialize bad block management data structures for uffs device */
@@ -62,8 +61,14 @@ void uffs_BadBlockRecover(uffs_Device *dev);
 /** put a new block to the bad block waiting list */
 void uffs_BadBlockAdd(uffs_Device *dev, int block, u8 mark);
 
-/** Check if a block is in bad block pending list */
-UBOOL uffs_BadBlockPendingCheck(uffs_Device *dev, int block);
+
+/** put a new block to the bad block pending list by flash operation result (flash_op_ret)
+ * return the block pending type. return UFFS_PENDING_BLK_NONE if the block not added to the pending list.
+ */
+int uffs_BadBlockAddByFlashResult(uffs_Device *dev, int block, int flash_op_ret);
+
+/** Get bad block pending list node for block */
+uffs_PendingBlock *uffs_BadBlockPendingNodeGet(uffs_Device *dev, int block);
 
 /** Remove block from pending list */
 URET uffs_BadBlockPendingRemove(uffs_Device *dev, int block);

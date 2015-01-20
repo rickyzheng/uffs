@@ -728,16 +728,11 @@ retry:
 				}
 				flash_op_old = uffs_FlashReadPage(dev, bc->block, page, buf, U_FALSE);
 
-	#ifdef CONFIG_UFFS_REFRESH_BLOCK
-				if (flash_op_old == UFFS_FLASH_ECC_OK)
-					uffs_BadBlockAdd(dev, bc->block, UFFS_PENDING_BLK_REFRESH);
-	#endif
-				if (UFFS_FLASH_IS_BAD_BLOCK(flash_op_old)) {
+                if (uffs_BadBlockAddByFlashResult(dev, bc->block, flash_op_old) != UFFS_PENDING_BLK_NONE) {
 					// the old block is a bad block, we'll process it later.
 					uffs_Perror(UFFS_MSG_SERIOUS,
 								"the old block %d is a bad block, pending it for now.",
 								bc->block);
-					uffs_BadBlockAdd(dev, bc->block, UFFS_PENDING_BLK_RECOVER);
 					buf->mark = UFFS_BUF_VALID;
 				}
 				else if (UFFS_FLASH_HAVE_ERR(flash_op_old)) {
@@ -1450,7 +1445,7 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev,
 	uffs_Buf *buf;
 	u16 parent, serial, block, page;
 	uffs_BlockInfo *bc;
-	int ret;
+	int ret, pending_type;
 
 	switch (type) {
 	case UFFS_TYPE_DIR:
@@ -1533,16 +1528,18 @@ uffs_Buf *uffs_BufGetEx(struct uffs_DeviceSt *dev,
 	buf->page_id = page_id;
 
 	ret = uffs_FlashReadPage(dev, block, page, buf, oflag & UO_NOECC ? U_TRUE : U_FALSE);
-#ifdef CONFIG_UFFS_REFRESH_BLOCK
-	if (ret == UFFS_FLASH_ECC_OK)
-		uffs_BadBlockAdd(dev, block, UFFS_PENDING_BLK_REFRESH);
-	else
-#endif
-	if (UFFS_FLASH_IS_BAD_BLOCK(ret))
-		uffs_BadBlockAdd(dev, block, UFFS_PENDING_BLK_RECOVER);
 
-	if (UFFS_FLASH_HAVE_ERR(ret)) {
-		uffs_Perror(UFFS_MSG_SERIOUS, "can't load page from flash !");
+    pending_type = uffs_BadBlockAddByFlashResult(dev, block, ret);
+
+    // Can't load buffer if:
+    //  1. it's a non-recoverable bad block, or
+    //  2. I/O error or other unknown errors.
+	if (pending_type == UFFS_PENDING_BLK_MARKBAD) {
+		uffs_Perror(UFFS_MSG_SERIOUS, "can't load page from flash, non-recoverable bad block %d !", block);
+		return NULL;
+    }
+    if (pending_type == UFFS_PENDING_BLK_NONE && UFFS_FLASH_HAVE_ERR(ret)) {
+		uffs_Perror(UFFS_MSG_SERIOUS, "can't load page from flash, I/O error ?");
 		return NULL;
 	}
 

@@ -157,9 +157,12 @@ typedef struct uffs_ConfigSt {
 
 
 /** pending block mark definitions */
-#define UFFS_PENDING_BLK_RECOVER	0		/* require block recovery and mark bad block */
-#define UFFS_PENDING_BLK_REFRESH	1		/* require refresh the block (erase and re-use it) */
-#define UFFS_PENDING_BLK_CLEANUP	2		/* require block cleanup (due to interrupted write, erase and re-use it) */
+#define UFFS_PENDING_BLK_NONE      -1      /* not a valid pending type, for function return value purpose */
+#define UFFS_PENDING_BLK_REFRESH	0		/* require refresh the block - recover and erase */
+#define UFFS_PENDING_BLK_RECOVER	1		/* require block recovery and mark bad block */
+#define UFFS_PENDING_BLK_CLEANUP	2		/* require block cleanup (e.g. due to interrupted write),
+                                              should not try to recover the data, erase immediately */
+#define UFFS_PENDING_BLK_MARKBAD   3       /* require bad block marking, should not try to recover the data */
 
 /**
  * \struct uffs_PendingBlockSt

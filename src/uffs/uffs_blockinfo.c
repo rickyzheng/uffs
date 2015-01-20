@@ -228,14 +228,8 @@ URET uffs_BlockInfoLoad(uffs_Device *dev, uffs_BlockInfo *work, int page)
 
 			ret = uffs_FlashReadPageTag(dev, work->block, i,
 											&(spare->tag));
-				
-#ifdef CONFIG_UFFS_REFRESH_BLOCK
-			if (ret == UFFS_FLASH_ECC_OK)
-				uffs_BadBlockAdd(dev, work->block, UFFS_PENDING_BLK_REFRESH);
-			else
-#endif
-			if (UFFS_FLASH_IS_BAD_BLOCK(ret))
-				uffs_BadBlockAdd(dev, work->block, UFFS_PENDING_BLK_RECOVER);
+
+			uffs_BadBlockAddByFlashResult(dev, work->block, ret);
 
 			if (UFFS_FLASH_HAVE_ERR(ret)) {
 				uffs_Perror(UFFS_MSG_SERIOUS,
@@ -260,13 +254,8 @@ URET uffs_BlockInfoLoad(uffs_Device *dev, uffs_BlockInfo *work, int page)
 		if (spare->expired) {
 			ret = uffs_FlashReadPageTag(dev, work->block, page,
 											&(spare->tag));
-#ifdef CONFIG_UFFS_REFRESH_BLOCK
-			if (ret == UFFS_FLASH_ECC_OK)
-				uffs_BadBlockAdd(dev, work->block, UFFS_PENDING_BLK_REFRESH);
-			else
-#endif
-			if (UFFS_FLASH_IS_BAD_BLOCK(ret))
-				uffs_BadBlockAdd(dev, work->block, UFFS_PENDING_BLK_RECOVER);
+
+            uffs_BadBlockAddByFlashResult(dev, work->block, ret);
 
 			if (UFFS_FLASH_HAVE_ERR(ret)) {
 				uffs_Perror(UFFS_MSG_SERIOUS,

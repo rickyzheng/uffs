@@ -246,18 +246,20 @@ retry:
 
 		//we reuse the 'good' node as bad block node, and process the bad block.
 		good->u.list.block = s->block;
-
-		if (s->mark == UFFS_PENDING_BLK_RECOVER) {
-			uffs_BadBlockProcessNode(dev, good);
-		}
-		else if (s->mark == UFFS_PENDING_BLK_REFRESH ||
-				 s->mark == UFFS_PENDING_BLK_CLEANUP) {
-			uffs_TreeEraseNode(dev, good);
-			uffs_TreeInsertToErasedListTail(dev, good); //put back to erased list
-		}
-		else {
-			uffs_Perror(UFFS_MSG_SERIOUS, "Unrecognized pending mark: %d", s->mark);
-		}
+        switch(s->mark) {
+            case UFFS_PENDING_BLK_RECOVER:
+            case UFFS_PENDING_BLK_MARKBAD:
+                uffs_BadBlockProcessNode(dev, good);
+                break;
+            case UFFS_PENDING_BLK_REFRESH:
+            case UFFS_PENDING_BLK_CLEANUP:
+                uffs_TreeEraseNode(dev, good);
+                uffs_TreeInsertToErasedListTail(dev, good); //put back to erased list
+                break;
+            default:
+                uffs_Perror(UFFS_MSG_SERIOUS, "Unrecognized pending mark: %d", s->mark);
+                break;
+        }
 	}
 	else {
 		if (goodBlockIsDirty == U_TRUE) {
@@ -304,10 +306,8 @@ void uffs_BadBlockAdd(uffs_Device *dev, int block, u8 mark)
 	for (i = 0; i < dev->pending.count; i++) {
 		s = &dev->pending.list[i];
 		if (s->block == block) {
-			if (s->mark != mark &&
-				s->mark == UFFS_PENDING_BLK_REFRESH &&
-				mark == UFFS_PENDING_BLK_RECOVER)	// RECOVER would overwrite REFRESH, but not vice versa.
-			{	
+
+			if (s->mark < mark) { 	// RECOVER would overwrite REFRESH, MARKBAD would overwrite RECOVER/REFRESH
 				s->mark = mark;
 				uffs_Perror(UFFS_MSG_NOISY, "Change pending block %d - %s",
 								block, uffs_BadBlockPendingTypeName(s->mark));
@@ -331,21 +331,48 @@ void uffs_BadBlockAdd(uffs_Device *dev, int block, u8 mark)
 					block, uffs_BadBlockPendingTypeName(mark));
 }
 
-/**
- * Check if a block is in bad block pending list
- * \return U_TRUE if block in pending list, U_FALSE if not.
+/** put a new block to the bad block pending list by flash operation result (flash_op_ret)
+ * return the block pending type. return UFFS_PENDING_BLK_NONE if the block not added to the pending list.
  */
-UBOOL uffs_BadBlockPendingCheck(uffs_Device *dev, int block)
+int uffs_BadBlockAddByFlashResult(uffs_Device *dev, int block, int flash_op_ret)
+{
+    int pending_type = UFFS_PENDING_BLK_NONE;
+
+#ifdef CONFIG_UFFS_REFRESH_BLOCK
+	if (flash_op_ret == UFFS_FLASH_ECC_OK) {
+        pending_type = UFFS_PENDING_BLK_REFRESH;
+    }
+	else
+#endif
+    if (UFFS_FLASH_IS_NON_RECOVER_BAD_BLOCK(flash_op_ret)) {
+        pending_type = UFFS_PENDING_BLK_MARKBAD;
+    }
+	else if (UFFS_FLASH_IS_BAD_BLOCK(flash_op_ret)) {
+		pending_type = UFFS_PENDING_BLK_RECOVER;
+    }
+
+    if (pending_type != UFFS_PENDING_BLK_NONE)
+        uffs_BadBlockAdd(dev, block, pending_type);
+
+    return pending_type;
+}
+
+/**
+ * Get Bad block pending list node for block
+ * \return bad block pending list node pointer or NULL if block is not in the pending list.
+ */
+uffs_PendingBlock *uffs_BadBlockPendingNodeGet(uffs_Device *dev, int block)
 {
 	int i;
 
 	for (i = 0; i < dev->pending.count; i++) {
 		if (dev->pending.list[i].block == block)
-			return U_TRUE;
+			return &dev->pending.list[i];
 	}
 
-	return U_FALSE;
+	return NULL;
 }
+
 
 /**
  * Remove block from pending list

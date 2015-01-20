@@ -139,6 +139,43 @@ URET uffs_TreeRelease(uffs_Device *dev)
 	return U_SUCC;
 }
 
+/* Process pending bad block - erase or mark bad block for non-recoverable block.
+ * return U_TRUE if the block is processed, U_FALSE if not handled.
+ */
+static UBOOL uffs_TreeProcessPendingBadBlock(uffs_Device *dev, TreeNode *node, int block)
+{
+	int ret;
+    uffs_PendingBlock *pending;
+
+    pending = uffs_BadBlockPendingNodeGet(dev, block);
+
+    if (pending) {
+        if (pending->mark == UFFS_PENDING_BLK_CLEANUP) {
+            // cleanup - erase and put it back to erased list
+            node->u.list.block = block;
+
+            ret = uffs_FlashEraseBlock(dev, block);
+
+            if (UFFS_FLASH_IS_BAD_BLOCK(ret)) {
+                uffs_BadBlockProcessNode(dev, node);
+            }
+            else {
+                uffs_TreeInsertToErasedListTail(dev, node);
+            }
+            return U_TRUE;
+        }
+        else if (pending->mark == UFFS_PENDING_BLK_MARKBAD) {
+            // mark bad block, process it immediately.
+            node->u.list.block = block;
+            uffs_BadBlockProcessNode(dev, node);
+            return U_TRUE;
+        }
+    }
+
+    // not a pending block, or it's recoverable.
+    return U_FALSE;
+}
+
 static u16 _GetBlockFromNode(u8 type, TreeNode *node)
 {
 	switch (type) {
@@ -252,12 +289,10 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 
 	// check the first page on the block ...
 	if (uffs_BlockInfoLoad(dev, bc, 0) == U_FAIL) {
-		if (uffs_BadBlockPendingCheck(dev, bc->block)) {
-			// it's a new dscovered bad block, process it immediately.
-			node->u.list.block = bc->block;
-			uffs_BadBlockProcessNode(dev, node);
-			return U_SUCC;
-		}
+        if (uffs_TreeProcessPendingBadBlock(dev, node, bc->block) == U_TRUE) {
+            // this is a bad block, processed.
+            return U_SUCC;
+        }
 		else {
 			// load block info failed and it's not a new bad block ? don't go any further.
 			return U_FAIL;
@@ -358,14 +393,14 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 			return U_FAIL;
 		if (uffs_BlockInfoLoad(dev, bc, UFFS_ALL_PAGES) == U_FAIL) {
 			// load block info failed ? check if it's due to new bad block ...
-			if (uffs_BadBlockPendingCheck(dev, bc->block)) {
-				// yes it's new bad block, process it immediatly
-				node->u.list.block = block;
-				uffs_BadBlockProcessNode(dev, node);
+            if (uffs_TreeProcessPendingBadBlock(dev, node, block) == U_TRUE) {
+                // this is a bad block, processed.
+                uffs_BufFreeClone(dev, buf);
 				return U_SUCC;
 			}
 			else {
 				// not because of bad block ? refuse to continue.
+                uffs_BufFreeClone(dev, buf);
 				return U_FAIL;
 			}
 		}
@@ -379,13 +414,12 @@ static URET _BuildValidTreeNode(uffs_Device *dev,
 		}
 		page = uffs_FindBestPageInBlock(dev, bc, page);
 		ret = uffs_FlashReadPage(dev, block, page, buf, U_FALSE);
-#ifdef CONFIG_UFFS_REFRESH_BLOCK
-		if (ret == UFFS_FLASH_ECC_OK)
-			uffs_BadBlockAdd(dev, block, UFFS_PENDING_BLK_REFRESH);
-		else
-#endif
-		if (UFFS_FLASH_IS_BAD_BLOCK(ret))
-			uffs_BadBlockAdd(dev, block, UFFS_PENDING_BLK_RECOVER);
+
+        if (uffs_BadBlockAddByFlashResult(dev, block, ret) == UFFS_PENDING_BLK_NONE && UFFS_FLASH_HAVE_ERR(ret)) {
+            uffs_Perror(UFFS_MSG_SERIOUS, "I/O error ?");
+            uffs_BufFreeClone(dev, buf);
+            return U_FAIL;
+        }
 
 		info = (uffs_FileInfo *) (buf->data);
 		data_sum = uffs_MakeSum16(info->name, info->name_len);
@@ -472,8 +506,10 @@ static URET _ScanAndFixUnCleanPage(uffs_Device *dev, uffs_BlockInfo *bc)
 		}
 
 		// now we have a clean tag (all 0xFF ?). Need to check mini header to see if it's an unclean page.
-		if (uffs_LoadMiniHeader(dev, bc->block, page, &header) == U_FAIL)
+		if (uffs_LoadMiniHeader(dev, bc->block, page, &header) == U_FAIL) {
+            // I/O error ?
 			return U_FAIL;
+        }
 
 		if (header.status != 0xFF) {
 			// page data is dirty
@@ -576,28 +612,16 @@ static URET _BuildTreeStepOne(uffs_Device *dev)
 			}
 		}
 		else {
-			// if we have discovered a new bad block, need to process it immediatly
-			if (uffs_BadBlockPendingCheck(dev, block)) {
-				node->u.list.block = block;
-				uffs_Perror(UFFS_MSG_NORMAL,
-							"New bad block (%d) discovered.", block);
-				uffs_BadBlockProcessNode(dev, node);
-			}
-			else {
+			// make sure it's not a non-recoverable bad block ...
+			if (uffs_TreeProcessPendingBadBlock(dev, node, block) == U_FALSE) {
 
 				// this block have valid data page(s).
 				ret = _ScanAndFixUnCleanPage(dev, bc);
 				if (ret == U_FAIL)
 					break;
 
-				// in case we discovered a new bad block during _ScanAndFixUnCleanPage()
-				if (uffs_BadBlockPendingCheck(dev, block)) {
-					node->u.list.block = block;
-					uffs_Perror(UFFS_MSG_NORMAL,
-								"New bad block (%d) discovered.", block);
-					uffs_BadBlockProcessNode(dev, node);
-				}
-				else {
+				// _ScanAndFixUnCleanPage() might add new pending block, we need to process it first.
+                if (uffs_TreeProcessPendingBadBlock(dev, node, block) == U_FALSE) {
 					ret = _BuildValidTreeNode(dev, node, bc, &st);
 					if (ret == U_FAIL)
 						break;
