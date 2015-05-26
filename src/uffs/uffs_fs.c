@@ -1228,7 +1228,7 @@ long uffs_SeekObject(uffs_Object *obj, long offset, int origin)
 {
 	if (obj->type == UFFS_TYPE_DIR) {
 		uffs_Perror(UFFS_MSG_NOISY, "Can't seek a dir object!");
-		obj->err = UEACCES;
+		obj->err = UEISDIR;
 	}
 	else {
 		uffs_ObjectDevLock(obj);
@@ -1480,7 +1480,7 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 	/* can't truncate a dir */
 	/* TODO: delete files under dir ? */
 	if (obj->type == UFFS_TYPE_DIR) {
-		obj->err = UEEXIST;
+		obj->err = UEISDIR;
 		goto ext;
 	}
 
