@@ -997,7 +997,7 @@ static int do_WriteObject(uffs_Object *obj, const void *data, int len)
 			if(dnode == NULL) {
 				uffs_Perror(UFFS_MSG_SERIOUS, "can't find data node in tree ?");
 				obj->err = UEUNKNOWN_ERR;
-				break;
+				return -1;
 			}
 			size = do_WriteInternalBlock(obj, dnode, fdn,
 									data ? (u8 *)data + len - remain : NULL, remain,
@@ -1028,7 +1028,7 @@ static int do_WriteObject(uffs_Object *obj, const void *data, int len)
  * \param[in] data data pointer
  * \param[in] len length of data to be write
  *
- * \return bytes wrote to obj
+ * \return bytes written to obj or -1 in case of error
  */
 int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 {
@@ -1043,18 +1043,18 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 
 	if (obj->dev == NULL || obj->open_succ != U_TRUE) {
 		obj->err = UEBADF;
-		return 0;
+		return -1;
 	}
 
 	if (obj->type == UFFS_TYPE_DIR) {
 		uffs_Perror(UFFS_MSG_NOISY, "Can't write to an dir object!");
 		obj->err = UEACCES;
-		return 0;
+		return -1;
 	}
 
 	if (obj->oflag == UO_RDONLY) {
 		obj->err = UEACCES;  // can't write to 'read only' mode opened file
-		return 0;
+		return -1;
 	}
 
 	fnode = obj->node;
