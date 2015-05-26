@@ -1097,7 +1097,7 @@ ext:
  * \param[out] data output data buffer
  * \param[in] len required length of data to be read from object->pos
  *
- * \return return bytes of data have been read
+ * \return return bytes of data have been read, or -1 if an error occurred
  */
 int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 {
@@ -1113,6 +1113,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 	u16 page_id;
 	u8 type;
 	u32 pageOfs;
+	int ret = 0;
 
 	if (obj == NULL)
 		return 0;
@@ -1121,13 +1122,13 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 	if (obj->dev == NULL || obj->open_succ == U_FALSE) {
 		obj->err = UEBADF;
-		return 0;
+		return -1;
 	}
 
 	if (obj->type == UFFS_TYPE_DIR) {
 		uffs_Perror(UFFS_MSG_NOISY, "Can't read data from a dir object!");
 		obj->err = UEBADF;
-		return 0;
+		return -1;
 	}
 
 	if (obj->pos > fnode->u.file.len) {
@@ -1136,7 +1137,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 	if (obj->oflag & UO_WRONLY) {
 		obj->err = UEACCES;
-		return 0;
+		return -1;
 	}
 
 	uffs_ObjectDevLock(obj);
@@ -1159,6 +1160,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 			if (dnode == NULL) {
 				uffs_Perror(UFFS_MSG_SERIOUS, "can't get data node in entry!");
 				obj->err = UEUNKNOWN_ERR;
+				ret = -1;
 				break;
 			}
 		}
@@ -1178,6 +1180,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 		if (buf == NULL) {
 			uffs_Perror(UFFS_MSG_SERIOUS, "can't get buffer when read obj.");
 			obj->err = UEIOERR;
+			ret = -1;
 			break;
 		}
 
@@ -1195,7 +1198,10 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 		remain -= size;
 	}
 
-	obj->pos += (len - remain);
+	if (ret != -1) {
+	    obj->pos += (len - remain);
+	    ret = len - remain;
+	}
 
 	if (HAVE_BADBLOCK(dev)) 
 		uffs_BadBlockRecover(dev);
@@ -1204,7 +1210,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 	uffs_Assert(fnode == obj->node, "obj->node change!\n");
 
-	return len - remain;
+	return ret;
 }
 
 /**
