@@ -1046,6 +1046,60 @@ ext:
 	return matched;
 }
 
+// Remove any file blocks that doesn't have a parent directory
+static void _CleanOrphanFiles(uffs_Device *dev)
+{
+	int i;
+	u16 x;
+	TreeNode *work;
+	TreeNode *node;
+	struct uffs_TreeSt *tree;
+	uffs_Pool *pool;
+	u16 blockSave;
+	int ret;
+
+	TreeNode *cache = NULL;
+	u16 cacheSerial = INVALID_UFFS_SERIAL;
+
+	tree = &(dev->tree);
+	pool = TPOOL(dev);
+
+	for (i = 0; i < FILE_NODE_ENTRY_LEN; i++) {
+		x = tree->file_entry[i];
+		while (x != EMPTY_NODE) {
+			work = FROM_IDX(x, pool);
+			x = work->hash_next;
+			if (work->u.file.parent == cacheSerial) {
+				node = cache;
+			}
+			else {
+				node = uffs_TreeFindDirNode(dev, work->u.file.parent);
+				cache = node;
+				cacheSerial = work->u.file.parent;
+			}
+			if (node == NULL && work->u.file.parent != ROOT_DIR_SERIAL) {
+				//this file block does not have a parent directory?
+				//should be erased.
+				uffs_Perror(UFFS_MSG_NORMAL,
+					"found an orphan file block:%d, "
+					"parent:%d, serial:%d, will be erased!",
+					work->u.file.block,
+					work->u.file.parent, work->u.file.serial);
+
+				uffs_BreakFromEntry(dev, UFFS_TYPE_FILE, work);
+				blockSave = work->u.file.block;
+				work->u.list.block = blockSave;
+				ret = uffs_FlashEraseBlock(dev, blockSave);
+				if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+					uffs_BadBlockProcessNode(dev, work);
+				else
+					uffs_TreeInsertToErasedListTail(dev, work);
+			}
+		}
+	}
+
+}
+
 // Remove any data blocks that doesn't have a parent file.
 // Increment the parent file size for each DATA block found.
 static void _CalcSizeAndCleanOrphanData(uffs_Device *dev)
@@ -1109,6 +1163,7 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 {
 	uffs_Perror(UFFS_MSG_NOISY, "build tree step three");
 
+	_CleanOrphanFiles(dev);
 	_CalcSizeAndCleanOrphanData(dev);
 
 	return U_SUCC;
