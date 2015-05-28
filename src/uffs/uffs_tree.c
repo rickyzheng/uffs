@@ -1046,6 +1046,60 @@ ext:
 	return matched;
 }
 
+// Remove any orphan directory blocks
+static void _CleanOrphanDirectories(uffs_Device *dev)
+{
+	int i;
+	u16 x;
+	TreeNode *work;
+	TreeNode *node;
+	struct uffs_TreeSt *tree;
+	uffs_Pool *pool;
+	u16 blockSave;
+	int ret;
+
+	TreeNode *cache = NULL;
+	u16 cacheSerial = INVALID_UFFS_SERIAL;
+
+	tree = &(dev->tree);
+	pool = TPOOL(dev);
+
+	for (i = 0; i < DIR_NODE_ENTRY_LEN; i++) {
+		x = tree->dir_entry[i];
+		while (x != EMPTY_NODE) {
+			work = FROM_IDX(x, pool);
+			x = work->hash_next;
+			if (work->u.dir.parent == cacheSerial) {
+				node = cache;
+			}
+			else {
+				node = uffs_TreeFindDirNode(dev, work->u.dir.parent);
+				cache = node;
+				cacheSerial = work->u.dir.parent;
+			}
+			if (node == NULL && work->u.dir.parent != ROOT_DIR_SERIAL) {
+				//this dir block does not have a parent directory?
+				//should be erased.
+				uffs_Perror(UFFS_MSG_NORMAL,
+					"found an orphan directory block:%d, "
+					"parent:%d, serial:%d, will be erased!",
+					work->u.dir.block,
+					work->u.dir.parent, work->u.dir.serial);
+
+				uffs_BreakFromEntry(dev, UFFS_TYPE_DIR, work);
+				blockSave = work->u.dir.block;
+				work->u.list.block = blockSave;
+				ret = uffs_FlashEraseBlock(dev, blockSave);
+				if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+					uffs_BadBlockProcessNode(dev, work);
+				else
+					uffs_TreeInsertToErasedListTail(dev, work);
+			}
+
+		}
+	}
+}
+
 /* Find largest serial number of a DATA block */
 static u16 uffs_TreeDataMaxSerial(uffs_Device *dev, u16 parent)
 {
@@ -1245,6 +1299,7 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 {
 	uffs_Perror(UFFS_MSG_NOISY, "build tree step three");
 
+	_CleanOrphanDirectories(dev);
 	_CleanBrokenFiles(dev);
 	_CleanOrphanFiles(dev);
 	_CalcSizeAndCleanOrphanData(dev);
