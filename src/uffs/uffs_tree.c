@@ -1046,6 +1046,88 @@ ext:
 	return matched;
 }
 
+/* Find largest serial number of a DATA block */
+static u16 uffs_TreeDataMaxSerial(uffs_Device *dev, u16 parent)
+{
+	int i;
+	u16 x;
+	TreeNode *work;
+	struct uffs_TreeSt *tree;
+	uffs_Pool *pool;
+	u16 maxSerial = 0;
+
+	tree = &(dev->tree);
+	pool = TPOOL(dev);
+
+	for (i = 0; i < DATA_NODE_ENTRY_LEN; i++) {
+		x = tree->data_entry[i];
+		while (x != EMPTY_NODE) {
+			work = FROM_IDX(x, pool);
+			x = work->hash_next;
+			if (work->u.data.parent == parent) {
+				if (work->u.data.serial > maxSerial) {
+					maxSerial = work->u.data.serial;
+				}
+			}
+		}
+	}
+
+	return maxSerial;
+}
+
+// Remove any file blocks that are missing DATA blocks
+static void _CleanBrokenFiles(uffs_Device *dev)
+{
+	int i;
+	u16 x;
+	TreeNode *work;
+	TreeNode *node;
+	struct uffs_TreeSt *tree;
+	uffs_Pool *pool;
+	u16 blockSave;
+	int ret;
+
+	u16 maxSerial;
+
+	tree = &(dev->tree);
+	pool = TPOOL(dev);
+
+	for (i = 0; i < FILE_NODE_ENTRY_LEN; i++) {
+		x = tree->file_entry[i];
+		while (x != EMPTY_NODE) {
+			work = FROM_IDX(x, pool);
+			x = work->hash_next;
+
+			maxSerial = uffs_TreeDataMaxSerial(dev, work->u.file.serial);
+			while (maxSerial > 0) {
+				node = uffs_TreeFindDataNode(dev, work->u.file.serial, maxSerial);
+
+				if (node == NULL) {
+					// This FILE is missing a DATA block
+					uffs_Perror(UFFS_MSG_NORMAL,
+						"found a file with missing DATA nr:%d, block:%d, "
+						"parent:%d, serial:%d, will be erased!",
+						maxSerial, work->u.file.block,
+						work->u.file.parent, work->u.file.serial);
+
+					uffs_BreakFromEntry(dev, UFFS_TYPE_FILE, work);
+					blockSave = work->u.file.block;
+					work->u.list.block = blockSave;
+					ret = uffs_FlashEraseBlock(dev, blockSave);
+					if (UFFS_FLASH_IS_BAD_BLOCK(ret))
+						uffs_BadBlockProcessNode(dev, work);
+					else
+						uffs_TreeInsertToErasedListTail(dev, work);
+
+					break;
+				}
+
+				maxSerial--;
+			}
+		}
+	}
+}
+
 // Remove any file blocks that doesn't have a parent directory
 static void _CleanOrphanFiles(uffs_Device *dev)
 {
@@ -1163,6 +1245,7 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 {
 	uffs_Perror(UFFS_MSG_NOISY, "build tree step three");
 
+	_CleanBrokenFiles(dev);
 	_CleanOrphanFiles(dev);
 	_CalcSizeAndCleanOrphanData(dev);
 
