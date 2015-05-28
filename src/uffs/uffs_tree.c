@@ -1046,9 +1046,9 @@ ext:
 	return matched;
 }
 
-
-/* calculate file length, etc */
-static URET _BuildTreeStepThree(uffs_Device *dev)
+// Remove any data blocks that doesn't have a parent file.
+// Increment the parent file size for each DATA block found.
+static void _CalcSizeAndCleanOrphanData(uffs_Device *dev)
 {
 	int i;
 	u16 x;
@@ -1064,8 +1064,6 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 
 	tree = &(dev->tree);
 	pool = TPOOL(dev);
-
-	uffs_Perror(UFFS_MSG_NOISY, "build tree step three");
 
 	for (i = 0; i < DATA_NODE_ENTRY_LEN; i++) {
 		x = tree->data_entry[i];
@@ -1084,7 +1082,7 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 				//this data block does not belong to any file ?
 				//should be erased.
 				uffs_Perror(UFFS_MSG_NORMAL,
-					"find a orphan data block:%d, "
+					"found an orphan data block:%d, "
 					"parent:%d, serial:%d, will be erased!",
 					work->u.data.block,
 					work->u.data.parent, work->u.data.serial);
@@ -1104,6 +1102,14 @@ static URET _BuildTreeStepThree(uffs_Device *dev)
 			}
 		}
 	}
+}
+
+/* calculate file length, etc */
+static URET _BuildTreeStepThree(uffs_Device *dev)
+{
+	uffs_Perror(UFFS_MSG_NOISY, "build tree step three");
+
+	_CalcSizeAndCleanOrphanData(dev);
 
 	return U_SUCC;
 }
