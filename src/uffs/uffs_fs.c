@@ -997,7 +997,7 @@ static int do_WriteObject(uffs_Object *obj, const void *data, int len)
 			if(dnode == NULL) {
 				uffs_Perror(UFFS_MSG_SERIOUS, "can't find data node in tree ?");
 				obj->err = UEUNKNOWN_ERR;
-				break;
+				return -1;
 			}
 			size = do_WriteInternalBlock(obj, dnode, fdn,
 									data ? (u8 *)data + len - remain : NULL, remain,
@@ -1028,7 +1028,7 @@ static int do_WriteObject(uffs_Object *obj, const void *data, int len)
  * \param[in] data data pointer
  * \param[in] len length of data to be write
  *
- * \return bytes wrote to obj
+ * \return bytes written to obj or -1 in case of error
  */
 int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 {
@@ -1043,18 +1043,18 @@ int uffs_WriteObject(uffs_Object *obj, const void *data, int len)
 
 	if (obj->dev == NULL || obj->open_succ != U_TRUE) {
 		obj->err = UEBADF;
-		return 0;
+		return -1;
 	}
 
 	if (obj->type == UFFS_TYPE_DIR) {
 		uffs_Perror(UFFS_MSG_NOISY, "Can't write to an dir object!");
 		obj->err = UEACCES;
-		return 0;
+		return -1;
 	}
 
 	if (obj->oflag == UO_RDONLY) {
 		obj->err = UEACCES;  // can't write to 'read only' mode opened file
-		return 0;
+		return -1;
 	}
 
 	fnode = obj->node;
@@ -1097,7 +1097,7 @@ ext:
  * \param[out] data output data buffer
  * \param[in] len required length of data to be read from object->pos
  *
- * \return return bytes of data have been read
+ * \return return bytes of data have been read, or -1 if an error occurred
  */
 int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 {
@@ -1113,6 +1113,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 	u16 page_id;
 	u8 type;
 	u32 pageOfs;
+	int ret = 0;
 
 	if (obj == NULL)
 		return 0;
@@ -1121,13 +1122,13 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 	if (obj->dev == NULL || obj->open_succ == U_FALSE) {
 		obj->err = UEBADF;
-		return 0;
+		return -1;
 	}
 
 	if (obj->type == UFFS_TYPE_DIR) {
 		uffs_Perror(UFFS_MSG_NOISY, "Can't read data from a dir object!");
 		obj->err = UEBADF;
-		return 0;
+		return -1;
 	}
 
 	if (obj->pos > fnode->u.file.len) {
@@ -1136,7 +1137,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 	if (obj->oflag & UO_WRONLY) {
 		obj->err = UEACCES;
-		return 0;
+		return -1;
 	}
 
 	uffs_ObjectDevLock(obj);
@@ -1159,6 +1160,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 			if (dnode == NULL) {
 				uffs_Perror(UFFS_MSG_SERIOUS, "can't get data node in entry!");
 				obj->err = UEUNKNOWN_ERR;
+				ret = -1;
 				break;
 			}
 		}
@@ -1178,6 +1180,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 		if (buf == NULL) {
 			uffs_Perror(UFFS_MSG_SERIOUS, "can't get buffer when read obj.");
 			obj->err = UEIOERR;
+			ret = -1;
 			break;
 		}
 
@@ -1195,7 +1198,10 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 		remain -= size;
 	}
 
-	obj->pos += (len - remain);
+	if (ret != -1) {
+	    obj->pos += (len - remain);
+	    ret = len - remain;
+	}
 
 	if (HAVE_BADBLOCK(dev)) 
 		uffs_BadBlockRecover(dev);
@@ -1204,7 +1210,7 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 	uffs_Assert(fnode == obj->node, "obj->node change!\n");
 
-	return len - remain;
+	return ret;
 }
 
 /**
@@ -1222,7 +1228,7 @@ long uffs_SeekObject(uffs_Object *obj, long offset, int origin)
 {
 	if (obj->type == UFFS_TYPE_DIR) {
 		uffs_Perror(UFFS_MSG_NOISY, "Can't seek a dir object!");
-		obj->err = UEACCES;
+		obj->err = UEISDIR;
 	}
 	else {
 		uffs_ObjectDevLock(obj);
@@ -1474,7 +1480,7 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 	/* can't truncate a dir */
 	/* TODO: delete files under dir ? */
 	if (obj->type == UFFS_TYPE_DIR) {
-		obj->err = UEEXIST;
+		obj->err = UEISDIR;
 		goto ext;
 	}
 
@@ -1548,6 +1554,9 @@ static URET do_TruncateObject(uffs_Object *obj, u32 remain, RunOptionE run_opt)
 					if (run_opt == eREAL_RUN)
 						fnode->u.file.len = remain;
 					flen = remain;
+				}
+				else {
+				    goto ext;
 				}
 			}
 		}
