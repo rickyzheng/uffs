@@ -129,6 +129,8 @@ struct uffs_dirent * uffs_readdir(uffs_DIR *dirp);
 
 void uffs_rewinddir(uffs_DIR *dirp);
 
+/* Open file in directory */
+int uffs_openindir(const char *name, uffs_DIR* dir, int oflag);
 
 int uffs_get_error(void);
 int uffs_set_error(int err);
