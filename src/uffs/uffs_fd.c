@@ -276,9 +276,11 @@ int uffs_openindir(const char *name, uffs_DIR* dir, int oflag)
 	else {
 		
 		if (uffs_OpenObjectEx(obj, dir->obj->dev, dir->f.serial, name, strlen(name), oflag) == U_FAIL) {			
+			int openError = uffs_GetObjectErr(obj);
+
 			uffs_CloseObject(obj);
 			
-			uffs_set_error(-uffs_GetObjectErr(obj));
+			uffs_set_error(-openError);
 			uffs_PutObject(obj);
 			ret = -1;
 		}
