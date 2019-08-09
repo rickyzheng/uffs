@@ -131,6 +131,8 @@ void uffs_rewinddir(uffs_DIR *dirp);
 
 /* Open file in directory */
 int uffs_openindir(const char *name, uffs_DIR* dir, int oflag);
+/* Removed file from directory */
+int uffs_removefromdir(const char *name, uffs_DIR* dir);
 
 int uffs_get_error(void);
 int uffs_set_error(int err);

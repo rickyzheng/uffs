@@ -125,6 +125,7 @@ URET uffs_FlushObject(uffs_Object *obj);
 
 URET uffs_RenameObject(const char *old_name, const char *new_name, int *err);
 URET uffs_DeleteObject(const char * name, int *err);
+URET uffs_DeleteObjectDirect(uffs_Object *obj, int *err);
 
 int uffs_GetFreeObjectHandlers(void);
 

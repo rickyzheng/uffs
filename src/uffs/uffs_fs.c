@@ -1626,6 +1626,7 @@ int _CheckObjBufRef(uffs_Object *obj)
 }
 
 
+URET uffs_DeleteObjectDirect(uffs_Object *obj, int *err);
 
 /**
  * \brief delete uffs object
@@ -1638,17 +1639,14 @@ int _CheckObjBufRef(uffs_Object *obj)
  */
 URET uffs_DeleteObject(const char * name, int *err)
 {
-	uffs_Object *obj, *work;
-	TreeNode *node, *d_node;
-	uffs_Device *dev = NULL;
-	u16 block;
-	u16 serial, parent, last_serial;
+	uffs_Object *obj;
 	URET ret = U_FAIL;
 
 	obj = uffs_GetObject();
 	if (obj == NULL) {
 		if (err)
 			*err = UEMFILE;
+
 		goto ext_unlock;
 	}
 
@@ -1656,9 +1654,38 @@ URET uffs_DeleteObject(const char * name, int *err)
 		if (uffs_OpenObject(obj, name, UO_RDWR) == U_FAIL) {
 			if (err)
 				*err = UENOENT;
+
 			goto ext_unlock;
 		}
 	}
+
+	return uffs_DeleteObjectDirect(obj, err);
+	
+ext_unlock:
+	do_ReleaseObjectResource(obj);
+
+	uffs_PutObject(obj);
+
+	return ret;
+}
+
+/**
+ * \brief delete uffs object
+ *
+ * \param[in] obj to be removed
+ * \param[out] err return error code
+ *
+ * \return U_SUCC if object is deleted successfully. 
+ *	return U_FAIL if error happen, error code is set to *err.
+ */
+URET uffs_DeleteObjectDirect(uffs_Object *obj, int *err)
+{
+	uffs_Object *work;
+	TreeNode *node, *d_node;
+	uffs_Device *dev = NULL;
+	u16 block;
+	u16 serial, parent, last_serial;
+	URET ret = U_FAIL;
 
 	dev = obj->dev;
 
@@ -1748,9 +1775,8 @@ URET uffs_DeleteObject(const char * name, int *err)
 
 ext_lock:
 	uffs_ObjectDevUnLock(obj);
-ext_unlock:
+	
 	do_ReleaseObjectResource(obj);
-
 	uffs_PutObject(obj);
 
 	return ret;
