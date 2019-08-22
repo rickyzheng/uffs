@@ -261,6 +261,40 @@ int uffs_open(const char *name, int oflag, ...)
 	return ret;
 }
 
+int uffs_openindir(const char *name, uffs_DIR* dir, int oflag)
+{
+	uffs_Object *obj;
+	int ret = 0;
+
+	uffs_GlobalFsLockLock();
+
+	obj = uffs_GetObject();
+	if (obj == NULL) {
+		uffs_set_error(-UEMFILE);
+		ret = -1;
+	}
+	else {
+		
+		dir->obj->dev->ref_count++;
+		if (uffs_OpenObjectEx(obj, dir->obj->dev, dir->f.serial, name, strlen(name), oflag) == U_FAIL) {			
+			int openError = uffs_GetObjectErr(obj);
+
+			uffs_CloseObject(obj);
+			
+			uffs_set_error(-openError);
+			uffs_PutObject(obj);
+			ret = -1;
+		}
+		else {
+			ret = OBJ2FD(obj);
+		}
+	}
+
+	uffs_GlobalFsLockUnlock();
+
+	return ret;
+}
+
 int uffs_close(int fd)
 {
 	int ret = 0;
