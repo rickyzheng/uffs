@@ -275,6 +275,7 @@ int uffs_openindir(const char *name, uffs_DIR* dir, int oflag)
 	}
 	else {
 		
+		dir->obj->dev->ref_count++;
 		if (uffs_OpenObjectEx(obj, dir->obj->dev, dir->f.serial, name, strlen(name), oflag) == U_FAIL) {			
 			int openError = uffs_GetObjectErr(obj);
 
