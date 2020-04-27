@@ -78,6 +78,7 @@ extern "C"{
 #define UEIOERR	11		/** I/O error from lower level flash operation */
 #define UENOTDIR 12		/** Not a directory */
 #define UEISDIR 13		/** Is a directory */    
+#define UERANGE 14  /** Read data out of page range */
 
 #define UEUNKNOWN_ERR	100	/** unknown error */
 
