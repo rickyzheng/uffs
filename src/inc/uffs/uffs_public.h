@@ -39,6 +39,7 @@
 #ifndef _UFFS_PUBLIC_H_
 #define _UFFS_PUBLIC_H_
 
+#include "uffs_config.h"
 #include "uffs/uffs_types.h"
 #include "uffs/uffs_core.h"
 #include "uffs/uffs.h"
@@ -104,6 +105,15 @@ typedef struct uffs_ObjectInfoSt {
 
 
 /**
+ * \def UFFS_TAG_DATA_LEN_BITS
+ * \brief the number of bits used to store length of data in page. 
+ * Defaults to 12, which imposes 4 KB limit on page length.
+ */
+#ifndef UFFS_TAG_DATA_LEN_BITS
+#    define UFFS_TAG_DATA_LEN_BITS 12
+#endif
+
+/**
  * \def UFFS_TAG_PAGE_ID_SIZE_BITS
  * \brief define number of bits used for page_id in tag,
  *        this defines the maximum pages per block you can have.
@@ -111,16 +121,19 @@ typedef struct uffs_ObjectInfoSt {
  **/
 #define UFFS_TAG_PAGE_ID_SIZE_BITS  6
 
-#if UFFS_TAG_RESERVED_BITS > 10
-#error "UFFS_TAG_PAGE_ID_SIZE_BITS can not bigger than 10 !"
+#if UFFS_TAG_RESERVED_BITS + UFFS_TAG_DATA_LEN_BITS > 22
+#error "UFFS_TAG_PAGE_ID_SIZE_BITS + UFFS_TAG_DATA_LEN_BITS cannot be bigger than 22 !"
+#endif
+
+#if UFFS_MAX_PAGE_SIZE > (1<<UFFS_TAG_DATA_LEN_BITS)
+#error "UFFS_TAG_DATA_LEN_BITS is too small to support current UFFS_MAX_PAGE_SIZE"
 #endif
 
 /**
  * \def UFFS_TAG_RESERVED_BITS
- * \brief the number of bits left to be used for the furture (UFFS2).
+ * \brief the number of bits left to be used for the future (UFFS2).
  **/
-#define UFFS_TAG_RESERVED_BITS (10 - UFFS_TAG_PAGE_ID_SIZE_BITS)
-
+#define UFFS_TAG_RESERVED_BITS (22 - UFFS_TAG_PAGE_ID_SIZE_BITS - UFFS_TAG_DATA_LEN_BITS)
 
 /**
  * \struct uffs_TagStoreSt
@@ -131,7 +144,7 @@ struct uffs_TagStoreSt {
 	u32 valid:1;		//!< 0: valid, 1: invalid
 	u32 type:2;			//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
 	u32 block_ts:2;		//!< time stamp of block;
-	u32 data_len:12;	//!< length of page data
+	u32 data_len:UFFS_TAG_DATA_LEN_BITS;	//!< length of page data
 	u32 serial:14;		//!< serial number
 
 	u32 parent:10;		//!< parent's serial number
