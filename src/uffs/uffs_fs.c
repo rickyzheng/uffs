@@ -1183,7 +1183,8 @@ int uffs_ReadObject(uffs_Object *obj, void *data, int len)
 
 		pageOfs = read_start % dev->com.pg_data_size;
 		if (pageOfs >= buf->data_len) {
-			//uffs_Perror(UFFS_MSG_NOISY, "read data out of page range ?");
+			uffs_Perror(UFFS_MSG_NOISY, "read data out of page range ?");
+			obj->err = UERANGE;
 			uffs_BufPut(dev, buf);
 			break;
 		}
