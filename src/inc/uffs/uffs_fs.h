@@ -110,6 +110,7 @@ URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev,
 								   int dir, const char *name, int name_len, int oflag);
 URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev, 
 								   int dir, const char *name, int name_len, int oflag);
+URET uffs_OpenObjectBySerial(uffs_Object *obj, uffs_Device *dev, int serial, int oflag);
 
 URET uffs_OpenObject(uffs_Object *obj, const char *fullname, int oflag);
 URET uffs_TruncateObject(uffs_Object *obj, u32 remain);

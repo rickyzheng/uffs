@@ -104,9 +104,13 @@ struct uffs_stat {
     unsigned int	st_ctime;   /* time of last status change */
 };
 
+struct uffs_DeviceSt;
+typedef struct uffs_DeviceSt uffs_Device;
+
 /* POSIX complaint file system APIs */
 
 int uffs_open(const char *name, int oflag, ...);
+int uffs_openbyserial(int serial, uffs_Device* dev, int oflag);
 int uffs_close(int fd);
 int uffs_read(int fd, void *data, int len);
 int uffs_write(int fd, const void *data, int len);
