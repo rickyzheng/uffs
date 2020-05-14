@@ -657,6 +657,8 @@ struct uffs_dirent * uffs_readdir(uffs_DIR *dirp)
 		ent->d_off = dirp->f.pos;
 		ent->d_reclen = sizeof(struct uffs_dirent);
 		ent->d_type = dirp->info.info.attr;
+		ent->d_size = dirp->info.len;
+		ent->d_ctime = dirp->info.info.create_time;
 	}
 	uffs_GlobalFsLockUnlock();
 
