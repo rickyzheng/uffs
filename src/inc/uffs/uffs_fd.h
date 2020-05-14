@@ -78,6 +78,8 @@ struct uffs_dirent {
     unsigned short int d_namelen;		/* length of this d_name */
     unsigned char d_type;				/* type of this record */
     char d_name[256];					/* name of this object */
+    long d_size;              /* size of entry described by this uffs_dirent */
+    unsigned int d_ctime;    /* time of last status change */
 };
 
 struct uffs_dirSt;
