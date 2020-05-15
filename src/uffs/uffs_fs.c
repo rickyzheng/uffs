@@ -557,6 +557,79 @@ ext:
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
+URET uffs_OpenObjectBySerial(uffs_Object *obj, uffs_Device *dev, int serial, int oflag)
+{
+	obj->err = UENOERR;
+	obj->open_succ = U_FALSE;
+
+	if (dev == NULL) {
+		obj->err = UEINVAL;
+		goto ext;
+	}
+
+	if ((oflag & (UO_WRONLY | UO_RDWR)) == (UO_WRONLY | UO_RDWR)) {
+		/* UO_WRONLY and UO_RDWR can't appear together */
+		uffs_Perror(UFFS_MSG_NOISY,
+					"UO_WRONLY and UO_RDWR can't appear together");
+		obj->err = UEINVAL;
+		goto ext;
+	}
+
+	if ((obj->oflag & UO_CREATE) == UO_CREATE) {
+		uffs_Perror(UFFS_MSG_NOISY,
+					"UO_CREATE with open by serial is pointless");
+		obj->err = UEINVAL;
+		goto ext;
+	}
+
+	obj->dev = dev;
+	obj->type = (oflag & UO_DIR ? UFFS_TYPE_DIR : UFFS_TYPE_FILE);
+
+	obj->oflag = oflag;
+	obj->parent = GET_OBJ_NODE_FATHER(obj);
+	obj->pos = 0;
+	obj->name = 0;
+	obj->name_len = 0;
+
+	obj->sum = 0;
+	obj->head_pages = obj->dev->attr->pages_per_block - 1;
+
+	if(serial == ROOT_DIR_SERIAL) {
+		obj->serial = ROOT_DIR_SERIAL;
+		goto ext;
+	}
+
+	uffs_ObjectDevLock(obj);
+
+	if (obj->type == UFFS_TYPE_DIR) {
+		obj->node = uffs_TreeFindDirNode(obj->dev, serial);
+	}
+	else {
+		obj->node = uffs_TreeFindFileNode(obj->dev, serial);
+	}
+
+	if (obj->node == NULL) {			// dir or file not exist
+		obj->err = UENOENT;
+		goto ext_1;
+	}
+
+	obj->serial = GET_OBJ_NODE_SERIAL(obj);
+	obj->open_succ = U_TRUE;
+
+	if (obj->oflag & UO_TRUNC) {
+		if (do_TruncateObject(obj, 0, eDRY_RUN) == U_SUCC) {
+			//NOTE: obj->err will be set in do_TruncateObject() if failed.
+			do_TruncateObject(obj, 0, eREAL_RUN);
+		}
+	}
+
+ext_1:
+	uffs_ObjectDevUnLock(obj);
+ext:
+	obj->open_succ = (obj->err == UENOERR ? U_TRUE : U_FALSE);
+
+	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
+}
 
 /**
  * Parse the full path name, initialize obj.
