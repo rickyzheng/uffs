@@ -477,9 +477,42 @@ int uffs_remove(const char *name)
 	return ret;
 }
 
+int uffs_removebyserial(int serial, uffs_Device* dev)
+{
+	uffs_Object *obj;
+	int err = 0;
+	int ret = 0;
+	struct uffs_stat st;
+
+	int fd = uffs_openbyserial(serial, dev, UO_RDONLY);
+
+	if (uffs_fstat(fd, &st) < 0) {
+		uffs_close(fd);
+		err = UENOENT;
+		ret = -1;
+	}
+	else if (st.st_mode & US_IFDIR) {
+		uffs_close(fd);
+		err = UEISDIR;
+		ret = -1;
+	}
+	else {
+		CHK_OBJ_LOCK(fd, obj, -1);
+
+		uffs_ClearObjectErr(obj);
+		ret = uffs_DeleteObjectDirect(obj, &err);
+
+		uffs_GlobalFsLockUnlock();
+	}
+
+	uffs_set_error(-err);
+
+	return ret;
+}
+
 int uffs_removefromdir(const char *name, uffs_DIR* dir)
 {
-	uffs_Object *obj;	
+	uffs_Object *obj;
 	int err = 0;
 	int ret = 0;
 	struct uffs_stat st;

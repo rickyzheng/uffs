@@ -120,6 +120,7 @@ int uffs_eof(int fd);
 int uffs_flush(int fd);
 int uffs_rename(const char *old_name, const char *new_name);
 int uffs_remove(const char *name);
+int uffs_removebyserial(int serial, uffs_Device* dev);
 int uffs_ftruncate(int fd, long remain);
 
 int uffs_mkdir(const char *name, ...);
