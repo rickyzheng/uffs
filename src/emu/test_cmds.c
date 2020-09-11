@@ -896,8 +896,8 @@ static int cmd_TestPopulateFiles(int argc, char *argv[])
 	const char *start = "/";
 	int count = 80;
 	int i, fd, num;
-	char name[128];
-	char buf[128];
+	char name[member_sizeof(struct uffs_dirent, d_name) + 1];
+	char buf[member_sizeof(struct uffs_dirent, d_name) + 1];
 	uffs_DIR *dirp;
 	struct uffs_dirent *ent;
 	unsigned long bitmap[50] = {0};	// one bit per file, maximu 32*50 = 1600 files
