@@ -78,6 +78,43 @@ static UBOOL check_entry_exist(const char *name)
 	return uffs_stat(name, &sb) < 0 ? U_FALSE : U_TRUE;
 }
 
+static URET do_write_test_file_ex(int fd, long pos, int size, int chunk_size)
+{
+	unsigned char *buf = NULL;
+	int len;
+	URET ret = U_FAIL;
+
+	if (chunk_size >= size) {
+		MSGLN("Chunk size exceeded the max size !");
+		goto fail;
+	}
+
+	buf = malloc(chunk_size);
+	if (buf == NULL) {
+		MSGLN("Fail to alloc memory size %d\n", chunk_size);
+		goto fail;
+	}
+
+	while (size > 0) {
+		len = (size > chunk_size ? chunk_size : size);
+		memcp_seq(buf, len, pos);
+		if (uffs_write(fd, buf, len) != len) {
+			MSGLN("Write file failed, size %d at %d", len, pos);
+			goto fail;
+		}
+		size -= len;
+		pos += len;
+	}
+
+	ret = U_SUCC;
+
+fail:
+	if (buf) {
+		free(buf);
+	}
+	return ret;
+}
+
 static URET do_write_test_file(int fd, int size)
 {
 	long pos;
@@ -97,7 +134,6 @@ static URET do_write_test_file(int fd, int size)
 
 	return U_SUCC;
 }
-
 static URET test_write_file(const char *file_name, int pos, int size)
 {
 	int ret = U_FAIL;
@@ -459,6 +495,56 @@ fail:
 	return -1;
 }
 
+
+/* test appending big chunk,
+t6 <file_name> [<chunk_size> [<total_size>]]
+ */
+static int cmd_t6(int argc, char *argv[])
+{
+	int fd = -1;
+	URET ret;
+	const char *name;
+	long chunk_size = 512, total_size = 262144;
+
+	if (argc < 2) {
+		return CLI_INVALID_ARG;
+	}
+
+	if (argc >= 3) {
+		chunk_size = strtol(argv[2], NULL, 10);
+		if (chunk_size <= 0) {
+			return CLI_INVALID_ARG;
+		}
+	}
+
+	if (argc >= 4) {
+		total_size = strtol(argv[3], NULL, 10);
+		if (total_size <= 0) {
+			return CLI_INVALID_ARG;
+		}
+	}
+
+	name = argv[1];
+
+	//fd = uffs_open(name, UO_RDWR | UO_APPEND);
+	fd = uffs_open(name, UO_CREATE | UO_WRONLY);
+	if (fd < 0) {
+		MSGLN("Can't open %s", name);
+		goto fail;
+	}
+	MSGLN("Test chunk_size: %d, total_size: %d", chunk_size, total_size);
+
+	ret = do_write_test_file_ex(fd, 0, total_size, chunk_size);
+
+	uffs_close(fd);
+
+	return ret;
+fail:
+	return -1;
+
+}
+
+
 /*
  * This verify the bug fixed by commit dede97b1.
  * The bug caused a clone buf failure and UFFS complain something like "no enough free pages for clone!".
@@ -810,8 +896,8 @@ static int cmd_TestPopulateFiles(int argc, char *argv[])
 	const char *start = "/";
 	int count = 80;
 	int i, fd, num;
-	char name[128];
-	char buf[128];
+	char name[member_sizeof(struct uffs_dirent, d_name) + 1];
+	char buf[member_sizeof(struct uffs_dirent, d_name) + 1];
 	uffs_DIR *dirp;
 	struct uffs_dirent *ent;
 	unsigned long bitmap[50] = {0};	// one bit per file, maximu 32*50 = 1600 files
@@ -1337,6 +1423,7 @@ static const struct cli_command test_cmds[] =
     { cmd_t3,					"t3",			"<name> [<noecc>]",	"test 3" },
     { cmd_t4,					"t4",			NULL,				"test 4" },
     { cmd_t5,					"t5",			"<name>",			"test 5" },
+	{ cmd_t6,					"t6",			"<name>",			"test 6" },
     { cmd_TestPageReadWrite,	"t_pgrw",		NULL,				"test page read/write" },
     { cmd_TestFormat,			"t_format",		NULL,				"test format file system" },
 	{ cmd_TestPopulateFiles,	"t_pfs",		"[<start> [<n>]]",	"test populate <n> files under <start>" },

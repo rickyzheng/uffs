@@ -55,8 +55,13 @@ extern "C"{
 #ifndef offsetof
 # define offsetof(T, x) ((size_t) &((T *)0)->x)
 #endif
+
 #ifndef container_of
 #define container_of(p, T, x) ((T *)((char *)(p) - offsetof(T,x)))
+#endif
+
+#ifndef member_sizeof
+#define member_sizeof(type, member) sizeof(((type *)0)->member)
 #endif
 
 /** 
