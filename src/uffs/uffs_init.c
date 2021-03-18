@@ -49,12 +49,14 @@
 
 static URET uffs_InitDeviceConfig(uffs_Device *dev)
 {
-    if (dev->cfg.dirty_groups == 0)
+    if (dev->cfg.dirty_groups == 0) {
         dev->cfg.dirty_groups = MAX_DIRTY_BUF_GROUPS;
+    }
 
 	if (!uffs_Assert(dev->cfg.dirty_groups >= 1 && dev->cfg.dirty_groups <= MAX_DIRTY_BUF_GROUPS,
-						"invalid config: dirty_groups = %d\n", dev->cfg.dirty_groups))
+						"invalid config: dirty_groups = %d\n", dev->cfg.dirty_groups)) {
 		return U_FAIL;
+    }
 
 #if CONFIG_USE_STATIC_MEMORY_ALLOCATOR > 0
 	dev->cfg.bc_caches = MAX_CACHED_BLOCK_INFO;
